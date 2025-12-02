@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { showToast, showDialog } from 'vant'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
 
 // 创建 axios 实例
@@ -39,16 +39,14 @@ request.interceptors.response.use(
 
     // 邮箱未验证
     if (code === 403 && message && message.includes('邮箱未验证')) {
-      showToast('请先完成邮箱验证')
+      ElMessage.warning('请先完成邮箱验证')
       router.push('/email-verify')
       return Promise.reject(new Error(message))
     }
 
     // 未登录或 token 失效
     if (code === 401) {
-      showDialog({
-        title: '提示',
-        message: '登录已过期，请重新登录',
+      ElMessageBox.alert('登录已过期，请重新登录', '提示', {
         confirmButtonText: '确定'
       }).then(() => {
         localStorage.removeItem('token')
@@ -59,7 +57,7 @@ request.interceptors.response.use(
     }
 
     // 其他错误
-    showToast(message || '请求失败')
+    ElMessage.error(message || '请求失败')
     return Promise.reject(new Error(message || '请求失败'))
   },
   (error) => {
@@ -69,21 +67,21 @@ request.interceptors.response.use(
       const { status } = error.response
       switch (status) {
         case 400:
-          showToast('请求参数错误')
+          ElMessage.error('请求参数错误')
           break
         case 404:
-          showToast('请求的资源不存在')
+          ElMessage.error('请求的资源不存在')
           break
         case 500:
-          showToast('服务器错误')
+          ElMessage.error('服务器错误')
           break
         default:
-          showToast('网络错误，请稍后重试')
+          ElMessage.error('网络错误，请稍后重试')
       }
     } else if (error.message.includes('timeout')) {
-      showToast('请求超时，请检查网络')
+      ElMessage.error('请求超时，请检查网络')
     } else {
-      showToast('网络连接失败')
+      ElMessage.error('网络连接失败')
     }
 
     return Promise.reject(error)

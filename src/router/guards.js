@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/stores/auth'
-import { showToast } from 'vant'
+import { ElMessage } from 'element-plus'
 
 /**
  * 设置路由守卫
@@ -25,7 +25,7 @@ export const setupRouterGuards = (router) => {
     // 需要登录的页面
     if (to.meta.requiresAuth) {
       if (!authStore.isLoggedIn) {
-        showToast('请先登录')
+        ElMessage.warning('请先登录')
         next({
           path: '/login',
           query: { redirect: to.fullPath }
@@ -39,14 +39,14 @@ export const setupRouterGuards = (router) => {
         !authStore.isEmailVerified && 
         to.path !== '/email-verify'
       ) {
-        showToast('请先完成邮箱验证')
+        ElMessage.warning('请先完成邮箱验证')
         next('/email-verify')
         return
       }
 
       // 管理员权限检查
       if (to.meta.requiresAdmin && !authStore.isAdmin) {
-        showToast('无权访问')
+        ElMessage.error('无权访问')
         next('/courses')
         return
       }
