@@ -29,8 +29,11 @@ export const useAuthStore = defineStore('auth', {
     // 登录
     async login(loginForm) {
       try {
-        // 测试模式：模拟登录（当后端接口不可用时）
-        if (import.meta.env.DEV) {
+        // 模拟登录模式（当后端接口不可用时）
+        // 如果需要使用真实API，请修改下面的条件判断
+        const useMockLogin = true // 改为 false 启用真实API
+        
+        if (useMockLogin) {
           // 模拟网络延迟
           await new Promise(resolve => setTimeout(resolve, 800))
           
@@ -41,7 +44,7 @@ export const useAuthStore = defineStore('auth', {
               id: 1,
               userName: loginForm.userName,
               email: 'test@example.com',
-              emailVerified: false, // 首次登录需要验证邮箱
+              emailVerified: true, // 跳过邮箱验证
               roleId: 3, // 3: 普通用户
               roleName: '学生'
             }
