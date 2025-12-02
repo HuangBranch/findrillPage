@@ -1,0 +1,1 @@
+<template><div class='page'><van-nav-bar title='ChapterManage' left-arrow @click-left="$router.back()" fixed placeholder /><div class='content'><van-empty description='ChapterManage开发中...' /></div></div></template><script setup></script><style scoped>.page{min-height:100vh;background:#f7f8fa}.content{padding:40px 20px}</style>

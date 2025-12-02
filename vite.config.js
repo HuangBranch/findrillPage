@@ -15,4 +15,23 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  server: {
+    port: 3000,
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8080', // 后端API地址，根据实际情况修改
+        changeOrigin: true,
+        // rewrite: (path) => path.replace(/^\/api/, '')
+      }
+    }
+  },
+  css: {
+    preprocessorOptions: {
+      scss: {
+        api: 'modern-compiler',
+        additionalData: `@use "@/assets/styles/variables.scss" as *;`
+      }
+    }
+  }
 })
