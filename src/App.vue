@@ -12,7 +12,7 @@ import { cleanExpiredProgress } from '@/utils/storage'
 
 // 应用启动时清理过期的答题进度
 onMounted(() => {
-  cleanExpiredProgress()
+  cleanExpiredProgress();
 })
 </script>
 
