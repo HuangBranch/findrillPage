@@ -361,7 +361,90 @@ const formatTime = (timestamp) => {
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
+// 生成测试错题数据
+const generateMockWrongQuestions = () => {
+  const saved = localStorage.getItem('wrong_questions')
+  if (saved && JSON.parse(saved).length > 0) {
+    return // 已有数据，不覆盖
+  }
+  
+  const mockData = []
+  const courses = [
+    { cId: 1, cName: '高等数学' },
+    { cId: 2, cName: '大学英语' },
+    { cId: 3, cName: '计算机基础' }
+  ]
+  
+  const chapters = [
+    { chapterId: 1, chapterName: '第一章 基础知识' },
+    { chapterId: 2, chapterName: '第二章 进阶内容' },
+    { chapterId: 3, chapterName: '第三章 综合应用' }
+  ]
+  
+  let questionId = 1
+  
+  courses.forEach((course, courseIdx) => {
+    chapters.slice(0, courseIdx + 1).forEach(chapter => {
+      // 每个章节生成3-5道错题
+      const questionCount = 3 + Math.floor(Math.random() * 3)
+      
+      for (let i = 0; i < questionCount; i++) {
+        const types = ['single', 'multiple', 'judge']
+        const type = types[Math.floor(Math.random() * types.length)]
+        
+        let question, options, userAnswer
+        
+        if (type === 'judge') {
+          question = `${course.cName} - ${chapter.chapterName}：判断题示例 ${i + 1}`
+          options = [
+            { text: '正确', isCorrect: Math.random() > 0.5 },
+            { text: '错误', isCorrect: false }
+          ]
+          options[1].isCorrect = !options[0].isCorrect
+          userAnswer = options[0].isCorrect ? '错误' : '正确'
+        } else if (type === 'single') {
+          question = `${course.cName} - ${chapter.chapterName}：单选题示例 ${i + 1}，以下哪个选项是正确的？`
+          const correctIdx = Math.floor(Math.random() * 4)
+          options = ['A', 'B', 'C', 'D'].map((label, idx) => ({
+            text: `选项${label}：这是${label}选项的内容描述`,
+            isCorrect: idx === correctIdx
+          }))
+          const wrongIdx = (correctIdx + 1 + Math.floor(Math.random() * 3)) % 4
+          userAnswer = String.fromCharCode(65 + wrongIdx)
+        } else {
+          question = `${course.cName} - ${chapter.chapterName}：多选题示例 ${i + 1}，以下哪些选项是正确的？`
+          options = ['A', 'B', 'C', 'D'].map((label, idx) => ({
+            text: `选项${label}：这是${label}选项的内容描述`,
+            isCorrect: Math.random() > 0.5
+          }))
+          if (!options.some(o => o.isCorrect)) options[0].isCorrect = true
+          const correctLabels = options.map((o, i) => o.isCorrect ? String.fromCharCode(65 + i) : '').filter(Boolean)
+          const wrongAnswers = correctLabels.slice(0, -1)
+          userAnswer = wrongAnswers.join('、') || String.fromCharCode(65)
+        }
+        
+        mockData.push({
+          id: questionId++,
+          courseId: course.cId,
+          courseName: course.cName,
+          chapterId: chapter.chapterId,
+          chapterName: chapter.chapterName,
+          type,
+          question,
+          options,
+          userAnswer,
+          timestamp: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000),
+          analysis: `这道题的正确答案应该是${type === 'judge' ? (options[0].isCorrect ? '正确' : '错误') : options.map((o, i) => o.isCorrect ? String.fromCharCode(65 + i) : '').filter(Boolean).join('、')}。需要注意理解核心概念。`
+        })
+      }
+    })
+  })
+  
+  localStorage.setItem('wrong_questions', JSON.stringify(mockData))
+}
+
 onMounted(() => {
+  generateMockWrongQuestions()
   loadWrongQuestions()
   
   // 默认展开第一个课程

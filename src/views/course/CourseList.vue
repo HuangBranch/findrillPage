@@ -96,44 +96,86 @@ const mockCourses = [
   {
     cId: 1,
     cName: '高等数学',
-    remarks: '包含微积分、线性代数等内容',
-    questionCount: 500,
-    recentExamCount: 12
+    remarks: '包含微积分、线性代数、概率论等核心内容',
+    questionCount: 1250,
+    recentExamCount: 45
   },
   {
     cId: 2,
     cName: '大学英语',
-    remarks: '四六级词汇、语法、阅读理解',
-    questionCount: 800,
-    recentExamCount: 20
+    remarks: '四六级词汇、语法、阅读理解、听力训练',
+    questionCount: 2100,
+    recentExamCount: 68
   },
   {
     cId: 3,
     cName: '计算机基础',
-    remarks: '操作系统、计算机网络、数据结构',
-    questionCount: 600,
-    recentExamCount: 15
+    remarks: '操作系统、计算机网络、数据结构与算法',
+    questionCount: 1580,
+    recentExamCount: 52
   },
   {
     cId: 4,
     cName: 'Java 程序设计',
-    remarks: 'Java 基础语法、面向对象、集合框架',
-    questionCount: 450,
-    recentExamCount: 18
+    remarks: 'Java 基础语法、面向对象、集合框架、多线程',
+    questionCount: 980,
+    recentExamCount: 38
   },
   {
     cId: 5,
     cName: '数据库原理',
-    remarks: 'SQL 语句、事务、索引优化',
-    questionCount: 350,
-    recentExamCount: 10
+    remarks: 'SQL 语句、事务处理、索引优化、存储过程',
+    questionCount: 760,
+    recentExamCount: 29
   },
   {
     cId: 6,
     cName: 'Python 编程',
-    remarks: 'Python 基础、数据分析、Web 开发',
-    questionCount: 420,
-    recentExamCount: 14
+    remarks: 'Python 基础、数据分析、Web 开发、机器学习',
+    questionCount: 890,
+    recentExamCount: 41
+  },
+  {
+    cId: 7,
+    cName: '数据结构与算法',
+    remarks: '线性表、树、图、排序、查找、动态规划',
+    questionCount: 1120,
+    recentExamCount: 33
+  },
+  {
+    cId: 8,
+    cName: 'Web 前端开发',
+    remarks: 'HTML5、CSS3、JavaScript、Vue.js、React',
+    questionCount: 1340,
+    recentExamCount: 56
+  },
+  {
+    cId: 9,
+    cName: '操作系统',
+    remarks: '进程管理、内存管理、文件系统、死锁',
+    questionCount: 680,
+    recentExamCount: 24
+  },
+  {
+    cId: 10,
+    cName: '计算机网络',
+    remarks: 'TCP/IP、HTTP、网络安全、路由协议',
+    questionCount: 820,
+    recentExamCount: 31
+  },
+  {
+    cId: 11,
+    cName: '软件工程',
+    remarks: '需求分析、设计模式、测试、项目管理',
+    questionCount: 540,
+    recentExamCount: 18
+  },
+  {
+    cId: 12,
+    cName: '人工智能基础',
+    remarks: '机器学习、深度学习、神经网络、NLP',
+    questionCount: 720,
+    recentExamCount: 27
   }
 ]
 

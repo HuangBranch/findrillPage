@@ -77,19 +77,14 @@ const updateIndicator = (index) => {
 const handleNavigate = (index, path) => {
   if (route.path === path) return // 已经在当前页面
   
-  updateIndicator(index)
-  
-  setTimeout(() => {
-    router.push(path)
-  }, 200)
+  // 立即跳转，让路由变化触发指示器更新
+  router.push(path)
 }
 
 // 监听路由变化
 watch(() => route.path, () => {
   nextTick(() => {
-    setTimeout(() => {
-      updateIndicator(activeIndex.value)
-    }, 100)
+    updateIndicator(activeIndex.value)
   })
 }, { immediate: false })
 
@@ -98,7 +93,7 @@ onMounted(() => {
   nextTick(() => {
     setTimeout(() => {
       updateIndicator(activeIndex.value)
-    }, 150)
+    }, 50)
   })
 })
 </script>
