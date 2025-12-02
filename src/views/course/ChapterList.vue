@@ -172,8 +172,10 @@ const loadChapters = async () => {
   loading.value = true
   
   try {
-    // 测试模式：使用模拟数据
-    if (import.meta.env.DEV) {
+    // 使用模拟数据（开发和生产环境都可用）
+    const useMockData = true // 改为 false 启用真实API
+    
+    if (useMockData) {
       await new Promise(resolve => setTimeout(resolve, 500))
       chapterList.value = mockChapters
       courseStore.setChapterList(mockChapters)

@@ -193,8 +193,11 @@ const loadCourses = async () => {
   loading.value = true
   
   try {
-    // 测试模式：使用模拟数据
-    if (import.meta.env.DEV) {
+    // 使用模拟数据（开发和生产环境都可用）
+    // 如果需要使用真实API，请修改下面的代码
+    const useMockData = true // 改为 false 启用真实API
+    
+    if (useMockData) {
       await new Promise(resolve => setTimeout(resolve, 500))
       courseList.value = mockCourses
       courseStore.setCourseList(mockCourses)
