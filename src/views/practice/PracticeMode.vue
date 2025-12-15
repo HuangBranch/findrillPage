@@ -395,6 +395,7 @@ const loadQuestions = async (type = 'first') => {
         chapterName: route.query.chapterName,
         curriculumId: route.query.courseId,
         curriculumName: route.query.curriculumName,
+        examId: examId.value,
         page: Math.floor(questions.value.length / 20) + 1,
         pageSize: 20
       });

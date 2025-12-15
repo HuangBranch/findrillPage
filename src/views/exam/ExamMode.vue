@@ -253,7 +253,6 @@ import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import examAPI from '@/api/exam'
-import exam from '@/api/exam'
 
 const router = useRouter()
 const route = useRoute()
