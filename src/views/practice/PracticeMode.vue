@@ -396,8 +396,8 @@ const loadQuestions = async (type = 'first') => {
         curriculumId: route.query.courseId,
         curriculumName: route.query.curriculumName,
         examId: examId.value,
-        page: Math.floor(questions.value.length / 20) + 1,
-        pageSize: 20
+        page: Math.floor(questions.value.length / 50) + 1,
+        pageSize: 50
       });
       questions.value = questions.value.concat(res?.subjectList || [])
       return
@@ -409,7 +409,7 @@ const loadQuestions = async (type = 'first') => {
       curriculumId: route.query.courseId,
       curriculumName: route.query.curriculumName,
       page:1,
-      pageSize: 20
+      pageSize: 50
     });
     examId.value = res?.examId || null
     questions.value = res?.subjectList || []
