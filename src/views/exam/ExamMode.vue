@@ -68,8 +68,8 @@
                   <div class="info-item">
                     <span class="info-label">题目数量</span>
                     <span class="info-value">
-                      <el-select v-model="timer" size="small" style="width:60px" :default-value="total < 30 ? total : 30"
-                        :options="opentions" placeholder="选择题目数量" />
+                      <el-select v-model="timer" size="small" style="width:60px"
+                        :default-value="total < 30 ? total : 30" :options="opentions" placeholder="选择题目数量" />
                       题
                     </span>
                   </div>
@@ -110,7 +110,8 @@
                       v-show="!isTransitioning">
                       <div v-for="(option, index) in currentQuestion.options"
                         :key="`${currentQuestion.id}-opt-${index}-${renderKey}`" class="option-item"
-                        :class="{ selected: isCurrentQuestionOptionSelected(index) }" @click="handleSelectOption(index)">
+                        :class="{ selected: isCurrentQuestionOptionSelected(index) }"
+                        @click="handleSelectOption(index)">
                         <div class="option-label">{{ getOptionLabel(index, currentQuestion.type) }}</div>
                         <div class="option-content">{{ option.text }}</div>
                       </div>
@@ -239,7 +240,7 @@
       </div>
       <template #footer>
         <el-button @click="showSubmitDialog = false">取消</el-button>
-        <el-button type="primary" @click="submitExam">确认提交</el-button>
+        <el-button type="primary" @click="submitExam(false)">确认提交</el-button>
       </template>
     </el-dialog>
   </div>
@@ -252,6 +253,7 @@ import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import examAPI from '@/api/exam'
+import exam from '@/api/exam'
 
 const router = useRouter()
 const route = useRoute()
@@ -267,6 +269,7 @@ const timer = ref(null)
 const questions = ref([])
 const currentIndex = ref(0)
 const userAnswers = ref([])
+const examId = ref(0)
 
 // UI状态
 const showAnswerSheet = ref(false)
@@ -297,7 +300,7 @@ const judgeQuestions = computed(() =>
   questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 3)
 )
 const opentions = ref([
-  { label: total < 30 ? total : `全部(${total})`, value: total, disabled: total >= 30 },
+  { label: `全部(${total})`, value: total, disabled: total >= 30 },
   { label: '30', value: 30, disabled: !(total >= 30) },
   { label: '50', value: 50, disabled: !(total >= 50) },
   { label: '100', value: 100, disabled: !(total >= 100) }
@@ -367,6 +370,7 @@ const loadQuestions = async (type = 'first') => {
     }
   )
   questions.value = data?.subjectList || []
+  examId.value = data?.examId || 0
   loading.value = false
 }
 
@@ -395,12 +399,12 @@ const startTimer = () => {
 }
 
 // 判断答案是否选中
-const isAnswerSelected = (questionIndex, optionIndex) => {
-  const question = questions.value[questionIndex]
-  const label = getOptionLabel(optionIndex, question.type)
-  const answers = userAnswers.value[questionIndex]
-  return Array.isArray(answers) ? answers.includes(label) : answers === label
-}
+// const isAnswerSelected = (questionIndex, optionIndex) => {
+//   const question = questions.value[questionIndex]
+//   const label = getOptionLabel(optionIndex, question.type)
+//   const answers = userAnswers.value[questionIndex]
+//   return Array.isArray(answers) ? answers.includes(label) : answers === label
+// }
 
 // 判断当前题目选项是否选中
 const isCurrentQuestionOptionSelected = (optionIndex) => {
@@ -514,26 +518,26 @@ const handleSelectOption = (optionIndex) => {
 }
 
 // 选择答案（用于答题卡）
-const selectAnswer = (questionIndex, optionIndex) => {
-  const question = questions.value[questionIndex]
-  const label = getOptionLabel(optionIndex, question.type)
+// const selectAnswer = (questionIndex, optionIndex) => {
+//   const question = questions.value[questionIndex]
+//   const label = getOptionLabel(optionIndex, question.type)
 
-  if (question.type === 2) {
-    if (!Array.isArray(userAnswers.value[questionIndex])) {
-      userAnswers.value[questionIndex] = []
-    }
-    const answers = userAnswers.value[questionIndex]
-    const idx = answers.indexOf(label)
-    if (idx > -1) {
-      answers.splice(idx, 1)
-    } else {
-      answers.push(label)
-    }
-  } else {
-    userAnswers.value[questionIndex] = [label]
-  }
-  saveProgress()
-}
+//   if (question.type === 2) {
+//     if (!Array.isArray(userAnswers.value[questionIndex])) {
+//       userAnswers.value[questionIndex] = []
+//     }
+//     const answers = userAnswers.value[questionIndex]
+//     const idx = answers.indexOf(label)
+//     if (idx > -1) {
+//       answers.splice(idx, 1)
+//     } else {
+//       answers.push(label)
+//     }
+//   } else {
+//     userAnswers.value[questionIndex] = [label]
+//   }
+//   saveProgress()
+// }
 
 // 获取选项标签
 const getOptionLabel = (index, questionType) => {
@@ -604,104 +608,60 @@ const submitExam = async (autoSubmit = false) => {
   if (timer.value) {
     clearInterval(timer.value)
   }
+  const payload = questions.value.map((q, index) => {
+    const ans = userAnswers.value[index]
+    // 把数组 ['A', 'B'] 转成字符串 "AB"，如果是空数组转成 ""
+    const ansStr = Array.isArray(ans) ? ans.join('') : (ans || '')
 
+    return {
+      subjectId: q.id,
+      answer: ansStr
+    }
+  })
   showSubmitDialog.value = false
   showAnswerSheet.value = false
 
   // 计算得分
-  let correctCount = 0
-  const results = questions.value.map((question, index) => {
-    // 获取正确答案
-    const correctAnswers = question.options
-      .map((opt, idx) => opt.isCorrect ? getOptionLabel(idx, question.type) : null)
-      .filter(Boolean)
+  console.log('提交答案：', payload)
 
-    // 获取用户答案
-    const userAnswer = Array.isArray(userAnswers.value[index])
-      ? userAnswers.value[index].sort().join('')
-      : ''
-    const correctAnswer = correctAnswers.sort().join('')
+  try {
+    const data = await examAPI.submitExam({
+      answers: payload,
+      examId: examId.value
+    })
+    ElMessage.success(autoSubmit ? '考试时间到，试卷已自动提交' : '试卷提交成功')
 
-    const isCorrect = userAnswer === correctAnswer
+    const serverData = data || {}
+    const recordData = {
+      // --- 来自后端的数据 ---
+      score: serverData.score,
+      correctCount: serverData.rightCount,
+      wrongCount: serverData.wrongCount,
+      totalCount: serverData.totalQuestion,
 
-    if (isCorrect) correctCount++
+      // --- 我们可以计算出的数据 ---
+      // 未答数 = 总数 - 对的 - 错的
+      unansweredCount: serverData.totalQuestion - serverData.rightCount - serverData.wrongCount,
 
-    return {
-      questionId: question.id,
-      userAnswer,
-      correctAnswer,
-      isCorrect
+      // --- 来自前端本地的数据 ---
+      // 计算用时 (总时长 - 剩余时长)
+      duration: (examDuration.value * 60) - remainingTime.value,
+      courseName: route.query.curriculumName,
+      chapterName: route.query.chapterName,
+      timestamp: Date.now(),
+      autoSubmit: autoSubmit
     }
-  })
-
-  const score = Math.round((correctCount / questions.value.length) * 100)
-
-  // 保存错题到错题本
-  const wrongKey = 'wrong_questions'
-  const savedWrong = localStorage.getItem(wrongKey)
-  const wrongQuestions = savedWrong ? JSON.parse(savedWrong) : []
-
-  results.forEach((result, index) => {
-    if (!result.isCorrect) {
-      const wrongQuestion = {
-        ...questions.value[index],
-        courseId: courseStore.currentCourse?.cId,
-        courseName: courseStore.currentCourse?.cName,
-        chapterId: courseStore.currentChapter?.chapterId,
-        chapterName: courseStore.currentChapter?.chapterName,
-        userAnswer: result.userAnswer,
-        timestamp: Date.now()
+    // 3. 跳转并携带数据
+    router.replace({
+      path: '/exam/result/' + examId.value,
+      state: {
+        record: JSON.parse(JSON.stringify(recordData))
       }
-
-      // 避免重复添加
-      const exists = wrongQuestions.find(q =>
-        q.id === wrongQuestion.id &&
-        q.courseId === wrongQuestion.courseId &&
-        q.chapterId === wrongQuestion.chapterId
-      )
-      if (!exists) {
-        wrongQuestions.push(wrongQuestion)
-      }
-    }
-  })
-
-  localStorage.setItem(wrongKey, JSON.stringify(wrongQuestions))
-
-  // 保存考试记录
-  const examRecord = {
-    courseId: courseStore.currentCourse?.cId,
-    courseName: courseStore.currentCourse?.cName,
-    chapterId: courseStore.currentChapter?.chapterId,
-    chapterName: courseStore.currentChapter?.chapterName,
-    score,
-    correctCount,
-    totalCount: questions.value.length,
-    duration: examDuration.value * 60 - remainingTime.value,
-    results,
-    timestamp: Date.now(),
-    autoSubmit
+    })
+  } catch (error) {
+    ElMessage.error('提交试卷失败，请稍后重试')
+    return
   }
-
-  // 保存到本地
-  const recordsKey = 'exam_records'
-  const saved = localStorage.getItem(recordsKey)
-  const records = saved ? JSON.parse(saved) : []
-  records.unshift(examRecord)
-  localStorage.setItem(recordsKey, JSON.stringify(records))
-
-  // 清除考试进度
-  const courseId = courseStore.currentCourse?.cId
-  const chapterId = courseStore.currentChapter?.chapterId
-  if (courseId && chapterId) {
-    const key = `exam_${courseId}_${chapterId}`
-    localStorage.removeItem(key)
-  }
-
-  // 跳转到结果页
-  router.push({
-    path: '/exam/result/' + examRecord.timestamp,
-    state: { record: examRecord }
-  })
 }
 
 // 返回
@@ -779,28 +739,28 @@ const getDifficultyName = (difficulty) => {
 .practice-container {
   /* 1. 占据剩余空间 */
   flex: 1;
-  
+
   /* 2. 关键：强制限制最小高度为0，防止被内容撑爆 */
   min-height: 0;
-  
+
   /* 3. 关键：滚动条加在这里！ */
   overflow-y: auto;
-  
+
   /* 优化移动端滚动体验 */
-  -webkit-overflow-scrolling: touch; 
+  -webkit-overflow-scrolling: touch;
   position: relative;
 }
 
 .page-header {
   /* 🛑 关键：禁止被压缩 🛑 */
-  flex-shrink: 0; 
-  
+  flex-shrink: 0;
+
   /* 你的原有样式 */
   background: white;
   border-bottom: 1px solid #e4e7ed;
-  
+
   /* 确保有内边距撑开高度 */
-  padding: 1rem 1.5rem; 
+  padding: 1rem 1.5rem;
   z-index: 10;
 }
 

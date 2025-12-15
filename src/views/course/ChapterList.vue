@@ -191,7 +191,7 @@ const onModeSelect = (mode) => {
         curriculumName: route.query.curriculumName,
         chapterId: selectedChapter.value.id,
         chapterName: selectedChapter.value.name,
-        questionCount: total || 0
+        questionCount: total.value || 0
       }
     })
   } else if (mode === 'final-practice') {

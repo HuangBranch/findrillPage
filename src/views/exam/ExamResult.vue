@@ -118,21 +118,18 @@ const route = useRoute()
 
 const record = ref(null)
 
-// 计算属性
-const isPassed = computed(() => record.value?.score >= 60)
+// 🟢 修改点 1：直接从 record 读取分数，而不是计算
+const isPassed = computed(() => (record.value?.score || 0) >= 60)
+
 const accuracy = computed(() => {
-  if (!record.value) return 0
+  if (!record.value || !record.value.totalCount) return 0
+  // 防止除以0
   return Math.round((record.value.correctCount / record.value.totalCount) * 100)
 })
-const correctCount = computed(() => {
-  return record.value?.results?.filter(r => r.isCorrect).length || 0
-})
-const wrongCount = computed(() => {
-  return record.value?.results?.filter(r => !r.isCorrect && r.userAnswer).length || 0
-})
-const unansweredCount = computed(() => {
-  return record.value?.results?.filter(r => !r.userAnswer).length || 0
-})
+
+const correctCount = computed(() => record.value?.correctCount || 0)
+const wrongCount = computed(() => record.value?.wrongCount || 0)
+const unansweredCount = computed(() => record.value?.unansweredCount || 0)
 
 // 初始化
 onMounted(() => {
@@ -141,8 +138,7 @@ onMounted(() => {
 
 // 加载考试记录
 const loadRecord = () => {
-  const recordId = route.params.id
-  
+  console.log('Route params:', history.state, route.params)
   // 先从路由状态获取
   if (history.state?.record) {
     record.value = history.state.record
