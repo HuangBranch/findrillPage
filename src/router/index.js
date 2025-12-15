@@ -18,7 +18,13 @@ const router = createRouter({
       path: '/email-verify',
       name: 'EmailVerify',
       component: () => import('@/views/auth/EmailVerify.vue'),
-      meta: { title: '邮箱验证', requiresAuth: true }
+      meta: { title: '邮箱验证'}
+    },
+    {
+      path: '/verify-email',
+      name: 'VerifyEmailToken',
+      component: () => import('@/views/auth/VerifyEmailToken.vue'),
+      meta: { title: '验证邮箱',requiresAuth: true }
     },
     // 课程与章节
     {

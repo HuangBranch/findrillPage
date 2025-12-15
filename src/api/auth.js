@@ -6,7 +6,7 @@ import request from '@/utils/request'
  */
 export const login = (data) => {
   return request({
-    url: '/auth/login',
+    url: '/login',
     method: 'POST',
     data
   })
@@ -72,8 +72,8 @@ export const checkEmailStatus = () => {
  */
 export const logout = () => {
   return request({
-    url: '/auth/logout',
-    method: 'POST'
+    url: '/logout',
+    method: 'GET'
   })
 }
 

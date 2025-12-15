@@ -1,64 +1,63 @@
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
+import { useAuthStore } from '@/stores/auth'
 
 // 创建 axios 实例
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 30000,
-  headers: {
-    'Content-Type': 'application/json;charset=UTF-8'
-  }
+  timeout: 15000,
+  withDirectives : true
 })
 
-// 请求拦截器
-request.interceptors.request.use(
-  (config) => {
-    // 添加 token
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => {
-    console.error('请求错误：', error)
-    return Promise.reject(error)
-  }
-)
+// // 请求拦截器
+// request.interceptors.request.use(
+//   (config) => {
+//     // 添加 token
+//     const token = localStorage.getItem('token')
+//     if (token) {
+//       config.headers.Authorization = `Bearer ${token}`
+//     }
+//     return config
+//   },
+//   (error) => {
+//     console.error('请求错误：', error)
+//     return Promise.reject(error)
+//   }
+// )
 
 // 响应拦截器
 request.interceptors.response.use(
   (response) => {
-    const { code, message, data } = response.data
-
-    // 成功响应
-    if (code === 0) {
+    // 兼容后端不同的字段命名：msg 或 message
+    const { code, msg, message, data } = response.data
+    const errorMessage = msg || message
+    if (code === 200) {
       return data
     }
-
     // 邮箱未验证
-    if (code === 403 && message && message.includes('邮箱未验证')) {
+    if (code === 403 && errorMessage && errorMessage.includes('邮箱未验证')) {
       ElMessage.warning('请先完成邮箱验证')
       router.push('/email-verify')
-      return Promise.reject(new Error(message))
+      return Promise.reject(new Error(errorMessage))
     }
 
     // 未登录或 token 失效
     if (code === 401) {
       ElMessageBox.alert('登录已过期，请重新登录', '提示', {
-        confirmButtonText: '确定'
+        confirmButtonText: '确定',
+        type: 'warning'
       }).then(() => {
-        localStorage.removeItem('token')
-        localStorage.removeItem('userInfo')
+        const authStore = useAuthStore()
+        authStore.clearAuth()
         router.push('/login')
       })
-      return Promise.reject(new Error(message || '未授权'))
+      return Promise.reject(new Error(errorMessage || '未授权'))
     }
 
     // 其他错误
-    ElMessage.error(message || '请求失败')
-    return Promise.reject(new Error(message || '请求失败'))
+    ElMessage.error(errorMessage || '请求失败')
+    return Promise.reject(new Error(errorMessage || '请求失败'))
   },
   (error) => {
     console.error('响应错误：', error)

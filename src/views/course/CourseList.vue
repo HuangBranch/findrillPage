@@ -28,7 +28,7 @@
       <el-row :gutter="20" v-loading="loading">
         <el-col
           v-for="course in filteredCourses"
-          :key="course.cId"
+          :key="course.id"
           :xs="24"
           :sm="12"
           :md="8"
@@ -42,7 +42,7 @@
             </div>
             
             <div class="card-body">
-              <h3 class="course-title">{{ course.cName }}</h3>
+              <h3 class="course-title">{{ course.name }}</h3>
               <p class="course-desc">{{ course.remarks || '暂无描述' }}</p>
             </div>
             
@@ -54,7 +54,7 @@
                 </el-tag>
                 <el-tag size="small" type="success" v-if="course.recentExamCount">
                   <el-icon><View /></el-icon>
-                  {{ course.recentExamCount }} 次
+                  {{ course.recentExamCount || 0}} 次
                 </el-tag>
               </div>
               <el-icon class="arrow-icon"><ArrowRight /></el-icon>
@@ -78,6 +78,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getCourseList } from '@/api/course'
 import { 
   Reading, Search, Document, View, ArrowRight, Flag, User, SwitchButton 
 } from '@element-plus/icons-vue'
@@ -91,99 +92,12 @@ const authStore = useAuthStore()
 const keyword = ref('')
 const courseList = ref([])
 const loading = ref(false)
-// 模拟课程数据
-const mockCourses = [
-  {
-    cId: 1,
-    cName: '高等数学',
-    remarks: '包含微积分、线性代数、概率论等核心内容',
-    questionCount: 1250,
-    recentExamCount: 45
-  },
-  {
-    cId: 2,
-    cName: '大学英语',
-    remarks: '四六级词汇、语法、阅读理解、听力训练',
-    questionCount: 2100,
-    recentExamCount: 68
-  },
-  {
-    cId: 3,
-    cName: '计算机基础',
-    remarks: '操作系统、计算机网络、数据结构与算法',
-    questionCount: 1580,
-    recentExamCount: 52
-  },
-  {
-    cId: 4,
-    cName: 'Java 程序设计',
-    remarks: 'Java 基础语法、面向对象、集合框架、多线程',
-    questionCount: 980,
-    recentExamCount: 38
-  },
-  {
-    cId: 5,
-    cName: '数据库原理',
-    remarks: 'SQL 语句、事务处理、索引优化、存储过程',
-    questionCount: 760,
-    recentExamCount: 29
-  },
-  {
-    cId: 6,
-    cName: 'Python 编程',
-    remarks: 'Python 基础、数据分析、Web 开发、机器学习',
-    questionCount: 890,
-    recentExamCount: 41
-  },
-  {
-    cId: 7,
-    cName: '数据结构与算法',
-    remarks: '线性表、树、图、排序、查找、动态规划',
-    questionCount: 1120,
-    recentExamCount: 33
-  },
-  {
-    cId: 8,
-    cName: 'Web 前端开发',
-    remarks: 'HTML5、CSS3、JavaScript、Vue.js、React',
-    questionCount: 1340,
-    recentExamCount: 56
-  },
-  {
-    cId: 9,
-    cName: '操作系统',
-    remarks: '进程管理、内存管理、文件系统、死锁',
-    questionCount: 680,
-    recentExamCount: 24
-  },
-  {
-    cId: 10,
-    cName: '计算机网络',
-    remarks: 'TCP/IP、HTTP、网络安全、路由协议',
-    questionCount: 820,
-    recentExamCount: 31
-  },
-  {
-    cId: 11,
-    cName: '软件工程',
-    remarks: '需求分析、设计模式、测试、项目管理',
-    questionCount: 540,
-    recentExamCount: 18
-  },
-  {
-    cId: 12,
-    cName: '人工智能基础',
-    remarks: '机器学习、深度学习、神经网络、NLP',
-    questionCount: 720,
-    recentExamCount: 27
-  }
-]
 
 // 搜索过滤
 const filteredCourses = computed(() => {
   if (!keyword.value) return courseList.value
   return courseList.value.filter(course => 
-    course.cName.toLowerCase().includes(keyword.value.toLowerCase()) ||
+    course.name.toLowerCase().includes(keyword.value.toLowerCase()) ||
     course.remarks.toLowerCase().includes(keyword.value.toLowerCase())
   )
 })
@@ -193,21 +107,9 @@ const loadCourses = async () => {
   loading.value = true
   
   try {
-    // 使用模拟数据（开发和生产环境都可用）
-    // 如果需要使用真实API，请修改下面的代码
-    const useMockData = true // 改为 false 启用真实API
-    
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      courseList.value = mockCourses
-      courseStore.setCourseList(mockCourses)
-      return
-    }
-    
-    // 生产模式：调用真实接口
-    // const data = await getCourseList({ page: 1, size: 100 })
-    // courseList.value = data.list || []
-    // courseStore.setCourseList(courseList.value)
+    const data = await getCourseList({ page: 1, pageSize: 100 })
+    courseList.value = data || []
+    courseStore.setCourseList(courseList.value)
   } catch (error) {
     ElMessage.error(error.message || '加载失败')
   } finally {
@@ -215,15 +117,18 @@ const loadCourses = async () => {
   }
 }
 
-// 搜索
-const onSearch = () => {
-  // 搜索逻辑由 computed 处理
-}
-
 // 进入章节列表
 const goToChapters = (course) => {
   courseStore.setCurrentCourse(course)
-  router.push(`/courses/${course.cId}/chapters`)
+  router.push(
+    { 
+      path: `/courses/${course.id}/chapters` ,
+      query: { 
+        curriculumName: course.name,
+        questionCount: course.questionCount || 0
+      }
+    }
+  )
 }
 
 // 退出登录

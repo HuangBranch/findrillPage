@@ -1,1 +1,16 @@
-<template><div class="page"><van-nav-bar title="用户管理" left-arrow @click-left="$router.back()" fixed placeholder /><div class="content"><van-empty description="用户管理开发中..." /></div></div></template><script setup></script><style scoped>.page{min-height:100vh;background:#f7f8fa}.content{padding:40px 20px}</style>
+<template>
+    <div class="page"><van-nav-bar title="用户管理" left-arrow @click-left="$router.back()" fixed placeholder />
+        <div class="content"><van-empty description="用户管理开发中..." /></div>
+    </div>
+</template>
+<script setup></script>
+<style scoped>
+.page {
+    min-height: 100vh;
+    background: #f7f8fa
+}
+
+.content {
+    padding: 40px 20px
+}
+</style>

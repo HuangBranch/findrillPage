@@ -6,7 +6,7 @@
         <el-button circle @click="onBack">
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
-        <h1 class="page-title">{{ currentCourse?.cName || '章节列表' }}</h1>
+        <h1 class="page-title">{{ currentCourse?.name || '章节列表' }}</h1>
         <div style="width: 32px;"></div>
       </div>
     </div>
@@ -41,7 +41,7 @@
         <!-- 普通章节 -->
         <el-col
           v-for="(chapter, index) in chapterList"
-          :key="chapter.chapterId"
+          :key="chapter.id"
           :xs="24"
           :sm="12"
           :md="8"
@@ -54,8 +54,8 @@
             </div>
             
             <div class="chapter-body">
-              <h3 class="chapter-title">{{ chapter.chapterName }}</h3>
-              <p class="chapter-desc">{{ chapter.chapterDesc || '暂无描述' }}</p>
+              <h3 class="chapter-title">{{ chapter.name }}</h3>
+              <p class="chapter-desc">{{ chapter.description || '暂无描述' }}</p>
             </div>
             
             <div class="chapter-footer">
@@ -114,6 +114,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ElMessage } from 'element-plus'
+import { getChapterList } from '@/api/chapter'
 import { 
   ArrowLeft, VideoPlay, Document, Edit, Clock, Trophy, Medal, Star, Refresh
 } from '@element-plus/icons-vue'
@@ -127,42 +128,8 @@ const loading = ref(false)
 const showModeDialog = ref(false)
 const selectedChapter = ref(null)
 const isFinalExam = ref(false)
-
+const total = ref(0)
 const currentCourse = computed(() => courseStore.currentCourse)
-
-// 模拟章节数据
-const mockChapters = [
-  {
-    chapterId: 1,
-    chapterName: '第一章 基础知识',
-    chapterDesc: '掌握基本概念和原理',
-    questionCount: 50
-  },
-  {
-    chapterId: 2,
-    chapterName: '第二章 进阶内容',
-    chapterDesc: '深入学习核心知识点',
-    questionCount: 80
-  },
-  {
-    chapterId: 3,
-    chapterName: '第三章 综合应用',
-    chapterDesc: '综合运用所学知识',
-    questionCount: 60
-  },
-  {
-    chapterId: 4,
-    chapterName: '第四章 实战演练',
-    chapterDesc: '通过实例巩固知识',
-    questionCount: 70
-  },
-  {
-    chapterId: 5,
-    chapterName: '第五章 高级技巧',
-    chapterDesc: '掌握高级应用技巧',
-    questionCount: 55
-  }
-]
 
 const onBack = () => {
   router.back()
@@ -172,21 +139,12 @@ const loadChapters = async () => {
   loading.value = true
   
   try {
-    // 使用模拟数据（开发和生产环境都可用）
-    const useMockData = true // 改为 false 启用真实API
-    
-    if (useMockData) {
-      await new Promise(resolve => setTimeout(resolve, 500))
-      chapterList.value = mockChapters
-      courseStore.setChapterList(mockChapters)
-      return
-    }
-    
-    // 生产模式：调用真实接口
-    // const courseId = route.params.courseId
-    // const data = await getChapterList({ courseId })
-    // chapterList.value = data || []
-    // courseStore.setChapterList(chapterList.value)
+
+    const courseId = route.params.courseId
+    console.log(courseStore, )
+    const data = await getChapterList({ curriculumId: courseId})
+    chapterList.value = data || []
+    courseStore.setChapterList(chapterList.value)
   } catch (error) {
     ElMessage.error(error.message || '加载失败')
   } finally {
@@ -196,6 +154,7 @@ const loadChapters = async () => {
 
 const selectMode = (chapter) => {
   selectedChapter.value = chapter
+  total.value = chapter.questionCount
   courseStore.setCurrentChapter(chapter)
   isFinalExam.value = false
   showModeDialog.value = true
@@ -216,8 +175,10 @@ const onModeSelect = (mode) => {
     router.push({
       path: '/practice',
       query: {
-        courseId: currentCourse.value?.cId,
-        chapterId: selectedChapter.value?.chapterId
+        courseId: route.params.courseId,
+        curriculumName: route.query.curriculumName,
+        chapterId: selectedChapter.value.id,
+        chapterName: selectedChapter.value.name,
       }
     })
   } else if (mode === 'exam') {
@@ -226,9 +187,11 @@ const onModeSelect = (mode) => {
     router.push({
       path: '/exam',
       query: {
-        courseId: currentCourse.value?.cId,
-        chapterId: selectedChapter.value?.chapterId,
-        examType: 'chapter'
+        courseId: route.params.courseId,
+        curriculumName: route.query.curriculumName,
+        chapterId: selectedChapter.value.id,
+        chapterName: selectedChapter.value.name,
+        questionCount: total || 0
       }
     })
   } else if (mode === 'final-practice') {
@@ -241,8 +204,8 @@ const onModeSelect = (mode) => {
     router.push({
       path: '/practice',
       query: {
-        courseId: currentCourse.value?.cId,
-        examType: 'final-practice'
+        courseId: route.params.courseId,
+        curriculumName: route.query.curriculumName
       }
     })
   } else if (mode === 'final-exam') {
@@ -255,8 +218,9 @@ const onModeSelect = (mode) => {
     router.push({
       path: '/exam',
       query: {
-        courseId: currentCourse.value?.cId,
-        examType: 'final-exam'
+        courseId: route.params.courseId,
+        curriculumName: route.query.curriculumName,
+        questionCount: route.query.questionCount || 0
       }
     })
   }

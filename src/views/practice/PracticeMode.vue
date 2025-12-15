@@ -6,81 +6,124 @@
         <el-button :icon="ArrowLeft" circle @click="handleBack" />
         <div class="header-info">
           <div class="header-main">
-            <h1 class="page-title">{{ courseStore.currentChapter?.chapterName || courseStore.currentChapter?.name }}</h1>
+            <h1 class="page-title">{{ route.query?.chapterName || '章节测试'}}</h1>
             <el-tag size="small" type="success" effect="plain">刷题模式</el-tag>
           </div>
-          <p class="course-name">{{ courseStore.currentCourse?.cName || courseStore.currentCourse?.name }}</p>
+          <p class="course-name">{{ route.query?.curriculumName || '未知课程'}}</p>
         </div>
-        <div class="progress-badge" @click="showAnswerCard = true">{{ currentIndex + 1 }}/{{ questions.length }}</div>
+        <div class="progress-badge" @click="showAnswerCard = true">{{ currentIndex + 1 }}/{{ total }}</div>
       </div>
     </div>
 
-    <!-- 内容区域 -->
-    <div class="page-content">
-      <div v-if="questions.length > 0">
-        <transition name="slide-fade" mode="out-in">
-          <div :key="`q-${currentQuestion.id}`" class="question-container">
-            <!-- 题目卡片 -->
+    <div class="practice-container">
+      <el-skeleton :loading="loading" animated>
+    
+        <template #template>
+          <div class="page-content">
             <div class="question-card">
-            <div class="question-header">
-              <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
-                {{ getQuestionTypeName(currentQuestion.type) }}
-              </el-tag>
-              <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
-                {{ getDifficultyName(currentQuestion.difficulty) }}
-              </span>
-            </div>
-            
-            <div class="question-content">
-              <p class="question-text">{{ currentIndex + 1 }}. {{ currentQuestion.question }}</p>
-              <p v-if="currentQuestion.type === 'multiple'" class="question-hint">（多选题，选择完毕后请点击下一题）</p>
-            </div>
-
-            <!-- 选项列表 -->
-            <div class="options-list" :key="`options-${currentQuestion.id}-${renderKey}`" v-show="!isTransitioning">
-              <div
-                v-for="(option, index) in currentQuestion.options"
-                :key="`${currentQuestion.id}-opt-${index}-${renderKey}`"
-                class="option-item"
-                :class="{
-                  selected: isOptionSelected(index),
-                  correct: showAnswer && option.isCorrect,
-                  wrong: showAnswer && isOptionSelected(index) && !option.isCorrect
-                }"
-                @click="handleSelectOption(index)"
-              >
-                <div class="option-label">{{ getOptionLabel(index) }}</div>
-                <div class="option-content">{{ option.text }}</div>
-                <div v-if="showAnswer" class="option-icon">
-                  <el-icon v-if="option.isCorrect" color="#67c23a"><CircleCheck /></el-icon>
-                  <el-icon v-else-if="isOptionSelected(index)" color="#f56c6c"><CircleClose /></el-icon>
+              <div class="question-header">
+                <el-skeleton-item variant="button" style="width: 60px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 40px;" />
+              </div>
+              <div class="question-content">
+                <el-skeleton-item variant="h3" style="width: 80%; margin-bottom: 8px;" />
+                <el-skeleton-item variant="h3" style="width: 40%;" />
+              </div>
+              <div class="options-list">
+                <div 
+                  v-for="i in 4" 
+                  :key="i" 
+                  class="option-item"
+                  style="pointer-events: none;" 
+                >
+                  <div class="option-label" style="background: transparent;">
+                    <el-skeleton-item variant="circle" style="width: 24px; height: 24px;" />
+                  </div>
+                  <div class="option-content">
+                    <el-skeleton-item variant="text" style="width: 60%;" />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <!-- 答案解析 -->
-            <transition name="fade">
-              <div v-if="showAnswer" class="answer-analysis">
-                <div class="analysis-header">
-                  <el-icon><Document /></el-icon>
-                  <span>答案解析</span>
-                </div>
-                <div class="analysis-content">
-                  <p class="correct-answer">
-                    <strong>正确答案：</strong>{{ getCorrectAnswer() }}
-                  </p>
-                  <p class="analysis-text">{{ currentQuestion.analysis || '暂无解析' }}</p>
-                </div>
-              </div>
-            </transition>
-            </div>
+            </div>            
           </div>
-        </transition>
-      </div>
+        </template>
+        <template #default>
+          <!-- 内容区域 -->
+          <div class="page-content">
+            <div v-if="questions.length > 0">
+              <transition name="slide-fade" mode="out-in">
+                <div :key="`q-${currentQuestion.id}`" class="question-container">
+                  <!-- 题目卡片 -->
+                  <div class="question-card">
+                  <div class="question-header">
+                    <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
+                      {{ getQuestionTypeName(currentQuestion.type) }}
+                    </el-tag>
+                    <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
+                      {{ getDifficultyName(currentQuestion.difficulty) }}
+                    </span>
+                  </div>
+                  
+                  <div class="question-content">
+                    <p class="question-text">{{ currentIndex + 1 }}. {{ currentQuestion.subject }}</p>
+                    <p v-if="currentQuestion.type === 2" class="question-hint">（多选题，选择完毕后请点击下一题）</p>
+                  </div>
 
-      <el-empty v-else description="暂无题目" />
+                  <!-- 选项列表 -->
+                  <div class="options-list" :key="`options-${currentQuestion.id}-${renderKey}`" v-show="!isTransitioning">
+                    <div
+                      v-for="(option, index) in currentQuestion.options"
+                      :key="`${currentQuestion.id}-opt-${index}-${renderKey}`"
+                      class="option-item"
+                      :class="{
+                        selected: isOptionSelected(index),
+                        correct: showAnswer && isOptionCorrect(index),
+                        wrong: showAnswer && isOptionSelected(index) && !isOptionCorrect(index)
+                      }"
+                      @click="handleSelectOption(index)"
+                    >
+                      <div class="option-label">{{ getOptionLabel(index) }}</div>
+                      <div class="option-content">{{ option.text }}</div>
+                      <div v-if="showAnswer" class="option-icon">
+                        <el-icon v-if="isOptionCorrect(index)" color="#67c23a"><CircleCheck /></el-icon>
+                        <el-icon v-else-if="isOptionSelected(index)" color="#f56c6c"><CircleClose /></el-icon>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- 答案解析 -->
+                  <transition name="fade">
+                    <div v-if="showAnswer" class="answer-analysis">
+                      <div class="analysis-header">
+                        <el-icon><Document /></el-icon>
+                        <span>答案解析</span>
+                      </div>
+                      <div class="analysis-content">
+                        <p class="correct-answer">
+                          <strong>正确答案：</strong>{{ getCorrectAnswer() }}
+                        </p>
+                        <p class="correct-answer">
+                          <strong>知识点：</strong>
+                          {{ currentQuestion.knowledgePoint || '暂无知识点' }}
+                        </p>
+                        <p class="correct-answer">
+                          <strong>解析：</strong>
+                          {{ currentQuestion.analysis || '暂无解析' }}
+                        </p>
+                      </div>
+                    </div>
+                  </transition>
+                  </div>
+                </div>
+              </transition>
+            </div>
+
+            <el-empty v-else description="暂无题目" />
+          </div>
+        </template>
+      </el-skeleton>
     </div>
-
     <!-- 底部操作栏 -->
     <div class="page-footer">
       <el-button
@@ -91,14 +134,14 @@
       </el-button>
       
       <el-button
-        :disabled="currentIndex >= questions.length - 1"
+        :disabled="currentIndex >= total.values - 1"
         @click="handleNext"
       >
         下一题
       </el-button>
       
       <el-button
-        v-if="currentQuestion.type === 'multiple' && !showAnswer && hasAnswer"
+        v-if="currentQuestion.type === 2 && !showAnswer && hasAnswer"
         type="primary"
         @click="handleSubmit"
       >
@@ -108,6 +151,7 @@
       <el-button
         v-else
         type="primary"
+        :disabled="questions.length <= 0"
         @click="handleFinishPractice"
       >
         提交试卷
@@ -253,10 +297,12 @@ import { useRouter, useRoute } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, CircleCheck, CircleClose, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
+import practiceApi from '@/api/practice'
 
 const router = useRouter()
 const route = useRoute()
 const courseStore = useCourseStore()
+
 
 // 题目数据
 const questions = ref([])
@@ -268,6 +314,9 @@ const showAnswerCard = ref(false)
 const userAnswers = ref([])
 const isTransitioning = ref(true) // 初始为true，防止首次渲染时误显示选中状态
 const renderKey = ref(0) // 强制重新渲染
+const examId = ref(null)
+const loading = ref(null)
+const total = ref(0)
 
 // 当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {})
@@ -286,13 +335,13 @@ const correctAnsweredCount = computed(() => userAnswers.value.filter(a => a?.isC
 
 // 题目分组
 const singleQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'single')
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 1)
 )
 const multipleQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'multiple')
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 2)
 )
 const judgeQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'judge')
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 3)
 )
 
 // 判断选项是否被选中
@@ -305,6 +354,19 @@ const isOptionSelected = (index) => {
   
   const label = getOptionLabel(index)
   return selectedAnswer.value.includes(label)
+}
+
+// 继续加载后面的题目
+
+
+// 判断当前选项索引是否对应正确答案
+const isOptionCorrect = (index) => {
+  const q = currentQuestion.value
+  if (!q || !q.answer) return false
+  const label = getOptionLabel(index)
+  // 2. 判断是否在答案里
+  // 兼容单选 "A" 和 多选 "A,B" 或 "AB"
+  return q.answer.includes(label)
 }
 
 // 统计数据
@@ -326,78 +388,32 @@ onMounted(() => {
 })
 
 // 加载题目
-const loadQuestions = () => {
-  // 开发环境使用模拟数据
-  if (import.meta.env.DEV) {
-    questions.value = generateMockQuestions()
-  } else {
-    // 生产环境从接口获取
-    // const res = await practiceApi.getQuestions(...)
-  }
-}
-
-// 生成模拟题目
-const generateMockQuestions = () => {
-  const difficulties = ['easy', 'medium', 'hard']
-  const questions = []
-  let id = 1
-  
-  // 生成单选题
-  for (let i = 0; i < 7; i++) {
-    questions.push({
-      id: id++,
-      type: 'single',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道题目（单选题），请根据题意选择正确答案？`,
-      options: [
-        { text: '选项A：这是第一个选项', isCorrect: i % 4 === 0 },
-        { text: '选项B：这是第二个选项', isCorrect: i % 4 === 1 },
-        { text: '选项C：这是第三个选项', isCorrect: i % 4 === 2 },
-        { text: '选项D：这是第四个选项', isCorrect: i % 4 === 3 }
-      ],
-      analysis: `这道题的正确答案是${String.fromCharCode(65 + (i % 4))}，解析内容：这里是详细的答案解析说明。`
-    })
-  }
-  
-  // 生成多选题
-  for (let i = 0; i < 7; i++) {
-    const options = [
-      { text: '选项A：这是第一个选项', isCorrect: i % 2 === 0 },
-      { text: '选项B：这是第二个选项', isCorrect: true },
-      { text: '选项C：这是第三个选项', isCorrect: i % 3 === 0 },
-      { text: '选项D：这是第四个选项', isCorrect: false }
-    ]
-    const correctAnswers = options
-      .map((opt, idx) => opt.isCorrect ? String.fromCharCode(65 + idx) : '')
-      .filter(Boolean)
-      .join('')
-    
-    questions.push({
-      id: id++,
-      type: 'multiple',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道题目（多选题），请根据题意选择正确答案？`,
-      options,
-      analysis: `这道题的正确答案是${correctAnswers}，解析内容：这里是详细的答案解析说明。`
-    })
-  }
-  
-  // 生成判断题
-  for (let i = 0; i < 6; i++) {
-    questions.push({
-      id: id++,
-      type: 'judge',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道题目（判断题），请根据题意选择正确答案？`,
-      options: [
-        { text: '正确', isCorrect: i % 2 === 0 },
-        { text: '错误', isCorrect: i % 2 !== 0 }
-      ],
-      analysis: `这道题的正确答案是${i % 2 === 0 ? '正确' : '错误'}，解析内容：这里是详细的答案解析说明。`
-    })
-  }
-  
-  return questions
+const loadQuestions = async (type = 'first') => {
+    if (type === 'add') {
+      const res = await practiceApi.getPracticeQuestions({
+        chapterId: route.query.chapterId,
+        chapterName: route.query.chapterName,
+        curriculumId: route.query.courseId,
+        curriculumName: route.query.curriculumName,
+        page: Math.floor(questions.value.length / 20) + 1,
+        pageSize: 20
+      });
+      questions.value = questions.value.concat(res?.subjectList || [])
+      return
+    }
+    loading.value = true
+    const res = await practiceApi.getPracticeQuestions({
+      chapterId: route.query.chapterId,
+      chapterName: route.query.chapterName,
+      curriculumId: route.query.courseId,
+      curriculumName: route.query.curriculumName,
+      page:1,
+      pageSize: 20
+    });
+    examId.value = res?.examId || null
+    questions.value = res?.subjectList || []
+    total.value = res?.total || questions.value.length
+    loading.value = false
 }
 
 // 加载进度
@@ -416,17 +432,19 @@ const loadProgress = () => {
 }
 
 // 保存进度
-const saveProgress = () => {
-  const courseId = courseStore.currentCourse?.id
-  const chapterId = courseStore.currentChapter?.id
-  if (!courseId || !chapterId) return
-
-  const key = `practice_${courseId}_${chapterId}`
-  localStorage.setItem(key, JSON.stringify({
-    currentIndex: currentIndex.value,
-    userAnswers: userAnswers.value,
-    timestamp: Date.now()
-  }))
+const saveProgress = async (userAnswerStr, isCorrect) => {
+  try{
+      const submit_answers = await practiceApi.submitPracticeRecord({
+        answer: userAnswerStr,
+        examId: examId.value,
+        subjectId: currentQuestion.value.id,
+        isCorrect: isCorrect
+      });
+      console.log('提交答案成功:', submit_answers);
+  }catch (error) {
+    console.error('提交答案失败:', error)
+  }
+  
 }
 
 // 选择选项
@@ -436,7 +454,7 @@ const handleSelectOption = (index) => {
   const label = getOptionLabel(index)
   const currentType = currentQuestion.value.type
   
-  if (currentType === 'multiple') {
+  if (currentType === 2) {
     // 多选题：切换选中状态
     const idx = selectedAnswer.value.indexOf(label)
     if (idx > -1) {
@@ -457,8 +475,8 @@ const handleSelectOption = (index) => {
 // 获取选项标签
 const getOptionLabel = (index) => {
   const question = currentQuestion.value
-  if (question.type === 'judge') {
-    return index === 0 ? '正确' : '错误'
+  if (question.type === 3) {
+    return index === 0 ? 'A' : 'B'
   }
   return String.fromCharCode(65 + index) // A, B, C, D
 }
@@ -471,31 +489,23 @@ const handleSubmit = () => {
   }
 
   // 获取正确答案
-  const correctAnswers = currentQuestion.value.options
-    .map((opt, idx) => opt.isCorrect ? getOptionLabel(idx) : null)
-    .filter(Boolean)
+  const correctAnswers = currentQuestion.value.answer
   
   // 判断是否正确
   const userAnswerStr = selectedAnswer.value.sort().join('')
-  const correctAnswerStr = correctAnswers.sort().join('')
-  const isCorrect = userAnswerStr === correctAnswerStr
+  const isCorrect = userAnswerStr === correctAnswers
 
   // 记录答题结果
   userAnswers.value[currentIndex.value] = {
     questionId: currentQuestion.value.id,
     userAnswer: userAnswerStr,
-    correctAnswer: correctAnswerStr,
+    correctAnswer: correctAnswers,
     isCorrect,
     timestamp: Date.now()
   }
 
   showAnswer.value = true
-  saveProgress()
-
-  // 如果答错了,添加到错题本
-  if (!isCorrect) {
-    addToWrongBook()
-  }
+  saveProgress(userAnswerStr, isCorrect)
 
   ElMessage({
     type: isCorrect ? 'success' : 'error',
@@ -504,36 +514,11 @@ const handleSubmit = () => {
   })
 }
 
-// 添加到错题本
-const addToWrongBook = () => {
-  const wrongKey = 'wrong_questions'
-  const saved = localStorage.getItem(wrongKey)
-  const wrongQuestions = saved ? JSON.parse(saved) : []
-  
-  const wrongQuestion = {
-    ...currentQuestion.value,
-    courseId: courseStore.currentCourse?.cId,
-    courseName: courseStore.currentCourse?.cName,
-    chapterId: courseStore.currentChapter?.chapterId,
-    chapterName: courseStore.currentChapter?.chapterName,
-    userAnswer: selectedAnswer.value.sort().join('、'),
-    timestamp: Date.now()
-  }
-  
-  // 避免重复添加
-  const exists = wrongQuestions.find(q => q.id === wrongQuestion.id)
-  if (!exists) {
-    wrongQuestions.push(wrongQuestion)
-    localStorage.setItem(wrongKey, JSON.stringify(wrongQuestions))
-  }
-}
-
 // 获取正确答案
 const getCorrectAnswer = () => {
-  const correctAnswers = currentQuestion.value.options
-    ?.map((opt, idx) => opt.isCorrect ? getOptionLabel(idx) : null)
-    .filter(Boolean)
-  return correctAnswers?.join('、') || ''
+  if (!currentQuestion.value || !currentQuestion.value.options) return ''
+  const ans =currentQuestion.value.answer
+  return Array.isArray(ans) ? ans.join('、') : ans
 }
 
 // 上一题
@@ -552,17 +537,18 @@ const handlePrevious = () => {
 // 下一题
 const handleNext = () => {
   // 如果当前题是多选题且还没有显社答案，先提交
-  if (currentQuestion.value.type === 'multiple' && !showAnswer.value && selectedAnswer.value.length > 0) {
+  if (currentQuestion.value.type === 2 && !showAnswer.value && selectedAnswer.value.length > 0) {
     handleSubmit()
     return
   }
+
+  if (questions.value.length < total.value && currentIndex.value > questions.value.length - 6) loadQuestions('add')
   
-  if (currentIndex.value < questions.value.length - 1) {
+  if (currentIndex.value < total.value - 1) {
     isTransitioning.value = true
     currentIndex.value++
     renderKey.value++
     resetQuestion()
-    saveProgress()
     setTimeout(() => {
       isTransitioning.value = false
     }, 350)
@@ -591,6 +577,7 @@ const handleReview = () => {
 
 // 跳转到指定题目
 const jumpToQuestion = (index) => {
+  if (index < total.value && index >= questions.value.length - 6) loadQuestions('add')
   isTransitioning.value = true
   currentIndex.value = index
   renderKey.value++
@@ -612,9 +599,9 @@ const savePracticeRecord = () => {
   // 计算统计数据
   let correctCount = 0
   const typeStats = {
-    single: { correct: 0, total: 0 },
-    multiple: { correct: 0, total: 0 },
-    judge: { correct: 0, total: 0 }
+    1: { correct: 0, total: 0 },
+    2: { correct: 0, total: 0 },
+    3: { correct: 0, total: 0 }
   }
 
   questions.value.forEach((question, index) => {
@@ -669,7 +656,7 @@ const savePracticeRecord = () => {
 const handleFinishPractice = () => {
   showAnswerCard.value = false
   showSummary.value = true
-  savePracticeRecord()
+  // savePracticeRecord()
 }
 
 // 完成练习
@@ -685,9 +672,9 @@ const handleBack = () => {
 // 题目类型名称
 const getQuestionTypeName = (type) => {
   const map = {
-    single: '单选题',
-    multiple: '多选题',
-    judge: '判断题'
+    1: '单选题',
+    2: '多选题',
+    3: '判断题'
   }
   return map[type] || '未知'
 }
@@ -695,9 +682,9 @@ const getQuestionTypeName = (type) => {
 // 题目类型标签
 const getQuestionTypeTag = (type) => {
   const map = {
-    single: 'primary',
-    multiple: 'warning',
-    judge: 'info'
+    1: 'primary',
+    2: 'warning',
+    3: 'info'
   }
   return map[type] || ''
 }
@@ -705,9 +692,9 @@ const getQuestionTypeTag = (type) => {
 // 难度名称
 const getDifficultyName = (difficulty) => {
   const map = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
+    1: '简单',
+    2: '中等',
+    3: '困难'
   }
   return map[difficulty] || '未知'
 }
@@ -726,11 +713,32 @@ const getDifficultyName = (difficulty) => {
   flex-direction: column;
 }
 
+.practice-container {
+  /* 1. 占据剩余空间 */
+  flex: 1;
+  
+  /* 2. 关键：强制限制最小高度为0，防止被内容撑爆 */
+  min-height: 0;
+  
+  /* 3. 关键：滚动条加在这里！ */
+  overflow-y: auto;
+  
+  /* 优化移动端滚动体验 */
+  -webkit-overflow-scrolling: touch; 
+  position: relative;
+}
+
 .page-header {
-  padding: 1rem 1.5rem;
+  /* 🛑 关键：禁止被压缩 🛑 */
+  flex-shrink: 0; 
+  
+  /* 你的原有样式 */
   background: white;
   border-bottom: 1px solid #e4e7ed;
-  flex-shrink: 0;
+  
+  /* 确保有内边距撑开高度 */
+  padding: 1rem 1.5rem; 
+  z-index: 10;
 }
 
 .header-content {
@@ -791,11 +799,14 @@ const getDifficultyName = (difficulty) => {
   background: #3a8ee6;
 }
 
+/* 内部内容层：不再负责滚动，只负责撑开高度 */
 .page-content {
-  flex: 1;
-  overflow-y: auto;
+  /* 移除之前的 flex: 1 和 overflow 设置 */
+  /* 只需要设置内边距即可 */
   padding: 1.5rem;
-  position: relative;
+  
+  /* 确保最小占满容器 */
+  min-height: 100%; 
 }
 
 /* 页面切换动画 */
@@ -1010,14 +1021,17 @@ const getDifficultyName = (difficulty) => {
   margin: 0;
 }
 
+
+/* 底部：固定高度 */
 .page-footer {
-  padding: 1rem 1.5rem;
+  flex-shrink: 0; /* 防止被挤压 */
   background: white;
   border-top: 1px solid #e4e7ed;
   display: flex;
   justify-content: space-between;
   gap: 1rem;
-  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  z-index: 10; /* 确保浮在最上层 */
 }
 
 .page-footer .el-button {

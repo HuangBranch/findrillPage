@@ -3,7 +3,7 @@
     <div class="verify-container">
       <!-- 返回按钮 -->
       <div class="back-btn">
-        <el-button @click="router.back()" circle>
+        <el-button @click="handleBack" circle>
           <el-icon><ArrowLeft /></el-icon>
         </el-button>
       </div>
@@ -20,62 +20,66 @@
       <!-- 验证卡片 -->
       <div class="verify-card">
         <div class="email-info">
-          <p class="info-label">验证码将发送至</p>
+          <p class="info-label">验证链接将发送至</p>
           <p class="email-address">{{ maskedEmail }}</p>
         </div>
 
-        <!-- 验证码输入 -->
-        <div class="code-input-group">
-          <el-input
-            v-model="verifyCode"
-            placeholder="请输入6位验证码"
-            maxlength="6"
-            size="large"
-            clearable
-            @keyup.enter="handleVerify"
-          >
-            <template #prefix>
-              <el-icon><Key /></el-icon>
-            </template>
-          </el-input>
-          
-          <el-button
-            type="primary"
-            size="large"
-            :disabled="countdown > 0"
-            :loading="sending"
-            @click="sendCode"
-            class="send-btn"
-          >
-            {{ countdown > 0 ? `${countdown}s` : '发送验证码' }}
-          </el-button>
+        <!-- 发送状态提示 -->
+        <div v-if="emailSent" class="success-tip">
+          <el-icon><CircleCheck /></el-icon>
+          <div class="tip-content">
+            <p class="tip-title">验证链接已发送</p>
+            <p class="tip-desc">请前往邮箱点击验证链接完成验证</p>
+          </div>
         </div>
 
-        <!-- 验证按钮 -->
+        <!-- 发送按钮 -->
         <el-button
+          v-if="!emailSent"
           type="primary"
           size="large"
-          :loading="verifying"
-          :disabled="verifyCode.length !== 6"
-          @click="handleVerify"
-          class="verify-button"
+          :loading="sending"
+          @click="sendVerificationLink"
+          class="send-link-btn"
         >
-          立即验证
+          <el-icon><Promotion /></el-icon>
+          <span>发送验证链接</span>
+        </el-button>
+
+        <!-- 重新发送按钮 -->
+        <el-button
+          v-else
+          size="large"
+          :disabled="countdown > 0"
+          :loading="sending"
+          @click="sendVerificationLink"
+          class="resend-btn"
+        >
+          <el-icon><RefreshRight /></el-icon>
+          <span>{{ countdown > 0 ? `${countdown}秒后可重新发送` : '重新发送' }}</span>
         </el-button>
 
         <!-- 提示信息 -->
         <div class="verify-tips">
           <el-divider content-position="center">
-            <span class="tips-title">未收到验证码？</span>
+            <span class="tips-title">验证说明</span>
           </el-divider>
           <div class="tips-list">
+            <div class="tip-item">
+              <el-icon><Link /></el-icon>
+              <span>验证链接 10 分钟内有效</span>
+            </div>
             <div class="tip-item">
               <el-icon><ChatDotSquare /></el-icon>
               <span>请检查邮箱垃圾箱</span>
             </div>
             <div class="tip-item">
               <el-icon><Clock /></el-icon>
-              <span>等待60秒后可重新发送</span>
+              <span>60秒后可重新请求发送</span>
+            </div>
+            <div class="tip-item">
+              <el-icon><InfoFilled /></el-icon>
+              <span>验证后才能使用系统功能</span>
             </div>
           </div>
         </div>
@@ -85,20 +89,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { sendVerificationCode, verifyEmail } from '@/api/auth'
-import { ElMessage } from 'element-plus'
-import { ArrowLeft, Message, Key, ChatDotSquare, Clock } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { 
+  ArrowLeft, Message, ChatDotSquare, Clock, Link, InfoFilled,
+  CircleCheck, Promotion, RefreshRight
+} from '@element-plus/icons-vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
-const verifyCode = ref('')
+const emailSent = ref(false)
 const countdown = ref(0)
 const sending = ref(false)
-const verifying = ref(false)
+const isDev = import.meta.env.DEV
+
+// 用于防止短时间内多次请求的localStorage key
+const LAST_SEND_TIME_KEY = 'email_verify_last_send_time'
+const SEND_COOLDOWN = 60 * 1000 // 60秒冷却时间
 
 // 脱敏邮箱
 const maskedEmail = computed(() => {
@@ -108,62 +118,100 @@ const maskedEmail = computed(() => {
   return name.substring(0, 2) + '***@' + domain
 })
 
-// 发送验证码
-const sendCode = async () => {
+// 检查冷却时间
+const checkCooldown = () => {
+  const lastSendTime = localStorage.getItem(LAST_SEND_TIME_KEY)
+  if (!lastSendTime) return true
+  
+  const elapsed = Date.now() - parseInt(lastSendTime)
+  if (elapsed < SEND_COOLDOWN) {
+    const remaining = Math.ceil((SEND_COOLDOWN - elapsed) / 1000)
+    countdown.value = remaining
+    startCountdown()
+    return false
+  }
+  
+  return true
+}
+
+// 开始倒计时
+const startCountdown = () => {
+  if (countdown.value <= 0) return
+  
+  const timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer)
+    }
+  }, 1000)
+}
+
+// 发送验证链接
+const sendVerificationLink = async () => {
+  // 检查冷却时间
+  if (!checkCooldown()) {
+    ElMessage.warning(`请等待 ${countdown.value} 秒后再发送`)
+    return
+  }
+
   sending.value = true
   
   try {
-    await sendVerificationCode()
-    ElMessage.success('验证码已发送到您的邮箱（测试码：123456）')
+    // TODO: 调用后端 API 发送验证链接
+    // await sendEmailVerificationLink()
     
-    // 开始倒计时
+    // 模拟发送
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    
+    // 记录发送时间
+    localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
+    
+    emailSent.value = true
     countdown.value = 60
-    const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) {
-        clearInterval(timer)
-      }
-    }, 1000)
+    startCountdown()
+    
+    ElMessage.success({
+      message: '验证链接已发送到您的邮箱，请查收',
+      duration: 3000
+    })
+    
+    // 开发环境提示
+    if (isDev) {
+      setTimeout(() => {
+        ElMessage.info({
+          message: '开发环境：验证链接示例 https://xxx.com/verify-email?token=xxxxx',
+          duration: 5000,
+          showClose: true
+        })
+      }, 1000)
+    }
   } catch (error) {
-    ElMessage.error(error.message || '发送失败')
+    ElMessage.error(error.message || '发送失败，请稍后重试')
   } finally {
     sending.value = false
   }
 }
 
-// 验证邮箱
-const handleVerify = async () => {
-  if (verifyCode.value.length !== 6) {
-    ElMessage.warning('请输入6位验证码')
-    return
-  }
 
-  verifying.value = true
-  
+// 返回处理
+const handleBack = async () => {
   try {
-    await verifyEmail({ code: verifyCode.value })
+    await ElMessageBox.confirm(
+      '邮箱验证后才能使用系统功能，确定要退出吗？',
+      '提示',
+      {
+        confirmButtonText: '退出登录',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
     
-    // 更新验证状态
-    authStore.setEmailVerified(true)
-    
-    ElMessage.success('验证成功！')
-    
-    // 跳转到首页
-    setTimeout(() => {
-      router.push('/courses')
-    }, 1000)
-  } catch (error) {
-    ElMessage.error(error.message || '验证失败')
-    verifyCode.value = ''
-  } finally {
-    verifying.value = false
+    authStore.logout()
+    router.push('/login')
+  } catch {
+    // 取消操作
   }
 }
-
-// 页面加载时自动发送验证码
-onMounted(() => {
-  sendCode()
-})
 </script>
 
 <style scoped>
@@ -271,45 +319,68 @@ onMounted(() => {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.code-input-group {
+.success-tip {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
+  padding: 1.25rem;
+  background: rgba(103, 194, 58, 0.2);
+  border: 1px solid rgba(103, 194, 58, 0.4);
+  border-radius: 0.75rem;
   margin-bottom: 1.5rem;
+  color: white;
 }
 
-.code-input-group :deep(.el-input) {
+.success-tip .el-icon {
+  font-size: 2rem;
+  color: #67c23a;
+  flex-shrink: 0;
+}
+
+.tip-content {
   flex: 1;
 }
 
-.code-input-group :deep(.el-input__wrapper) {
-  background-color: rgba(255, 255, 255, 0.9);
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
-}
-
-.code-input-group :deep(.el-input__wrapper.is-focus) {
-  background-color: rgba(255, 255, 255, 1);
-  box-shadow: 0 0 0 1px var(--el-color-primary) inset;
-}
-
-.code-input-group :deep(.el-input__inner) {
-  color: #303133;
-  font-size: 16px;
+.tip-title {
+  font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.2em;
-  text-align: center;
+  margin-bottom: 0.25rem;
 }
 
-.send-btn {
-  flex-shrink: 0;
-  min-width: 120px;
+.tip-desc {
+  font-size: 0.875rem;
+  opacity: 0.9;
 }
 
-.verify-button {
+.send-link-btn,
+.resend-btn {
   width: 100%;
   height: 3rem;
   font-size: 1rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+}
+
+.send-link-btn .el-icon,
+.resend-btn .el-icon {
+  margin-right: 0.5rem;
+}
+
+.resend-btn:disabled {
+  opacity: 0.6;
+}
+
+.dev-actions {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+}
+
+.dev-actions .el-divider {
+  border-color: rgba(255, 255, 255, 0.3);
+  margin: 1rem 0;
+}
+
+.dev-actions .el-button {
+  width: 100%;
 }
 
 .verify-tips {
@@ -367,13 +438,13 @@ onMounted(() => {
     font-size: 1.5rem;
   }
   
-  .code-input-group {
+  .success-tip {
     flex-direction: column;
+    text-align: center;
   }
   
-  .send-btn {
-    width: 100%;
-    min-width: auto;
+  .success-tip .el-icon {
+    font-size: 2.5rem;
   }
 }
 

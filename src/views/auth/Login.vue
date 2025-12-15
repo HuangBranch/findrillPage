@@ -21,9 +21,9 @@
           @submit.prevent="onSubmit"
           size="large"
         >
-          <el-form-item prop="userName">
+          <el-form-item prop="user">
             <el-input
-              v-model="form.userName"
+              v-model="form.user"
               placeholder="请输入用户名"
               clearable
             >
@@ -81,12 +81,12 @@ const authStore = useAuthStore()
 const formRef = ref()
 
 const form = reactive({
-  userName: '',
+  user: '',
   password: ''
 })
 
 const rules = {
-  userName: [
+  user: [
     { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [
@@ -107,17 +107,18 @@ const onSubmit = async () => {
       
       if (result.success) {
         ElMessage.success('登录成功')
-        
         // 检查邮箱是否验证
         if (!authStore.isEmailVerified) {
           router.push('/email-verify')
+
         } else {
           // 跳转到原来要访问的页面或首页
           const redirect = route.query.redirect || '/courses'
           router.push(redirect)
         }
       } else {
-        ElMessage.error(result.error?.message || '登录失败')
+        // result.error 现在是字符串（来自 catch 中的 error.message）
+        ElMessage.error(result.error || '登录失败')
       }
     } catch (error) {
       console.error('登录错误：', error)

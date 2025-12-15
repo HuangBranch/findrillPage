@@ -6,119 +6,143 @@
         <el-button :icon="ArrowLeft" circle @click="handleBack" />
         <div class="header-info">
           <div class="header-main">
-            <h1 class="page-title">{{ courseStore.currentChapter?.chapterName || courseStore.currentChapter?.name }}</h1>
+            <h1 class="page-title">{{ route.query?.chapterName || '章节考试' }}</h1>
             <el-tag size="small" type="danger" effect="plain">考试模式</el-tag>
           </div>
-          <p class="course-name">{{ courseStore.currentCourse?.cName || courseStore.currentCourse?.name }}</p>
+          <p class="course-name">{{ route.query?.curriculumName || courseStore.currentCourse?.cName ||
+            courseStore.currentCourse?.name }}</p>
         </div>
         <div class="header-actions">
           <div class="timer-badge">
-            <el-icon><Clock /></el-icon>
+            <el-icon>
+              <Clock />
+            </el-icon>
             <span>{{ formatTime(remainingTime) }}</span>
           </div>
           <div class="answer-card-badge" @click="showAnswerSheet = true">
-            <el-icon><Grid /></el-icon>
+            <el-icon>
+              <Grid />
+            </el-icon>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- 内容区域 -->
-    <div class="page-content">
-      <div v-if="!examStarted" class="exam-start">
-        <div class="start-card">
-          <el-icon class="start-icon"><Edit /></el-icon>
-          <h2>开始考试</h2>
-          <div class="exam-info">
-            <div class="info-item">
-              <span class="info-label">题目数量</span>
-              <span class="info-value">{{ questions.length }} 题</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">考试时长</span>
-              <span class="info-value">{{ examDuration }} 分钟</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">及格分数</span>
-              <span class="info-value">60 分</span>
-            </div>
-          </div>
-          <el-button type="primary" size="large" @click="startExam">开始考试</el-button>
-        </div>
-      </div>
-
-      <div v-else class="exam-content">
-        <!-- 单题显示 -->
-        <transition name="slide-fade" mode="out-in">
-          <div :key="`q-${currentQuestion.id}`" class="question-container">
+    <div class="practice-container">
+      <el-skeleton :loading="loading" animated>
+        <template #template>
+          <div class="page-content">
             <div class="question-card">
               <div class="question-header">
-                <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
-                  {{ getQuestionTypeName(currentQuestion.type) }}
-                </el-tag>
-                <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
-                  {{ getDifficultyName(currentQuestion.difficulty) }}
-                </span>
+                <el-skeleton-item variant="button" style="width: 60px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 40px;" />
               </div>
-              
               <div class="question-content">
-                <p class="question-text">{{ currentIndex + 1 }}. {{ currentQuestion.question }}</p>
-                <p v-if="currentQuestion.type === 'multiple'" class="question-hint">（多选题，选择完后请点击下一题）</p>
+                <el-skeleton-item variant="h3" style="width: 80%; margin-bottom: 8px;" />
+                <el-skeleton-item variant="h3" style="width: 40%;" />
               </div>
-
-              <!-- 选项列表 -->
-              <div class="options-list" :key="`options-${currentQuestion.id}-${renderKey}`" v-show="!isTransitioning">
-                <div
-                  v-for="(option, index) in currentQuestion.options"
-                  :key="`${currentQuestion.id}-opt-${index}-${renderKey}`"
-                  class="option-item"
-                  :class="{ selected: isCurrentQuestionOptionSelected(index) }"
-                  @click="handleSelectOption(index)"
-                >
-                  <div class="option-label">{{ getOptionLabel(index, currentQuestion.type) }}</div>
-                  <div class="option-content">{{ option.text }}</div>
+              <div class="options-list">
+                <div v-for="i in 4" :key="i" class="option-item" style="pointer-events: none;">
+                  <div class="option-label" style="background: transparent;">
+                    <el-skeleton-item variant="circle" style="width: 24px; height: 24px;" />
+                  </div>
+                  <div class="option-content">
+                    <el-skeleton-item variant="text" style="width: 60%;" />
+                  </div>
                 </div>
               </div>
+
             </div>
           </div>
-        </transition>
-      </div>
+        </template>
+        <!-- 内容区域 -->
+        <template #default>
+          <div class="page-content">
+            <div v-if="!examStarted" class="exam-start">
+              <div class="start-card">
+                <el-icon class="start-icon">
+                  <Edit />
+                </el-icon>
+                <h2>开始考试</h2>
+                <div class="exam-info">
+                  <div class="info-item">
+                    <span class="info-label">题目数量</span>
+                    <span class="info-value">
+                      <el-select v-model="timer" size="small" style="width:60px" :default-value="total < 30 ? total : 30"
+                        :options="opentions" placeholder="选择题目数量" />
+                      题
+                    </span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">考试时长</span>
+                    <span class="info-value">{{ examDuration }} 分钟</span>
+                  </div>
+                  <div class="info-item">
+                    <span class="info-label">及格分数</span>
+                    <span class="info-value">60 分</span>
+                  </div>
+                </div>
+                <el-button type="primary" size="large" @click="startExam">开始考试</el-button>
+              </div>
+            </div>
+
+            <div v-else class="exam-content">
+              <!-- 单题显示 -->
+              <transition name="slide-fade" mode="out-in">
+                <div :key="`q-${currentQuestion.id}`" class="question-container">
+                  <div class="question-card">
+                    <div class="question-header">
+                      <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
+                        {{ getQuestionTypeName(currentQuestion.type) }}
+                      </el-tag>
+                      <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
+                        {{ getDifficultyName(currentQuestion.difficulty) }}
+                      </span>
+                    </div>
+
+                    <div class="question-content">
+                      <p class="question-text">{{ currentIndex + 1 }}. {{ currentQuestion.subject }}</p>
+                      <p v-if="currentQuestion.type === 'multiple'" class="question-hint">（多选题，选择完后请点击下一题）</p>
+                    </div>
+
+                    <!-- 选项列表 -->
+                    <div class="options-list" :key="`options-${currentQuestion.id}-${renderKey}`"
+                      v-show="!isTransitioning">
+                      <div v-for="(option, index) in currentQuestion.options"
+                        :key="`${currentQuestion.id}-opt-${index}-${renderKey}`" class="option-item"
+                        :class="{ selected: isCurrentQuestionOptionSelected(index) }" @click="handleSelectOption(index)">
+                        <div class="option-label">{{ getOptionLabel(index, currentQuestion.type) }}</div>
+                        <div class="option-content">{{ option.text }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </transition>
+            </div>
+          </div>
+        </template>
+      </el-skeleton>
+
     </div>
+
 
     <!-- 底部操作栏 -->
     <div v-if="examStarted" class="page-footer">
-      <el-button
-        text
-        :disabled="currentIndex === 0"
-        @click="handlePrevious"
-      >
+      <el-button text :disabled="currentIndex === 0" @click="handlePrevious">
         上一题
       </el-button>
-      
-      <el-button
-        v-if="currentIndex < questions.length - 1"
-        type="primary"
-        @click="handleNext"
-      >
+
+      <el-button v-if="currentIndex < questions.length - 1" type="primary" @click="handleNext">
         下一题
       </el-button>
-      
-      <el-button
-        v-else
-        type="primary"
-        @click="handleSubmitConfirm"
-      >
+
+      <el-button v-else type="primary" @click="handleSubmitConfirm">
         提交试卷
       </el-button>
     </div>
 
     <!-- 答题卡抽屉 -->
-    <el-drawer
-      v-model="showAnswerSheet"
-      title="答题卡"
-      size="80%"
-      :style="{ maxWidth: '400px' }"
-    >
+    <el-drawer v-model="showAnswerSheet" title="答题卡" size="80%" :style="{ maxWidth: '400px' }">
       <div class="answer-sheet">
         <div class="sheet-stats">
           <div class="stat-item">
@@ -134,24 +158,18 @@
             <span class="stat-value timer">{{ formatTime(remainingTime) }}</span>
           </div>
         </div>
-        
+
         <el-divider />
-        
+
         <div class="sheet-content">
           <!-- 单选题 -->
           <div v-if="singleQuestions.length > 0" class="question-group">
             <div class="group-title">单选题 ({{ singleQuestions.length }})</div>
             <div class="sheet-grid">
-              <div
-                v-for="item in singleQuestions"
-                :key="item.question.id"
-                class="sheet-item"
-                :class="{
-                  answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
-                  active: currentIndex === item.index
-                }"
-                @click="jumpToQuestion(item.index)"
-              >
+              <div v-for="item in singleQuestions" :key="item.question.id" class="sheet-item" :class="{
+                answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
+                active: currentIndex === item.index
+              }" @click="jumpToQuestion(item.index)">
                 {{ item.index + 1 }}
               </div>
             </div>
@@ -161,16 +179,10 @@
           <div v-if="multipleQuestions.length > 0" class="question-group">
             <div class="group-title">多选题 ({{ multipleQuestions.length }})</div>
             <div class="sheet-grid">
-              <div
-                v-for="item in multipleQuestions"
-                :key="item.question.id"
-                class="sheet-item"
-                :class="{
-                  answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
-                  active: currentIndex === item.index
-                }"
-                @click="jumpToQuestion(item.index)"
-              >
+              <div v-for="item in multipleQuestions" :key="item.question.id" class="sheet-item" :class="{
+                answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
+                active: currentIndex === item.index
+              }" @click="jumpToQuestion(item.index)">
                 {{ item.index + 1 }}
               </div>
             </div>
@@ -180,22 +192,16 @@
           <div v-if="judgeQuestions.length > 0" class="question-group">
             <div class="group-title">判断题 ({{ judgeQuestions.length }})</div>
             <div class="sheet-grid">
-              <div
-                v-for="item in judgeQuestions"
-                :key="item.question.id"
-                class="sheet-item"
-                :class="{
-                  answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
-                  active: currentIndex === item.index
-                }"
-                @click="jumpToQuestion(item.index)"
-              >
+              <div v-for="item in judgeQuestions" :key="item.question.id" class="sheet-item" :class="{
+                answered: userAnswers[item.index] && (Array.isArray(userAnswers[item.index]) ? userAnswers[item.index].length > 0 : true),
+                active: currentIndex === item.index
+              }" @click="jumpToQuestion(item.index)">
                 {{ item.index + 1 }}
               </div>
             </div>
           </div>
         </div>
-        
+
         <div class="sheet-footer">
           <el-button type="primary" size="large" @click="handleSubmitConfirm" style="width: 100%">
             提交试卷
@@ -205,14 +211,11 @@
     </el-drawer>
 
     <!-- 未答题跳转对话框 -->
-    <el-dialog
-      v-model="showUnansweredDialog"
-      title="提示"
-      width="90%"
-      :style="{ maxWidth: '400px' }"
-    >
+    <el-dialog v-model="showUnansweredDialog" title="提示" width="90%" :style="{ maxWidth: '400px' }">
       <div class="submit-confirm">
-        <el-icon class="warning-icon"><WarningFilled /></el-icon>
+        <el-icon class="warning-icon">
+          <WarningFilled />
+        </el-icon>
         <p>还有 {{ unansweredCount }} 道题未答！</p>
         <p style="font-size: 0.875rem; color: #909399; margin-top: 0.5rem;">是否跳转到第一道未答题？</p>
       </div>
@@ -221,16 +224,13 @@
         <el-button type="primary" @click="jumpToFirstUnanswered">跳转</el-button>
       </template>
     </el-dialog>
-    
+
     <!-- 提交确认对话框 -->
-    <el-dialog
-      v-model="showSubmitDialog"
-      title="提交确认"
-      width="90%"
-      :style="{ maxWidth: '400px' }"
-    >
+    <el-dialog v-model="showSubmitDialog" title="提交确认" width="90%" :style="{ maxWidth: '400px' }">
       <div class="submit-confirm">
-        <el-icon class="warning-icon"><WarningFilled /></el-icon>
+        <el-icon class="warning-icon">
+          <WarningFilled />
+        </el-icon>
         <p>确定要提交试卷吗？</p>
         <div class="submit-stats">
           <span>已答 {{ answeredCount }} 题</span>
@@ -247,12 +247,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import examAPI from '@/api/exam'
 
 const router = useRouter()
+const route = useRoute()
 const courseStore = useCourseStore()
 
 // 考试状态
@@ -272,31 +274,41 @@ const showSubmitDialog = ref(false)
 const showUnansweredDialog = ref(false)
 const isTransitioning = ref(false) // 防止移动端跳转过程中触发点击
 const renderKey = ref(0) // 强制重新渲染
+const loading = ref(false)
 
+const total = route.query.questionCount
 // 当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {})
 
 // 统计数据
-const answeredCount = computed(() => 
+const answeredCount = computed(() =>
   userAnswers.value.filter(a => Array.isArray(a) ? a.length > 0 : a).length
 )
 const unansweredCount = computed(() => questions.value.length - answeredCount.value)
 
 // 题目分组
-const singleQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'single')
+const singleQuestions = computed(() =>
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 1)
 )
-const multipleQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'multiple')
+const multipleQuestions = computed(() =>
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 2)
 )
-const judgeQuestions = computed(() => 
-  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 'judge')
+const judgeQuestions = computed(() =>
+  questions.value.map((q, index) => ({ question: q, index })).filter(item => item.question.type === 3)
 )
+const opentions = ref([
+  { label: total < 30 ? total : `全部(${total})`, value: total, disabled: total >= 30 },
+  { label: '30', value: 30, disabled: !(total >= 30) },
+  { label: '50', value: 50, disabled: !(total >= 50) },
+  { label: '100', value: 100, disabled: !(total >= 100) }
+]
+);
+
 
 // 初始化
 onMounted(() => {
-  loadQuestions()
   loadProgress()
+  timer.value = total < 30 ? total : 30
 })
 
 // 清理定时器
@@ -305,80 +317,6 @@ onUnmounted(() => {
     clearInterval(timer.value)
   }
 })
-
-// 加载题目
-const loadQuestions = () => {
-  if (import.meta.env.DEV) {
-    questions.value = generateMockQuestions()
-  } else {
-    // 生产环境从接口获取
-    // const res = await examApi.getQuestions(...)
-  }
-}
-
-// 生成模拟题目
-const generateMockQuestions = () => {
-  const difficulties = ['easy', 'medium', 'hard']
-  const questions = []
-  let id = 1
-  
-  // 生成单选题
-  for (let i = 0; i < 10; i++) {
-    questions.push({
-      id: id++,
-      type: 'single',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道考试题目（单选题），请根据题意选择正确答案？`,
-      options: [
-        { text: '选项A：这是第一个选项', isCorrect: i % 4 === 0 },
-        { text: '选项B：这是第二个选项', isCorrect: i % 4 === 1 },
-        { text: '选项C：这是第三个选项', isCorrect: i % 4 === 2 },
-        { text: '选项D：这是第四个选项', isCorrect: i % 4 === 3 }
-      ],
-      analysis: `正确答案是${String.fromCharCode(65 + (i % 4))}`
-    })
-  }
-  
-  // 生成多选题
-  for (let i = 0; i < 10; i++) {
-    const options = [
-      { text: '选项A：这是第一个选项', isCorrect: i % 2 === 0 },
-      { text: '选项B：这是第二个选项', isCorrect: true },
-      { text: '选项C：这是第三个选项', isCorrect: i % 3 === 0 },
-      { text: '选项D：这是第四个选项', isCorrect: false }
-    ]
-    const correctAnswers = options
-      .map((opt, idx) => opt.isCorrect ? String.fromCharCode(65 + idx) : '')
-      .filter(Boolean)
-      .join('')
-    
-    questions.push({
-      id: id++,
-      type: 'multiple',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道考试题目（多选题），请根据题意选择正确答案？`,
-      options,
-      analysis: `正确答案是${correctAnswers}`
-    })
-  }
-  
-  // 生成判断题
-  for (let i = 0; i < 10; i++) {
-    questions.push({
-      id: id++,
-      type: 'judge',
-      difficulty: difficulties[i % 3],
-      question: `这是第 ${questions.length + 1} 道考试题目（判断题），请根据题意选择正确答案？`,
-      options: [
-        { text: '正确', isCorrect: i % 2 === 0 },
-        { text: '错误', isCorrect: i % 2 !== 0 }
-      ],
-      analysis: `正确答案是${i % 2 === 0 ? '正确' : '错误'}`
-    })
-  }
-  
-  return questions
-}
 
 // 加载进度
 const loadProgress = () => {
@@ -416,8 +354,25 @@ const saveProgress = () => {
   }))
 }
 
+const loadQuestions = async (type = 'first') => {
+  loading.value = true
+  // 从接口加载题目
+  const data = await examAPI.getExamPaper(
+    {
+      curriculumId: route.query.courseId,
+      chapterId: route.query.chapterId,
+      curriculumName: route.query.curriculumName,
+      chapterName: route.query.chapterName,
+      count: timer.value || total || 30
+    }
+  )
+  questions.value = data?.subjectList || []
+  loading.value = false
+}
+
 // 开始考试
 const startExam = () => {
+  loadQuestions()
   examStarted.value = true
   remainingTime.value = examDuration.value * 60
   userAnswers.value = new Array(questions.value.length).fill(null).map(() => [])
@@ -453,35 +408,35 @@ const isCurrentQuestionOptionSelected = (optionIndex) => {
   if (isTransitioning.value) {
     return false
   }
-  
+
   // 确保当前题目存在
   if (!currentQuestion.value || !currentQuestion.value.id) {
     return false
   }
-  
+
   // 确保索引有效
   if (currentIndex.value < 0 || currentIndex.value >= questions.value.length) {
     return false
   }
-  
+
   // 确保当前渲染的题目ID与索引位置的题目ID一致（防止渲染延迟）
   if (questions.value[currentIndex.value]?.id !== currentQuestion.value.id) {
     return false
   }
-  
+
   const label = getOptionLabel(optionIndex, currentQuestion.value.type)
   const answers = userAnswers.value[currentIndex.value]
-  
+
   // 没有答案，返回false
   if (!answers) {
     return false
   }
-  
+
   // 确保是数组格式
   if (!Array.isArray(answers)) {
     return false
   }
-  
+
   // 检查是否包含该选项
   return answers.includes(label)
 }
@@ -491,7 +446,7 @@ const formatTime = (seconds) => {
   const hours = Math.floor(seconds / 3600)
   const minutes = Math.floor((seconds % 3600) / 60)
   const secs = seconds % 60
-  
+
   if (hours > 0) {
     return `${hours}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
   }
@@ -505,10 +460,10 @@ const handleSelectOption = (optionIndex) => {
     console.log('跳转中，忽略点击')
     return
   }
-  
+
   const label = getOptionLabel(optionIndex, currentQuestion.value.type)
-  
-  if (currentQuestion.value.type === 'multiple') {
+
+  if (currentQuestion.value.type === 2) {
     // 多选题：切换选中状态
     if (!Array.isArray(userAnswers.value[currentIndex.value])) {
       userAnswers.value[currentIndex.value] = []
@@ -525,11 +480,11 @@ const handleSelectOption = (optionIndex) => {
     // 单选题和判断题：自动跳转下一题
     // 立即上锁，防止重复点击
     isTransitioning.value = true
-    
+
     const currentIdx = currentIndex.value
     userAnswers.value[currentIdx] = [label]
     saveProgress()
-    
+
     // 立即切换题目，利用isTransitioning阻止显示选中状态
     if (currentIdx < questions.value.length - 1) {
       // 使用requestAnimationFrame确保在下一帧更新
@@ -540,7 +495,7 @@ const handleSelectOption = (optionIndex) => {
         currentIndex.value++
         renderKey.value++
         scrollToTop()
-        
+
         // 等待动画完成后解锁 (稍微延长以避免误选)
         setTimeout(() => {
           isTransitioning.value = false
@@ -562,8 +517,8 @@ const handleSelectOption = (optionIndex) => {
 const selectAnswer = (questionIndex, optionIndex) => {
   const question = questions.value[questionIndex]
   const label = getOptionLabel(optionIndex, question.type)
-  
-  if (question.type === 'multiple') {
+
+  if (question.type === 2) {
     if (!Array.isArray(userAnswers.value[questionIndex])) {
       userAnswers.value[questionIndex] = []
     }
@@ -582,8 +537,8 @@ const selectAnswer = (questionIndex, optionIndex) => {
 
 // 获取选项标签
 const getOptionLabel = (index, questionType) => {
-  if (questionType === 'judge') {
-    return index === 0 ? '正确' : '错误'
+  if (questionType === 3) {
+    return index === 0 ? 'A' : 'B'
   }
   return String.fromCharCode(65 + index)
 }
@@ -649,10 +604,10 @@ const submitExam = async (autoSubmit = false) => {
   if (timer.value) {
     clearInterval(timer.value)
   }
-  
+
   showSubmitDialog.value = false
   showAnswerSheet.value = false
-  
+
   // 计算得分
   let correctCount = 0
   const results = questions.value.map((question, index) => {
@@ -660,17 +615,17 @@ const submitExam = async (autoSubmit = false) => {
     const correctAnswers = question.options
       .map((opt, idx) => opt.isCorrect ? getOptionLabel(idx, question.type) : null)
       .filter(Boolean)
-    
+
     // 获取用户答案
-    const userAnswer = Array.isArray(userAnswers.value[index]) 
+    const userAnswer = Array.isArray(userAnswers.value[index])
       ? userAnswers.value[index].sort().join('')
       : ''
     const correctAnswer = correctAnswers.sort().join('')
-    
+
     const isCorrect = userAnswer === correctAnswer
-    
+
     if (isCorrect) correctCount++
-    
+
     return {
       questionId: question.id,
       userAnswer,
@@ -678,14 +633,14 @@ const submitExam = async (autoSubmit = false) => {
       isCorrect
     }
   })
-  
+
   const score = Math.round((correctCount / questions.value.length) * 100)
-  
+
   // 保存错题到错题本
   const wrongKey = 'wrong_questions'
   const savedWrong = localStorage.getItem(wrongKey)
   const wrongQuestions = savedWrong ? JSON.parse(savedWrong) : []
-  
+
   results.forEach((result, index) => {
     if (!result.isCorrect) {
       const wrongQuestion = {
@@ -697,10 +652,10 @@ const submitExam = async (autoSubmit = false) => {
         userAnswer: result.userAnswer,
         timestamp: Date.now()
       }
-      
+
       // 避免重复添加
-      const exists = wrongQuestions.find(q => 
-        q.id === wrongQuestion.id && 
+      const exists = wrongQuestions.find(q =>
+        q.id === wrongQuestion.id &&
         q.courseId === wrongQuestion.courseId &&
         q.chapterId === wrongQuestion.chapterId
       )
@@ -709,9 +664,9 @@ const submitExam = async (autoSubmit = false) => {
       }
     }
   })
-  
+
   localStorage.setItem(wrongKey, JSON.stringify(wrongQuestions))
-  
+
   // 保存考试记录
   const examRecord = {
     courseId: courseStore.currentCourse?.cId,
@@ -726,14 +681,14 @@ const submitExam = async (autoSubmit = false) => {
     timestamp: Date.now(),
     autoSubmit
   }
-  
+
   // 保存到本地
   const recordsKey = 'exam_records'
   const saved = localStorage.getItem(recordsKey)
   const records = saved ? JSON.parse(saved) : []
   records.unshift(examRecord)
   localStorage.setItem(recordsKey, JSON.stringify(records))
-  
+
   // 清除考试进度
   const courseId = courseStore.currentCourse?.cId
   const chapterId = courseStore.currentChapter?.chapterId
@@ -741,7 +696,7 @@ const submitExam = async (autoSubmit = false) => {
     const key = `exam_${courseId}_${chapterId}`
     localStorage.removeItem(key)
   }
-  
+
   // 跳转到结果页
   router.push({
     path: '/exam/result/' + examRecord.timestamp,
@@ -762,7 +717,7 @@ const handleBack = async () => {
           type: 'warning'
         }
       )
-      
+
       if (timer.value) {
         clearInterval(timer.value)
       }
@@ -779,9 +734,9 @@ const handleBack = async () => {
 // 题目类型名称
 const getQuestionTypeName = (type) => {
   const map = {
-    single: '单选题',
-    multiple: '多选题',
-    judge: '判断题'
+    1: '单选题',
+    2: '多选题',
+    3: '判断题'
   }
   return map[type] || '未知'
 }
@@ -789,9 +744,9 @@ const getQuestionTypeName = (type) => {
 // 题目类型标签
 const getQuestionTypeTag = (type) => {
   const map = {
-    single: 'primary',
-    multiple: 'warning',
-    judge: 'info'
+    1: 'primary',
+    2: 'warning',
+    3: 'info'
   }
   return map[type] || 'primary'
 }
@@ -799,9 +754,9 @@ const getQuestionTypeTag = (type) => {
 // 难度名称
 const getDifficultyName = (difficulty) => {
   const map = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
+    1: '简单',
+    2: '中等',
+    3: '困难'
   }
   return map[difficulty] || '未知'
 }
@@ -820,11 +775,33 @@ const getDifficultyName = (difficulty) => {
   flex-direction: column;
 }
 
+
+.practice-container {
+  /* 1. 占据剩余空间 */
+  flex: 1;
+  
+  /* 2. 关键：强制限制最小高度为0，防止被内容撑爆 */
+  min-height: 0;
+  
+  /* 3. 关键：滚动条加在这里！ */
+  overflow-y: auto;
+  
+  /* 优化移动端滚动体验 */
+  -webkit-overflow-scrolling: touch; 
+  position: relative;
+}
+
 .page-header {
-  padding: 1rem 1.5rem;
+  /* 🛑 关键：禁止被压缩 🛑 */
+  flex-shrink: 0; 
+  
+  /* 你的原有样式 */
   background: white;
   border-bottom: 1px solid #e4e7ed;
-  flex-shrink: 0;
+  
+  /* 确保有内边距撑开高度 */
+  padding: 1rem 1.5rem; 
+  z-index: 10;
 }
 
 .header-content {
