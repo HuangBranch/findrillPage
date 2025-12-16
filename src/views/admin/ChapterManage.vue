@@ -1,1 +1,400 @@
-<template><div class='page'><van-nav-bar title='ChapterManage' left-arrow @click-left="$router.back()" fixed placeholder /><div class='content'><van-empty description='ChapterManage开发中...' /></div></div></template><script setup></script><style scoped>.page{min-height:100vh;background:#f7f8fa}.content{padding:40px 20px}</style>
+<template>
+  <AdminLayout>
+    <div class="chapter-manage-page">
+      <el-card>
+        <!-- 搜索栏 -->
+        <div class="search-bar">
+          <el-select
+            v-model="searchCourseId"
+            placeholder="选择课程"
+            style="width: 200px"
+            clearable
+            @change="handleSearch"
+          >
+            <el-option
+              v-for="course in courseList"
+              :key="course.id"
+              :label="course.name"
+              :value="course.id"
+            />
+          </el-select>
+          
+          <el-input
+            v-model="searchKeyword"
+            placeholder="搜索章节名称"
+            style="width: 250px; margin-left: 12px"
+            clearable
+            @input="handleSearch"
+          >
+            <template #prefix>
+              <el-icon><Search /></el-icon>
+            </template>
+          </el-input>
+          
+          <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
+            新增章节
+          </el-button>
+        </div>
+
+        <!-- 章节表格 -->
+        <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading">
+          <el-table-column prop="id" label="ID" width="80" />
+          <el-table-column prop="courseName" label="所属课程" min-width="150" />
+          <el-table-column prop="name" label="章节名称" min-width="180" />
+          <el-table-column prop="description" label="章节描述" min-width="200" show-overflow-tooltip />
+          <el-table-column prop="questionCount" label="题目数" width="100" align="center" />
+          <el-table-column prop="createTime" label="创建时间" width="180" />
+          <el-table-column label="操作" width="150" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" size="small" @click="handleEdit(row)">
+                编辑
+              </el-button>
+              <el-button link type="danger" size="small" @click="handleDelete(row)">
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+
+        <!-- 分页 -->
+        <div class="pagination">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 50, 100]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handlePageChange"
+            @current-change="handlePageChange"
+          />
+        </div>
+      </el-card>
+
+      <!-- 新增/编辑对话框 -->
+      <el-dialog
+        v-model="dialogVisible"
+        :title="dialogTitle"
+        width="90%"
+        :style="{ maxWidth: '600px' }"
+        @close="handleDialogClose"
+      >
+        <el-form
+          ref="formRef"
+          :model="formData"
+          :rules="formRules"
+          label-width="100px"
+        >
+          <el-form-item label="所属课程" prop="courseId">
+            <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%">
+              <el-option
+                v-for="course in courseList"
+                :key="course.id"
+                :label="course.name"
+                :value="course.id"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <el-form-item label="章节名称" prop="name">
+            <el-input v-model="formData.name" placeholder="请输入章节名称" />
+          </el-form-item>
+          
+          <el-form-item label="章节描述" prop="description">
+            <el-input
+              v-model="formData.description"
+              type="textarea"
+              :rows="4"
+              placeholder="请输入章节描述"
+            />
+          </el-form-item>
+        </el-form>
+        
+        <template #footer>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitting">
+            确定
+          </el-button>
+        </template>
+      </el-dialog>
+    </div>
+  </AdminLayout>
+</template>
+
+<script setup>
+import { ref, reactive, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { Search, Plus } from '@element-plus/icons-vue'
+import AdminLayout from '@/components/layout/AdminLayout.vue'
+
+// 课程列表
+const courseList = ref([
+  { id: 1, name: 'Java 基础' },
+  { id: 2, name: 'Python 入门' },
+  { id: 3, name: 'JavaScript 高级' },
+  { id: 4, name: 'Vue 3 实战' },
+  { id: 5, name: 'React 开发' }
+])
+
+// 搜索条件
+const searchCourseId = ref('')
+const searchKeyword = ref('')
+
+// 表格数据
+const loading = ref(false)
+const tableData = ref([])
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+
+// 对话框
+const dialogVisible = ref(false)
+const isEdit = ref(false)
+const formRef = ref()
+const submitting = ref(false)
+
+const dialogTitle = computed(() => isEdit.value ? '编辑章节' : '新增章节')
+
+// 表单数据
+const formData = reactive({
+  id: null,
+  courseId: null,
+  name: '',
+  description: ''
+})
+
+// 表单验证规则
+const formRules = {
+  courseId: [
+    { required: true, message: '请选择课程', trigger: 'change' }
+  ],
+  name: [
+    { required: true, message: '请输入章节名称', trigger: 'blur' },
+    { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
+  ],
+  description: [
+    { max: 200, message: '长度不超过 200 个字符', trigger: 'blur' }
+  ]
+}
+
+// 初始化模拟数据
+const initMockData = () => {
+  const chapters = []
+  const chapterNames = ['第一章', '第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章']
+  
+  courseList.value.forEach(course => {
+    for (let i = 0; i < 5; i++) {
+      chapters.push({
+        id: chapters.length + 1,
+        courseId: course.id,
+        courseName: course.name,
+        name: `${chapterNames[i]} - ${course.name.split(' ')[0]}知识点`,
+        description: `本章节主要讲解${course.name}的相关知识点`,
+        questionCount: Math.floor(Math.random() * 100) + 20,
+        createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
+      })
+    }
+  })
+  
+  return chapters
+}
+
+const allChapters = ref(initMockData())
+
+// 加载数据
+const loadData = () => {
+  loading.value = true
+  
+  setTimeout(() => {
+    let filtered = allChapters.value
+    
+    if (searchCourseId.value) {
+      filtered = filtered.filter(chapter => chapter.courseId === searchCourseId.value)
+    }
+    
+    if (searchKeyword.value) {
+      filtered = filtered.filter(chapter => 
+        chapter.name.includes(searchKeyword.value) || 
+        chapter.description.includes(searchKeyword.value)
+      )
+    }
+    
+    total.value = filtered.length
+    
+    const start = (currentPage.value - 1) * pageSize.value
+    const end = start + pageSize.value
+    tableData.value = filtered.slice(start, end)
+    
+    loading.value = false
+  }, 300)
+}
+
+const handleSearch = () => {
+  currentPage.value = 1
+  loadData()
+}
+
+const handlePageChange = () => {
+  loadData()
+}
+
+const handleAdd = () => {
+  isEdit.value = false
+  Object.assign(formData, {
+    id: null,
+    courseId: null,
+    name: '',
+    description: ''
+  })
+  dialogVisible.value = true
+}
+
+const handleEdit = (row) => {
+  isEdit.value = true
+  Object.assign(formData, {
+    id: row.id,
+    courseId: row.courseId,
+    name: row.name,
+    description: row.description
+  })
+  dialogVisible.value = true
+}
+
+const handleDelete = (row) => {
+  ElMessageBox.confirm(
+    `确定要删除章节"${row.name}"吗？删除后该章节下的所有题目都将被删除，此操作不可恢复。`,
+    '警告',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    }
+  ).then(() => {
+    const index = allChapters.value.findIndex(c => c.id === row.id)
+    if (index > -1) {
+      allChapters.value.splice(index, 1)
+      loadData()
+      ElMessage.success('删除成功')
+    }
+  }).catch(() => {})
+}
+
+const handleSubmit = async () => {
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitting.value = true
+    
+    setTimeout(() => {
+      if (isEdit.value) {
+        const chapter = allChapters.value.find(c => c.id === formData.id)
+        if (chapter) {
+          const course = courseList.value.find(c => c.id === formData.courseId)
+          Object.assign(chapter, {
+            courseId: formData.courseId,
+            courseName: course?.name || '',
+            name: formData.name,
+            description: formData.description
+          })
+        }
+        ElMessage.success('编辑成功')
+      } else {
+        const course = courseList.value.find(c => c.id === formData.courseId)
+        const newChapter = {
+          id: allChapters.value.length + 1,
+          courseId: formData.courseId,
+          courseName: course?.name || '',
+          name: formData.name,
+          description: formData.description,
+          questionCount: 0,
+          createTime: new Date().toLocaleString('zh-CN')
+        }
+        allChapters.value.unshift(newChapter)
+        ElMessage.success('添加成功')
+      }
+      
+      submitting.value = false
+      dialogVisible.value = false
+      loadData()
+    }, 500)
+  })
+}
+
+const handleDialogClose = () => {
+  formRef.value?.resetFields()
+}
+
+onMounted(() => {
+  loadData()
+})
+</script>
+
+<style scoped>
+.chapter-manage-page {
+  min-height: 100%;
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 1024px) {
+  .pagination :deep(.el-pagination) {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 768px) {
+  .search-bar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .search-bar :deep(.el-select),
+  .search-bar :deep(.el-input),
+  .search-bar :deep(.el-button) {
+    width: 100% !important;
+    margin-left: 0 !important;
+  }
+  
+  :deep(.el-table) {
+    font-size: 13px;
+  }
+  
+  :deep(.el-table .el-button) {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+  
+  .pagination {
+    margin-top: 16px;
+  }
+  
+  .pagination :deep(.el-pagination) {
+    justify-content: center;
+  }
+  
+  .pagination :deep(.el-pagination__sizes) {
+    display: none;
+  }
+}
+
+@media (max-width: 375px) {
+  :deep(.el-table) {
+    font-size: 12px;
+  }
+  
+  :deep(.el-table .cell) {
+    padding: 0 6px;
+  }
+}
+</style>

@@ -6,7 +6,7 @@ import request from '@/utils/request'
 
 // 获取用户列表
 export const getUserList = (params) => {
-  return request({ url: '/admin/users', method: 'GET', params })
+  return request({ url: '/admin/users/', method: 'GET', params })
 }
 
 // 创建用户
