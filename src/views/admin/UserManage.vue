@@ -168,7 +168,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser } from '@/api/admin'
+import { getUserList, createUser, resetUserPassword } from '@/api/admin'
 import CryptoJS from 'crypto-js'
 
 // 搜索条件
@@ -341,15 +341,28 @@ const handleEdit = (row) => {
 // 重置密码
 const handleResetPassword = (row) => {
   ElMessageBox.confirm(
-    `确定要重置用户 ${row.userName} 的密码吗？新密码将发送到用户邮箱。`,
+    `确定要重置用户 ${row.userName} 的密码吗？密码将重置为：${row.userName}123456`,
     '提示',
     {
       confirmButtonText: '确定',
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
-    ElMessage.success('密码重置成功，新密码已发送至用户邮箱')
+  ).then(async () => {
+    try {
+      // 生成默认密码：用户ID + 123456，并加密
+      const defaultPassword = row.userName + '123456'
+      const encryptedPassword = CryptoJS.SHA256(defaultPassword).toString()
+      
+      await resetUserPassword(row.id, {
+        newPwd: encryptedPassword
+      })
+      
+      ElMessage.success('密码重置成功')
+    } catch (error) {
+      console.error('重置密码失败:', error)
+      ElMessage.error('重置密码失败')
+    }
   }).catch(() => {})
 }
 
