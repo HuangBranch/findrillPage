@@ -23,6 +23,7 @@ export const getCourseDetail = (courseId) => {
   })
 }
 
+
 export default {
   getCourseList,
   getCourseDetail

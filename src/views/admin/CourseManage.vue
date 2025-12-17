@@ -99,6 +99,8 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import {createCourse, getAdminCourseList, updateCourse} from "@/api/admin.js";
+
 
 // 搜索条件
 const searchKeyword = ref('')
@@ -137,58 +139,66 @@ const formRules = {
 }
 
 // 初始化模拟数据
-const initMockData = () => {
-  const courses = [
-    { name: 'Java 基础', remarks: 'Java 编程语言基础知识学习' },
-    { name: 'Python 入门', remarks: 'Python 编程语言入门课程' },
-    { name: 'JavaScript 高级', remarks: 'JavaScript 高级特性与应用' },
-    { name: 'Vue 3 实战', remarks: 'Vue 3 框架实战开发' },
-    { name: 'React 开发', remarks: 'React 前端框架开发' },
-    { name: 'Node.js 后端', remarks: 'Node.js 后端开发技术' },
-    { name: '数据库设计', remarks: 'MySQL 数据库设计与优化' },
-    { name: '算法与数据结构', remarks: '常用算法与数据结构' },
-    { name: '设计模式', remarks: '23 种设计模式详解' },
-    { name: 'Git 版本控制', remarks: 'Git 版本控制系统使用' },
-    { name: 'Docker 容器', remarks: 'Docker 容器化技术' },
-    { name: 'Linux 运维', remarks: 'Linux 系统运维基础' }
-  ]
-  
-  return courses.map((course, index) => ({
-    id: index + 1,
-    name: course.name,
-    remarks: course.remarks,
-    chapterCount: Math.floor(Math.random() * 10) + 3,
-    questionCount: Math.floor(Math.random() * 500) + 100,
-    createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
-  }))
-}
+// const initMockData = () => {
+//   const courses = [
+//     { name: 'Java 基础', remarks: 'Java 编程语言基础知识学习' },
+//     { name: 'Python 入门', remarks: 'Python 编程语言入门课程' },
+//     { name: 'JavaScript 高级', remarks: 'JavaScript 高级特性与应用' },
+//     { name: 'Vue 3 实战', remarks: 'Vue 3 框架实战开发' },
+//     { name: 'React 开发', remarks: 'React 前端框架开发' },
+//     { name: 'Node.js 后端', remarks: 'Node.js 后端开发技术' },
+//     { name: '数据库设计', remarks: 'MySQL 数据库设计与优化' },
+//     { name: '算法与数据结构', remarks: '常用算法与数据结构' },
+//     { name: '设计模式', remarks: '23 种设计模式详解' },
+//     { name: 'Git 版本控制', remarks: 'Git 版本控制系统使用' },
+//     { name: 'Docker 容器', remarks: 'Docker 容器化技术' },
+//     { name: 'Linux 运维', remarks: 'Linux 系统运维基础' }
+//   ]
+//
+//   return courses.map((course, index) => ({
+//     id: index + 1,
+//     name: course.name,
+//     remarks: course.remarks,
+//     chapterCount: Math.floor(Math.random() * 10) + 3,
+//     questionCount: Math.floor(Math.random() * 500) + 100,
+//     createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
+//   }))
+// }
+//接口加载数据
 
-const allCourses = ref(initMockData())
+
+// const allCourses = ref(initMockData())
 
 // 加载数据
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  
-  setTimeout(() => {
-    // 模拟搜索
-    let filtered = allCourses.value
-    
-    if (searchKeyword.value) {
-      filtered = filtered.filter(course => 
-        course.name.includes(searchKeyword.value) || 
-        course.remarks.includes(searchKeyword.value)
-      )
+  try {
+    const params = {
+      current: currentPage.value,
+      size: pageSize.value,
+      name:searchKeyword.value
     }
-    
-    total.value = filtered.length
-    
-    // 分页
-    const start = (currentPage.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    tableData.value = filtered.slice(start, end)
-    
+
+
+    const data = await getAdminCourseList(params)
+    // 响应拦截器已经返回了 data，直接使用
+    if (data) {
+      // 处理返回数据,映射字段
+      tableData.value = data
+
+      total.value = data.total || 0
+    } else {
+      tableData.value = []
+      total.value = 0
+    }
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+    ElMessage.error('获取课程列表失败')
+    tableData.value = []
+    total.value = 0
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 // 搜索
@@ -253,35 +263,49 @@ const handleSubmit = async () => {
     submitting.value = true
     
     // 模拟提交
-    setTimeout(() => {
+      try {
+
       if (isEdit.value) {
         // 编辑
-        const course = allCourses.value.find(c => c.id === formData.id)
-        if (course) {
-          Object.assign(course, {
-            name: formData.name,
-            remarks: formData.remarks
-          })
+        // const course = allCourses.value.find(c => c.id === formData.id)
+        // if (course) {
+        //   Object.assign(course, {
+        //     name: formData.name,
+        //     remarks: formData.remarks
+        //   })
+        // }
+        // 新增
+        const newCourse = {
+          name: formData.name,
+          remarks: formData.remarks,
         }
+        const data=await updateCourse(formData.id,newCourse);
+        // allCourses.value.unshift(newCourse)
         ElMessage.success('编辑成功')
       } else {
         // 新增
         const newCourse = {
-          id: allCourses.value.length + 1,
+          // id: allCourses.value.length + 1,
           name: formData.name,
           remarks: formData.remarks,
-          chapterCount: 0,
-          questionCount: 0,
-          createTime: new Date().toLocaleString('zh-CN')
+          // chapterCount: 0,
+          // questionCount: 0,
+          // createTime: new Date().toLocaleString('zh-CN')
         }
-        allCourses.value.unshift(newCourse)
+        const data=await createCourse(newCourse);
+        // allCourses.value.unshift(newCourse)
         ElMessage.success('添加成功')
       }
       
       submitting.value = false
       dialogVisible.value = false
       loadData()
-    }, 500)
+      }catch (error) {
+        // 接口请求失败处理
+        ElMessage.error(isEdit.value ? '编辑失败' : '添加失败')
+        submitting.value = false // 失败也要重置加载状态
+        console.error('课程提交失败：', error)
+      }
   })
 }
 
