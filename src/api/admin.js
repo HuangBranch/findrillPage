@@ -24,6 +24,11 @@ export const deleteUser = (userId) => {
   return request({ url: `/admin/users/${userId}`, method: 'DELETE' })
 }
 
+// 重置用户密码
+export const resetUserPassword = (userId, data) => {
+  return request({ url: `/admin/users/${userId}/reset-password`, method: 'PATCH', data })
+}
+
 /**
  * ========== 课程管理 ==========
  */
