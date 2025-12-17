@@ -24,9 +24,12 @@
             @change="handleSearch"
           >
             <el-option label="全部" value="" />
-            <el-option label="超级管理员" :value="1" />
-            <el-option label="管理员" :value="2" />
-            <el-option label="普通用户" :value="3" />
+            <el-option
+              v-for="role in roleList"
+              :key="role.id"
+              :label="role.name"
+              :value="role.id"
+            />
           </el-select>
           
           <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
@@ -43,7 +46,7 @@
           <el-table-column label="角色" width="120">
             <template #default="{ row }">
               <el-tag :type="getRoleType(row.roleId)">
-                {{ getRoleName(row.roleId) }}
+                {{ row.roleName }}
               </el-tag>
             </template>
           </el-table-column>
@@ -110,8 +113,8 @@
             <el-input v-model="formData.userId" placeholder="请输入用户ID(用于登陆的账号)" />
           </el-form-item>
           
-          <el-form-item label="用户名" prop="uname">
-            <el-input v-model="formData.name" placeholder="请输入用户名" />
+          <el-form-item label="用户名" prop="name">
+            <el-input v-model="formData.name" placeholder="请输入用户名（非必填）" />
           </el-form-item>
           
           <el-form-item label="真实姓名" prop="realName">
@@ -124,9 +127,12 @@
           
           <el-form-item label="角色" prop="roleId">
             <el-select v-model="formData.roleId" placeholder="请选择角色" style="width: 100%">
-              <el-option label="超级管理员" :value="1" />
-              <el-option label="管理员" :value="2" />
-              <el-option label="普通用户" :value="3" />
+              <el-option
+                v-for="role in roleList"
+                :key="role.id"
+                :label="role.name"
+                :value="role.id"
+              />
             </el-select>
           </el-form-item>
           
@@ -168,12 +174,16 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser, updateUser, resetUserPassword } from '@/api/admin'
+import { getUserList, createUser, updateUser, resetUserPassword, getRoleList } from '@/api/admin'
+import { getStorage, setStorage } from '@/utils/storage'
 import CryptoJS from 'crypto-js'
 
 // 搜索条件
 const searchKeyword = ref('')
 const searchRole = ref('')
+
+// 角色列表
+const roleList = ref([])
 
 // 表格数据
 const loading = ref(false)
@@ -259,6 +269,7 @@ const loadData = async () => {
         realName: user.realName || '', // 真实姓名
         email: user.email || '',
         roleId: user.roleId || 3,
+        roleName: user.roleName || '未知', // 角色名称
         isActiveEmail: user.isActiveEmail || false,
         isUse: user.isUse || false,
         remarks: user.remarks || '', // 备注
@@ -290,12 +301,6 @@ const handleSearch = () => {
 // 分页
 const handlePageChange = () => {
   loadData()
-}
-
-// 获取角色名称
-const getRoleName = (roleId) => {
-  const map = { 1: '超级管理员', 2: '管理员', 3: '普通用户' }
-  return map[roleId] || '未知'
 }
 
 // 获取角色标签类型
@@ -397,8 +402,9 @@ const handleSubmit = async () => {
         // 调用编辑接口
         const params = {
           userId: formData.userId,
-          uname: formData.name,
+          name: formData.name,
           email: formData.email,
+          roleId: formData.roleId,
           realName: formData.realName,
           isActiveEmail: formData.isActiveEmail,
           isUse: formData.isUse
@@ -453,7 +459,35 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 加载角色列表
+const loadRoles = async () => {
+  try {
+    // 先从本地缓存读取
+    const cachedRoles = getStorage('roleList')
+    if (cachedRoles && Array.isArray(cachedRoles) && cachedRoles.length > 0) {
+      roleList.value = cachedRoles
+      return
+    }
+    
+    // 如果本地没有，从后端获取
+    const data = await getRoleList()
+    if (data && Array.isArray(data)) {
+      roleList.value = data
+      // 存储到本地
+      setStorage('roleList', data)
+    }
+  } catch (error) {
+    console.error('获取角色列表失败:', error)
+    // 如果请求失败，尝试使用缓存
+    const cachedRoles = getStorage('roleList')
+    if (cachedRoles && Array.isArray(cachedRoles)) {
+      roleList.value = cachedRoles
+    }
+  }
+}
+
 onMounted(() => {
+  loadRoles()
   loadData()
 })
 </script>

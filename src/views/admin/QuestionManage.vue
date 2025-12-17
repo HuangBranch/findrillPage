@@ -107,21 +107,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import { getQuestionList } from '@/api/admin'
 
-const courseList = ref([
-  { id: 1, name: 'Java 基础' },
-  { id: 2, name: 'Python 入门' },
-  { id: 3, name: 'JavaScript 高级' }
-])
-
-const chapterList = ref([
-  { id: 1, courseId: 1, name: '第一章' },
-  { id: 2, courseId: 1, name: '第二章' },
-  { id: 3, courseId: 2, name: '第一章' },
-  { id: 4, courseId: 2, name: '第二章' },
-  { id: 5, courseId: 3, name: '第一章' },
-  { id: 6, courseId: 3, name: '第二章' }
-])
+const courseList = ref([])
+const chapterList = ref([])
 
 const searchCourseId = ref('')
 const searchChapterId = ref('')
@@ -143,51 +132,78 @@ const currentQuestion = ref(null)
 const dialogVisible = ref(false)
 const dialogTitle = computed(() => '新增题目')
 
-const initMockData = () => {
-  const questions = []
-  const subjects = ['Java特点是什么？', 'Python如何定义函数？', 'JS变量声明方式？']
+// 加载题目数据
+const loadData = async () => {
+  loading.value = true
   
-  for (let i = 0; i < 50; i++) {
-    const courseId = Math.floor(Math.random() * 3) + 1
-    const course = courseList.value.find(c => c.id === courseId)
-    const chapters = chapterList.value.filter(c => c.courseId === courseId)
-    const chapter = chapters[Math.floor(Math.random() * chapters.length)]
-    const type = Math.floor(Math.random() * 3) + 1
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value
+    }
     
-    questions.push({
-      id: i + 1,
-      courseId, courseName: course.name,
-      chapterId: chapter.id, chapterName: chapter.name,
-      type, difficulty: Math.floor(Math.random() * 5) + 1,
-      subject: subjects[Math.floor(Math.random() * subjects.length)],
-      options: type === 3 ? [] : [
-        { text: '选项A' }, { text: '选项B' }, { text: '选项C' }, { text: '选项D' }
-      ],
-      correctAnswer: type === 3 ? 'T' : (type === 2 ? 'AB' : 'A'),
-      knowledgePoint: '相关知识点',
-      analysis: '这是详细解析',
-      createTime: `2025-12-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} 10:00:00`
-    })
+    // 添加筛选条件
+    if (searchCourseId.value) params.curriculumId = searchCourseId.value
+    if (searchChapterId.value) params.chapterId = searchChapterId.value
+    if (searchType.value) params.type = searchType.value
+    if (searchKeyword.value) params.keyword = searchKeyword.value
+    
+    const data = await getQuestionList(params)
+    
+    if (data && data.list) {
+      // 映射后端数据到前端字段
+      tableData.value = data.list.map(q => ({
+        id: q.id,
+        courseId: q.curriculumId,
+        courseName: q.curriculumName || '未知课程',
+        chapterId: q.chapterId,
+        chapterName: q.chapterName || '未知章节',
+        type: parseInt(q.type),
+        subject: q.subject,
+        difficulty: q.difficulty,
+        isUse: q.isUse,
+        createTime: q.createTime
+      }))
+      
+      // 从题目数据中提取课程和章节列表用于筛选
+      updateCourseAndChapterLists(data.list)
+      
+      total.value = data.total || 0
+    } else {
+      tableData.value = []
+      total.value = 0
+    }
+  } catch (error) {
+    console.error('获取题目列表失败:', error)
+    ElMessage.error('获取题目列表失败')
+    tableData.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
   }
-  return questions
 }
 
-const allQuestions = ref(initMockData())
-
-const loadData = () => {
-  loading.value = true
-  setTimeout(() => {
-    let filtered = allQuestions.value
-    if (searchCourseId.value) filtered = filtered.filter(q => q.courseId === searchCourseId.value)
-    if (searchChapterId.value) filtered = filtered.filter(q => q.chapterId === searchChapterId.value)
-    if (searchType.value) filtered = filtered.filter(q => q.type === searchType.value)
-    if (searchKeyword.value) filtered = filtered.filter(q => q.subject.includes(searchKeyword.value))
-    
-    total.value = filtered.length
-    const start = (currentPage.value - 1) * pageSize.value
-    tableData.value = filtered.slice(start, start + pageSize.value)
-    loading.value = false
-  }, 300)
+// 从题目数据中提取课程和章节列表
+const updateCourseAndChapterLists = (questions) => {
+  // 提取唯一的课程
+  const courseMap = new Map()
+  const chapterMap = new Map()
+  
+  questions.forEach(q => {
+    if (q.curriculumId && q.curriculumName) {
+      courseMap.set(q.curriculumId, { id: q.curriculumId, name: q.curriculumName })
+    }
+    if (q.chapterId && q.chapterName) {
+      chapterMap.set(q.chapterId, { 
+        id: q.chapterId, 
+        name: q.chapterName,
+        courseId: q.curriculumId 
+      })
+    }
+  })
+  
+  courseList.value = Array.from(courseMap.values())
+  chapterList.value = Array.from(chapterMap.values())
 }
 
 const handleCourseChange = () => {
@@ -203,8 +219,8 @@ const handleSearch = () => {
 const handlePageChange = () => loadData()
 const getTypeName = (type) => ({ 1: '单选题', 2: '多选题', 3: '判断题' }[type] || '未知')
 const getTypeTag = (type) => ({ 1: '', 2: 'success', 3: 'warning' }[type] || '')
-const getDifficultyName = (d) => ({ 1: '非常简单', 2: '简单', 3: '中等', 4: '困难', 5: '非常困难' }[d] || '未知')
-const getDifficultyTag = (d) => ({ 1: 'success', 2: 'success', 3: '', 4: 'warning', 5: 'danger' }[d] || '')
+const getDifficultyName = (d) => ({ 1: '简单', 2: '中等', 3: '困难' }[d] || '未知')
+const getDifficultyTag = (d) => ({ 1: 'success', 2: '', 3: 'warning' }[d] || '')
 
 const handleView = (row) => {
   currentQuestion.value = row
@@ -225,18 +241,17 @@ const handleDelete = (row) => {
     cancelButtonText: '取消',
     type: 'warning'
   }).then(() => {
-    const index = allQuestions.value.findIndex(q => q.id === row.id)
-    if (index > -1) {
-      allQuestions.value.splice(index, 1)
-      loadData()
-      ElMessage.success('删除成功')
-    }
+    // TODO: 调用删除接口
+    loadData()
+    ElMessage.success('删除成功')
   }).catch(() => {})
 }
 
 const handleDialogClose = () => {}
 
-onMounted(() => loadData())
+onMounted(() => {
+  loadData()
+})
 </script>
 
 <style scoped>
