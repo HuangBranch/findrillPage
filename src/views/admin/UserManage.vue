@@ -110,7 +110,7 @@
             <el-input v-model="formData.userId" placeholder="请输入用户ID(用于登陆的账号)" />
           </el-form-item>
           
-          <el-form-item label="用户名" prop="name">
+          <el-form-item label="用户名" prop="uname">
             <el-input v-model="formData.name" placeholder="请输入用户名" />
           </el-form-item>
           
@@ -168,7 +168,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser, resetUserPassword } from '@/api/admin'
+import { getUserList, createUser, updateUser, resetUserPassword } from '@/api/admin'
 import CryptoJS from 'crypto-js'
 
 // 搜索条件
@@ -250,16 +250,18 @@ const loadData = async () => {
     const data = await getUserList(params)
 
     // 响应拦截器已经返回了 data，直接使用
-    if (data && data.records) {
+    if (data && data.list) {
       // 处理返回数据,映射字段
-      tableData.value = data.records.map(user => ({
+      tableData.value = data.list.map(user => ({
         id: user.id,
         userName: user.userId || user.name, // userId作为用户名
         name: user.name, // 用户姓名
+        realName: user.realName || '', // 真实姓名
         email: user.email || '',
         roleId: user.roleId || 3,
         isActiveEmail: user.isActiveEmail || false,
         isUse: user.isUse || false,
+        remarks: user.remarks || '', // 备注
         createTime: user.createTime || '',
         lastLoginTime: user.lastLoginTime || ''
       }))
@@ -392,7 +394,22 @@ const handleSubmit = async () => {
     
     try {
       if (isEdit.value) {
-        // TODO: 调用编辑接口
+        // 调用编辑接口
+        const params = {
+          userId: formData.userId,
+          uname: formData.name,
+          email: formData.email,
+          realName: formData.realName,
+          isActiveEmail: formData.isActiveEmail,
+          isUse: formData.isUse
+        }
+        
+        // 备注字段非必填
+        if (formData.remarks) {
+          params.remarks = formData.remarks
+        }
+        
+        await updateUser(formData.id, params)
         ElMessage.success('编辑成功')
       } else {
         // 调用新增接口
