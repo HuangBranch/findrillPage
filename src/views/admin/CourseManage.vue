@@ -99,7 +99,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import {createCourse, getAdminCourseList, updateCourse} from "@/api/admin.js";
+import {createCourse, deleteCourse, getAdminCourseList, updateCourse} from "@/api/admin.js";
 
 
 // 搜索条件
@@ -174,8 +174,7 @@ const loadData = async () => {
   loading.value = true
   try {
     const params = {
-      current: currentPage.value,
-      size: pageSize.value,
+      isUse:'',
       name:searchKeyword.value
     }
 
@@ -235,24 +234,30 @@ const handleEdit = (row) => {
 }
 
 // 删除
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除课程"${row.name}"吗？删除后该课程下的所有章节和题目都将被删除，此操作不可恢复。`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+const handleDelete = async (row) => { // 改为 async 函数
+  try {
+    await ElMessageBox.confirm(
+        `确定要删除课程"${row.name}"吗？删除后该课程下的所有章节和题目都将被删除，此操作不可恢复。`,
+        '警告',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+    );
+
+    // 等待删除接口执行完成后，再加载数据
+    await deleteCourse(row.id);
+    // 重新加载最新数据
+    await loadData();
+    ElMessage.success('删除成功');
+  } catch (error) {
+    // 区分取消操作和真正的错误
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败：' + (error.message || '服务器异常'));
+      console.error('删除课程失败：', error); // 便于调试
     }
-  ).then(() => {
-    // 模拟删除
-    const index = allCourses.value.findIndex(c => c.id === row.id)
-    if (index > -1) {
-      allCourses.value.splice(index, 1)
-      loadData()
-      ElMessage.success('删除成功')
-    }
-  }).catch(() => {})
+  }
 }
 
 // 提交表单

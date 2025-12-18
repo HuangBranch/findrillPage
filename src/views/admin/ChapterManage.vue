@@ -5,7 +5,7 @@
         <!-- 搜索栏 -->
         <div class="search-bar">
           <el-select
-            v-model="searchCourseId"
+            v-model="searchCourseName"
             placeholder="选择课程"
             style="width: 200px"
             clearable
@@ -15,7 +15,7 @@
               v-for="course in courseList"
               :key="course.id"
               :label="course.name"
-              :value="course.id"
+              :value="course.name"
             />
           </el-select>
           
@@ -39,7 +39,7 @@
         <!-- 章节表格 -->
         <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading">
           <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="courseName" label="所属课程" min-width="150" />
+          <el-table-column prop="curriculumName" label="所属课程名称" min-width="150" />
           <el-table-column prop="name" label="章节名称" min-width="180" />
           <el-table-column prop="description" label="章节描述" min-width="200" show-overflow-tooltip />
           <el-table-column prop="questionCount" label="题目数" width="100" align="center" />
@@ -125,18 +125,27 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
+import {
+  createChapter,
+  deleteChapter,
+  getAdminChapterList,
+  getAdminCourseList,
+  updateChapter,
+  updateCourse
+} from "@/api/admin.js";
 
 // 课程列表
-const courseList = ref([
-  { id: 1, name: 'Java 基础' },
-  { id: 2, name: 'Python 入门' },
-  { id: 3, name: 'JavaScript 高级' },
-  { id: 4, name: 'Vue 3 实战' },
-  { id: 5, name: 'React 开发' }
-])
+// [
+//   { id: 1, name: 'Java 基础' },
+//   { id: 2, name: 'Python 入门' },
+//   { id: 3, name: 'JavaScript 高级' },
+//   { id: 4, name: 'Vue 3 实战' },
+//   { id: 5, name: 'React 开发' }
+// ]
+const courseList = ref()
 
 // 搜索条件
-const searchCourseId = ref('')
+const searchCourseName = ref('')
 const searchKeyword = ref('')
 
 // 表格数据
@@ -159,7 +168,9 @@ const formData = reactive({
   id: null,
   courseId: null,
   name: '',
-  description: ''
+  description: '',
+  isUse:true,
+  sort:''
 })
 
 // 表单验证规则
@@ -177,55 +188,76 @@ const formRules = {
 }
 
 // 初始化模拟数据
-const initMockData = () => {
-  const chapters = []
-  const chapterNames = ['第一章', '第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章']
-  
-  courseList.value.forEach(course => {
-    for (let i = 0; i < 5; i++) {
-      chapters.push({
-        id: chapters.length + 1,
-        courseId: course.id,
-        courseName: course.name,
-        name: `${chapterNames[i]} - ${course.name.split(' ')[0]}知识点`,
-        description: `本章节主要讲解${course.name}的相关知识点`,
-        questionCount: Math.floor(Math.random() * 100) + 20,
-        createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
-      })
+// const initMockData = () => {
+//   const chapters = []
+//   const chapterNames = ['第一章', '第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章']
+//
+//   courseList.value.forEach(course => {
+//     for (let i = 0; i < 5; i++) {
+//       chapters.push({
+//         id: chapters.length + 1,
+//         courseId: course.id,
+//         courseName: course.name,
+//         name: `${chapterNames[i]} - ${course.name.split(' ')[0]}知识点`,
+//         description: `本章节主要讲解${course.name}的相关知识点`,
+//         questionCount: Math.floor(Math.random() * 100) + 20,
+//         createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
+//       })
+//     }
+//   })
+//
+//   return chapters
+// }
+
+// const allChapters = ref(initMockData())
+//加载课程数据
+const courseData = async () => {
+  try {
+    const params = {
+      isUse:"",
+      name:""
     }
-  })
-  
-  return chapters
+    const cdata = await getAdminCourseList(params)
+    // 响应拦截器已经返回了 data，直接使用
+    if (cdata) {
+      courseList.value=cdata
+    }
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+    ElMessage.error('获取课程列表失败')
+  }
 }
-
-const allChapters = ref(initMockData())
-
+courseData()
 // 加载数据
-const loadData = () => {
+const loadData = async () => {
   loading.value = true
-  
-  setTimeout(() => {
-    let filtered = allChapters.value
-    
-    if (searchCourseId.value) {
-      filtered = filtered.filter(chapter => chapter.courseId === searchCourseId.value)
+  try {
+    const params = {
+      page: currentPage.value,
+      pageSize: pageSize.value,
+      chapterName:searchKeyword.value,
+      curriculumName: searchCourseName.value,
     }
-    
-    if (searchKeyword.value) {
-      filtered = filtered.filter(chapter => 
-        chapter.name.includes(searchKeyword.value) || 
-        chapter.description.includes(searchKeyword.value)
-      )
+
+    const data = await getAdminChapterList(params)
+    console.log(params)
+    // 响应拦截器已经返回了 data，直接使用
+    if (data) {
+      // 处理返回数据,映射字段
+      tableData.value = data.list
+      total.value = data.total || 0
+    } else {
+      tableData.value = []
+      total.value = 0
     }
-    
-    total.value = filtered.length
-    
-    const start = (currentPage.value - 1) * pageSize.value
-    const end = start + pageSize.value
-    tableData.value = filtered.slice(start, end)
-    
+  } catch (error) {
+    console.error('获取章节列表失败:', error)
+    ElMessage.error('获取章节列表失败')
+    tableData.value = []
+    total.value = 0
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
 const handleSearch = () => {
@@ -259,23 +291,33 @@ const handleEdit = (row) => {
   dialogVisible.value = true
 }
 
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除章节"${row.name}"吗？删除后该章节下的所有题目都将被删除，此操作不可恢复。`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
+const handleDelete = async (row) => {
+  try {
+    // 等待用户确认删除操作（ElMessageBox.confirm 本身返回 Promise）
+    await ElMessageBox.confirm(
+        `确定要删除章节"${row.name}"吗？删除后该章节下的所有题目都将被删除，此操作不可恢复。`,
+        '警告',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
+    );
+
+    // 等待删除接口执行完成（关键：确保删除操作先完成）
+    await deleteChapter(row.id);
+    // 等待数据重新加载完成（确保加载的是删除后的最新数据）
+    await loadData();
+    // 只有上面两步都完成，才提示删除成功
+    ElMessage.success('删除成功');
+  } catch (error) {
+    // 区分“用户取消删除”和“真正的接口错误”
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败：' + (error.message || '服务器异常'));
+      console.error('删除章节失败：', error); // 便于调试问题
     }
-  ).then(() => {
-    const index = allChapters.value.findIndex(c => c.id === row.id)
-    if (index > -1) {
-      allChapters.value.splice(index, 1)
-      loadData()
-      ElMessage.success('删除成功')
-    }
-  }).catch(() => {})
+    // 如果是用户取消（error === 'cancel'），则什么都不做
+  }
 }
 
 const handleSubmit = async () => {
@@ -283,39 +325,39 @@ const handleSubmit = async () => {
     if (!valid) return
     
     submitting.value = true
-    
-    setTimeout(() => {
+
+    try {
       if (isEdit.value) {
-        const chapter = allChapters.value.find(c => c.id === formData.id)
-        if (chapter) {
-          const course = courseList.value.find(c => c.id === formData.courseId)
-          Object.assign(chapter, {
-            courseId: formData.courseId,
-            courseName: course?.name || '',
-            name: formData.name,
-            description: formData.description
-          })
-        }
-        ElMessage.success('编辑成功')
-      } else {
-        const course = courseList.value.find(c => c.id === formData.courseId)
         const newChapter = {
-          id: allChapters.value.length + 1,
-          courseId: formData.courseId,
-          courseName: course?.name || '',
+          curriculumId: formData.courseId,
           name: formData.name,
           description: formData.description,
-          questionCount: 0,
-          createTime: new Date().toLocaleString('zh-CN')
         }
-        allChapters.value.unshift(newChapter)
+        console.log(newChapter)
+        const data=await updateChapter(formData.id,newChapter);
+        ElMessage.success('编辑成功')
+      } else {
+        const newChapter = {
+          curriculumId: formData.courseId,
+          name: formData.name,
+          description: formData.description,
+          isUse:true,
+          sort:0
+        }
+        const data=await createChapter(newChapter);
         ElMessage.success('添加成功')
       }
-      
+
       submitting.value = false
       dialogVisible.value = false
       loadData()
-    }, 500)
+    }catch (error) {
+        // 接口请求失败处理
+        ElMessage.error(isEdit.value ? '编辑失败' : '添加失败')
+        submitting.value = false // 失败也要重置加载状态
+        console.error('章节提交失败：', error)
+      }
+
   })
 }
 
