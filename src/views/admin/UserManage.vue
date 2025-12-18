@@ -174,7 +174,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser, updateUser, resetUserPassword, getRoleList } from '@/api/admin'
+import { getUserList, createUser, updateUser, resetUserPassword, getRoleList,deleteUser } from '@/api/admin'
 import { getStorage, setStorage } from '@/utils/storage'
 import CryptoJS from 'crypto-js'
 
@@ -243,13 +243,13 @@ const loadData = async () => {
   
   try {
     const params = {
-      current: currentPage.value,
-      size: pageSize.value
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
     
-    // 添加搜索关键词
+    // 添加搜索关键词（可搜索用户名或邮箱）
     if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
+      params.name = searchKeyword.value
     }
     
     // 添加角色筛选
@@ -268,10 +268,10 @@ const loadData = async () => {
         name: user.name, // 用户姓名
         realName: user.realName || '', // 真实姓名
         email: user.email || '',
-        roleId: user.roleId || 3,
+        roleId: user.roleId ?? 3, // 使用空值合并运算符
         roleName: user.roleName || '未知', // 角色名称
-        isActiveEmail: user.isActiveEmail || false,
-        isUse: user.isUse || false,
+        isActiveEmail: user.isActiveEmail ?? false,
+        isUse: user.isUse ?? false,
         remarks: user.remarks || '', // 备注
         createTime: user.createTime || '',
         lastLoginTime: user.lastLoginTime || ''
@@ -383,10 +383,13 @@ const handleDelete = (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
+  ).then(async () => {
+    loading.value = true
     // TODO: 调用删除接口
+    await deleteUser(row.id)
     ElMessage.success('删除成功')
     loadData()
+    loading.value = false
   }).catch(() => {})
 }
 
