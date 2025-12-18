@@ -24,9 +24,12 @@
             @change="handleSearch"
           >
             <el-option label="全部" value="" />
-            <el-option label="超级管理员" :value="1" />
-            <el-option label="管理员" :value="2" />
-            <el-option label="普通用户" :value="3" />
+            <el-option
+              v-for="role in roleList"
+              :key="role.id"
+              :label="role.name"
+              :value="role.id"
+            />
           </el-select>
           
           <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
@@ -43,7 +46,7 @@
           <el-table-column label="角色" width="120">
             <template #default="{ row }">
               <el-tag :type="getRoleType(row.roleId)">
-                {{ getRoleName(row.roleId) }}
+                {{ row.roleName }}
               </el-tag>
             </template>
           </el-table-column>
@@ -111,7 +114,7 @@
           </el-form-item>
           
           <el-form-item label="用户名" prop="name">
-            <el-input v-model="formData.name" placeholder="请输入用户名" />
+            <el-input v-model="formData.name" placeholder="请输入用户名（非必填）" />
           </el-form-item>
           
           <el-form-item label="真实姓名" prop="realName">
@@ -124,9 +127,12 @@
           
           <el-form-item label="角色" prop="roleId">
             <el-select v-model="formData.roleId" placeholder="请选择角色" style="width: 100%">
-              <el-option label="超级管理员" :value="1" />
-              <el-option label="管理员" :value="2" />
-              <el-option label="普通用户" :value="3" />
+              <el-option
+                v-for="role in roleList"
+                :key="role.id"
+                :label="role.name"
+                :value="role.id"
+              />
             </el-select>
           </el-form-item>
           
@@ -168,12 +174,16 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser, resetUserPassword } from '@/api/admin'
+import { getUserList, createUser, updateUser, resetUserPassword, getRoleList,deleteUser } from '@/api/admin'
+import { getStorage, setStorage } from '@/utils/storage'
 import CryptoJS from 'crypto-js'
 
 // 搜索条件
 const searchKeyword = ref('')
 const searchRole = ref('')
+
+// 角色列表
+const roleList = ref([])
 
 // 表格数据
 const loading = ref(false)
@@ -233,13 +243,13 @@ const loadData = async () => {
   
   try {
     const params = {
-      current: currentPage.value,
-      size: pageSize.value
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
     
-    // 添加搜索关键词
+    // 添加搜索关键词（可搜索用户名或邮箱）
     if (searchKeyword.value) {
-      params.keyword = searchKeyword.value
+      params.name = searchKeyword.value
     }
     
     // 添加角色筛选
@@ -250,16 +260,19 @@ const loadData = async () => {
     const data = await getUserList(params)
 
     // 响应拦截器已经返回了 data，直接使用
-    if (data && data.records) {
+    if (data && data.list) {
       // 处理返回数据,映射字段
-      tableData.value = data.records.map(user => ({
+      tableData.value = data.list.map(user => ({
         id: user.id,
         userName: user.userId || user.name, // userId作为用户名
         name: user.name, // 用户姓名
+        realName: user.realName || '', // 真实姓名
         email: user.email || '',
-        roleId: user.roleId || 3,
-        isActiveEmail: user.isActiveEmail || false,
-        isUse: user.isUse || false,
+        roleId: user.roleId ?? 3, // 使用空值合并运算符
+        roleName: user.roleName || '未知', // 角色名称
+        isActiveEmail: user.isActiveEmail ?? false,
+        isUse: user.isUse ?? false,
+        remarks: user.remarks || '', // 备注
         createTime: user.createTime || '',
         lastLoginTime: user.lastLoginTime || ''
       }))
@@ -288,12 +301,6 @@ const handleSearch = () => {
 // 分页
 const handlePageChange = () => {
   loadData()
-}
-
-// 获取角色名称
-const getRoleName = (roleId) => {
-  const map = { 1: '超级管理员', 2: '管理员', 3: '普通用户' }
-  return map[roleId] || '未知'
 }
 
 // 获取角色标签类型
@@ -376,10 +383,13 @@ const handleDelete = (row) => {
       cancelButtonText: '取消',
       type: 'warning'
     }
-  ).then(() => {
+  ).then(async () => {
+    loading.value = true
     // TODO: 调用删除接口
+    await deleteUser(row.id)
     ElMessage.success('删除成功')
     loadData()
+    loading.value = false
   }).catch(() => {})
 }
 
@@ -392,7 +402,23 @@ const handleSubmit = async () => {
     
     try {
       if (isEdit.value) {
-        // TODO: 调用编辑接口
+        // 调用编辑接口
+        const params = {
+          userId: formData.userId,
+          name: formData.name,
+          email: formData.email,
+          roleId: formData.roleId,
+          realName: formData.realName,
+          isActiveEmail: formData.isActiveEmail,
+          isUse: formData.isUse
+        }
+        
+        // 备注字段非必填
+        if (formData.remarks) {
+          params.remarks = formData.remarks
+        }
+        
+        await updateUser(formData.id, params)
         ElMessage.success('编辑成功')
       } else {
         // 调用新增接口
@@ -436,7 +462,35 @@ const handleDialogClose = () => {
   formRef.value?.resetFields()
 }
 
+// 加载角色列表
+const loadRoles = async () => {
+  try {
+    // 先从本地缓存读取
+    const cachedRoles = getStorage('roleList')
+    if (cachedRoles && Array.isArray(cachedRoles) && cachedRoles.length > 0) {
+      roleList.value = cachedRoles
+      return
+    }
+    
+    // 如果本地没有，从后端获取
+    const data = await getRoleList()
+    if (data && Array.isArray(data)) {
+      roleList.value = data
+      // 存储到本地
+      setStorage('roleList', data)
+    }
+  } catch (error) {
+    console.error('获取角色列表失败:', error)
+    // 如果请求失败，尝试使用缓存
+    const cachedRoles = getStorage('roleList')
+    if (cachedRoles && Array.isArray(cachedRoles)) {
+      roleList.value = cachedRoles
+    }
+  }
+}
+
 onMounted(() => {
+  loadRoles()
   loadData()
 })
 </script>

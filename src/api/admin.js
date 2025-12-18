@@ -29,6 +29,11 @@ export const resetUserPassword = (userId, data) => {
   return request({ url: `/admin/users/${userId}/reset-password`, method: 'PATCH', data })
 }
 
+// 获取角色列表
+export const getRoleList = () => {
+  return request({ url: '/admin/roles', method: 'GET' })
+}
+
 /**
  * ========== 课程管理 ==========
  */
