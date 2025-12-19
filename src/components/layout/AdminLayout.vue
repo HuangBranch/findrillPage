@@ -59,6 +59,11 @@
             <template #title>用户管理</template>
           </el-menu-item>
           
+          <el-menu-item index="/admin/roles">
+            <el-icon><Avatar /></el-icon>
+            <template #title>角色管理</template>
+          </el-menu-item>
+          
           <el-menu-item index="/admin/courses">
             <el-icon><Reading /></el-icon>
             <template #title>课程管理</template>
@@ -103,6 +108,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import {
   User,
+  Avatar,
   HomeFilled,
   SwitchButton,
   DataAnalysis,

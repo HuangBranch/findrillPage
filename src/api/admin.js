@@ -34,6 +34,31 @@ export const getRoleList = () => {
   return request({ url: '/admin/roles', method: 'GET' })
 }
 
+// 创建角色
+export const createRole = (data) => {
+  return request({ url: '/admin/roles', method: 'POST', data })
+}
+
+// 编辑角色
+export const updateRole = (id, data) => {
+  return request({ url: `/admin/roles/${id}`, method: 'PUT', data })
+}
+
+// 获取角色详情
+export const getRoleDetail = (id) => {
+  return request({ url: `/admin/roles/${id}`, method: 'GET' })
+}
+
+// 删除角色
+export const deleteRole = (id) => {
+  return request({ url: `/admin/roles/${id}`, method: 'DELETE' })
+}
+
+// 获取权限列表
+export const getPermissionList = () => {
+  return request({ url: '/admin/permissions', method: 'GET' })
+}
+
 /**
  * ========== 课程管理 ==========
  */
