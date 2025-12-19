@@ -41,6 +41,13 @@
               <el-tag :type="getDifficultyTag(row.difficulty)" effect="plain">{{ getDifficultyName(row.difficulty) }}</el-tag>
             </template>
           </el-table-column>
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.isUse ? 'success' : 'info'">
+                {{ row.isUse ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180" />
           <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
@@ -94,20 +101,123 @@
       </el-dialog>
 
       <!-- 新增/编辑对话框 -->
-      <el-dialog v-model="dialogVisible" :title="dialogTitle" width="90%" :style="{ maxWidth: '800px' }" @close="handleDialogClose">
-        <el-alert title="提示：由于表单较复杂，建议使用批量上传功能" type="info" :closable="false" style="margin-bottom: 20px" />
-        <p style="color: #909399; text-align: center;">详细的题目编辑功能请前往【题目上传】页面</p>
+      <el-dialog v-model="dialogVisible" :title="dialogTitle" width="90%" :style="{ maxWidth: '900px' }" @close="handleDialogClose">
+        <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="所属课程" prop="curriculumId">
+                <el-select v-model="formData.curriculumId" placeholder="请选择课程" style="width: 100%" @change="handleFormCourseChange" :loading="courseLoading">
+                  <el-option v-for="course in formCourseList" :key="course.id" :label="course.name" :value="course.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="所属章节" prop="chapterId">
+                <el-select v-model="formData.chapterId" placeholder="请选择章节" style="width: 100%" :disabled="!formData.curriculumId" :loading="chapterLoading">
+                  <el-option v-for="chapter in formChapterList" :key="chapter.id" :label="chapter.name" :value="chapter.id" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="题目类型" prop="type">
+                <el-select v-model="formData.type" placeholder="请选择题目类型" style="width: 100%">
+                  <el-option label="单选题" :value="1" />
+                  <el-option label="多选题" :value="2" />
+                  <el-option label="判断题" :value="3" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="难度" prop="difficulty">
+                <el-select v-model="formData.difficulty" placeholder="请选择难度" style="width: 100%">
+                  <el-option label="简单" :value="1" />
+                  <el-option label="中等" :value="2" />
+                  <el-option label="困难" :value="3" />
+                </el-select>
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="题目内容" prop="subject">
+            <el-input v-model="formData.subject" type="textarea" :rows="3" placeholder="请输入题目内容" />
+          </el-form-item>
+
+          <el-form-item label="选项A" prop="selectA">
+            <el-input v-model="formData.selectA" placeholder="请输入选项A" />
+          </el-form-item>
+
+          <el-form-item label="选项B" prop="selectB">
+            <el-input v-model="formData.selectB" placeholder="请输入选项B" />
+          </el-form-item>
+
+          <el-form-item label="选项C" v-if="optionCount >= 3">
+            <el-input v-model="formData.selectC" placeholder="请输入选项C" />
+          </el-form-item>
+
+          <el-form-item label="选项D" v-if="optionCount >= 4">
+            <el-input v-model="formData.selectD" placeholder="请输入选项D" />
+          </el-form-item>
+
+          <el-form-item label="选项E" v-if="optionCount >= 5">
+            <el-input v-model="formData.selectE" placeholder="请输入选项E" />
+          </el-form-item>
+
+          <el-form-item label="选项F" v-if="optionCount >= 6">
+            <el-input v-model="formData.selectF" placeholder="请输入选项F" />
+          </el-form-item>
+
+          <el-form-item label="选项G" v-if="optionCount >= 7">
+            <el-input v-model="formData.selectG" placeholder="请输入选项G" />
+          </el-form-item>
+
+          <el-form-item v-if="optionCount < 7">
+            <el-button type="primary" plain :icon="Plus" @click="addOption">添加选项</el-button>
+          </el-form-item>
+
+          <el-row :gutter="20">
+            <el-col :span="12">
+              <el-form-item label="正确答案" prop="answer">
+                <el-input v-model="formData.answer" placeholder="单选填单个字母如A，多选填ABCD" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="年份">
+                <el-input v-model="formData.year" placeholder="如：2024" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+
+          <el-form-item label="知识点">
+            <el-input v-model="formData.knowledgePoint" placeholder="请输入知识点" />
+          </el-form-item>
+
+          <el-form-item label="答案解析">
+            <el-input v-model="formData.analysis" type="textarea" :rows="3" placeholder="请输入答案解析" />
+          </el-form-item>
+
+          <el-form-item label="是否启用">
+            <el-switch v-model="formData.isUse" active-text="启用" inactive-text="禁用" />
+          </el-form-item>
+        </el-form>
+
+        <template #footer>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit" :loading="submitting">确定</el-button>
+        </template>
       </el-dialog>
     </div>
   </AdminLayout>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getQuestionList, getQuestionDetail } from '@/api/admin'
+import { getQuestionList, getQuestionDetail, createQuestion, updateQuestion, getCourseDict, getChapterDict } from '@/api/admin'
 
 const courseList = ref([])
 const chapterList = ref([])
@@ -130,7 +240,49 @@ const total = ref(0)
 const viewDialogVisible = ref(false)
 const currentQuestion = ref(null)
 const dialogVisible = ref(false)
-const dialogTitle = computed(() => '新增题目')
+const isEdit = ref(false)
+const submitting = ref(false)
+const formRef = ref()
+const optionCount = ref(2) // 默认显示2个选项
+
+const dialogTitle = computed(() => isEdit.value ? '编辑题目' : '新增题目')
+
+// 表单相关数据
+const formCourseList = ref([])
+const formChapterList = ref([])
+const courseLoading = ref(false)
+const chapterLoading = ref(false)
+
+const formData = reactive({
+  id: null,
+  curriculumId: null,
+  chapterId: null,
+  type: 1,
+  subject: '',
+  selectA: '',
+  selectB: '',
+  selectC: '',
+  selectD: '',
+  selectE: '',
+  selectF: '',
+  selectG: '',
+  answer: '',
+  difficulty: 1,
+  knowledgePoint: '',
+  analysis: '',
+  isUse: true,
+  year: ''
+})
+
+const formRules = {
+  curriculumId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+  chapterId: [{ required: true, message: '请选择章节', trigger: 'change' }],
+  type: [{ required: true, message: '请选择题目类型', trigger: 'change' }],
+  subject: [{ required: true, message: '请输入题目内容', trigger: 'blur' }],
+  selectA: [{ required: true, message: '请输入选项A', trigger: 'blur' }],
+  selectB: [{ required: true, message: '请输入选项B', trigger: 'blur' }],
+  answer: [{ required: true, message: '请输入正确答案', trigger: 'blur' }]
+}
 
 // 加载题目数据
 const loadData = async () => {
@@ -206,6 +358,43 @@ const updateCourseAndChapterLists = (questions) => {
   chapterList.value = Array.from(chapterMap.values())
 }
 
+// 加载表单用的课程列表
+const loadFormCourseList = async () => {
+  courseLoading.value = true
+  try {
+    const data = await getCourseDict()
+    if (data && Array.isArray(data)) {
+      formCourseList.value = data
+    }
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+    ElMessage.error('获取课程列表失败')
+  } finally {
+    courseLoading.value = false
+  }
+}
+
+// 表单中课程改变时加载章节
+const handleFormCourseChange = async () => {
+  formData.chapterId = null
+  formChapterList.value = []
+  
+  if (formData.curriculumId) {
+    chapterLoading.value = true
+    try {
+      const data = await getChapterDict(formData.curriculumId)
+      if (data && Array.isArray(data)) {
+        formChapterList.value = data
+      }
+    } catch (error) {
+      console.error('获取章节列表失败:', error)
+      ElMessage.error('获取章节列表失败')
+    } finally {
+      chapterLoading.value = false
+    }
+  }
+}
+
 const handleCourseChange = () => {
   searchChapterId.value = ''
   handleSearch()
@@ -258,15 +447,201 @@ const handleView = async (row) => {
   }
 }
 
-const handleAdd = () => {
-  dialogVisible.value = true
+// 添加选项
+const addOption = () => {
+  if (optionCount.value < 7) {
+    optionCount.value++
+  }
 }
 
-const handleEdit = (row) => {
-  dialogVisible.value = true
+const handleAdd = async () => {
+  // 显示加载动画
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '加载中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+  
+  try {
+    isEdit.value = false
+    optionCount.value = 2 // 重置为2个选项
+    // 重置表单
+    Object.assign(formData, {
+      id: null,
+      curriculumId: null,
+      chapterId: null,
+      type: 1,
+      subject: '',
+      selectA: '',
+      selectB: '',
+      selectC: '',
+      selectD: '',
+      selectE: '',
+      selectF: '',
+      selectG: '',
+      answer: '',
+      difficulty: 1,
+      knowledgePoint: '',
+      analysis: '',
+      isUse: true,
+      year: ''
+    })
+    
+    // 加载课程列表
+    await loadFormCourseList()
+    dialogVisible.value = true
+  } finally {
+    loadingInstance.close()
+  }
 }
 
-const handleDelete = (row) => {
+const handleEdit = async (row) => {
+  // 显示加载动画
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '加载题目信息中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+  
+  try {
+    isEdit.value = true
+    
+    // 加载课程列表
+    await loadFormCourseList()
+    
+    // 获取题目详情
+    const detail = await getQuestionDetail(row.id)
+    
+    if (detail) {
+      // 从 options 数组中提取选项
+      const optionsMap = {}
+      if (detail.options && Array.isArray(detail.options)) {
+        detail.options.forEach(opt => {
+          // text 格式: "选项A：内容" 或直接 "内容"
+          const text = opt.text.replace(/^选项[A-G][:：]\s*/, '')
+          optionsMap[`select${opt.option}`] = text
+        })
+      }
+      
+      // 填充表单数据
+      Object.assign(formData, {
+        id: detail.id,
+        curriculumId: row.courseId, // 从 row 中获取
+        chapterId: row.chapterId,   // 从 row 中获取
+        type: detail.type,
+        subject: detail.subject,
+        selectA: optionsMap.selectA || '',
+        selectB: optionsMap.selectB || '',
+        selectC: optionsMap.selectC || '',
+        selectD: optionsMap.selectD || '',
+        selectE: optionsMap.selectE || '',
+        selectF: optionsMap.selectF || '',
+        selectG: optionsMap.selectG || '',
+        answer: detail.answer,
+        difficulty: detail.difficulty,
+        knowledgePoint: detail.knowledgePoint || '',
+        analysis: detail.analysis || '',
+        isUse: detail.isUse,
+        year: detail.year || ''
+      })
+      
+      // 计算选项数量
+      let count = 2 // A和B必有
+      if (optionsMap.selectC) count = 3
+      if (optionsMap.selectD) count = 4
+      if (optionsMap.selectE) count = 5
+      if (optionsMap.selectF) count = 6
+      if (optionsMap.selectG) count = 7
+      optionCount.value = count
+      
+      // 加载对应课程的章节列表
+      if (formData.curriculumId) {
+        chapterLoading.value = true
+        try {
+          const chapterData = await getChapterDict(formData.curriculumId)
+          if (chapterData && Array.isArray(chapterData)) {
+            formChapterList.value = chapterData
+            // 确保章节ID在列表加载后再设置
+            formData.chapterId = row.chapterId
+          }
+        } catch (error) {
+          console.error('获取章节列表失败:', error)
+        } finally {
+          chapterLoading.value = false
+        }
+      }
+      
+      dialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('加载题目信息失败:', error)
+    ElMessage.error('加载题目信息失败')
+  } finally {
+    loadingInstance.close()
+  }
+}
+
+const handleSubmit = async () => {
+  if (!formRef.value) return
+  
+  await formRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    submitting.value = true
+    
+    try {
+      // 获取选中的课程和章节名称
+      const selectedCourse = formCourseList.value.find(c => c.id === formData.curriculumId)
+      const selectedChapter = formChapterList.value.find(c => c.id === formData.chapterId)
+      
+      const questionData = {
+        curriculumId: formData.curriculumId,
+        curriculumName: selectedCourse?.name || '',
+        chapterId: formData.chapterId,
+        chapterName: selectedChapter?.name || '',
+        type: formData.type,
+        subject: formData.subject,
+        selectA: formData.selectA,
+        selectB: formData.selectB,
+        selectC: formData.selectC || '',
+        selectD: formData.selectD || '',
+        selectE: formData.selectE || '',
+        selectF: formData.selectF || '',
+        selectG: formData.selectG || '',
+        answer: formData.answer,
+        difficulty: formData.difficulty,
+        knowledgePoint: formData.knowledgePoint || '',
+        analysis: formData.analysis || '',
+        isUse: formData.isUse,
+        year: formData.year || ''
+      }
+      
+      if (isEdit.value) {
+        // 编辑
+        await updateQuestion(formData.id, questionData)
+        ElMessage.success('编辑成功')
+      } else {
+        // 新增
+        await createQuestion(questionData)
+        ElMessage.success('新增成功')
+      }
+      
+      dialogVisible.value = false
+      await loadData()
+    } catch (error) {
+      console.error(isEdit.value ? '编辑失败:' : '新增失败:', error)
+      ElMessage.error(isEdit.value ? '编辑失败' : '新增失败')
+    } finally {
+      submitting.value = false
+    }
+  })
+}
+
+const handleDialogClose = () => {
+  formRef.value?.resetFields()
+  formChapterList.value = []
+  optionCount.value = 2 // 重置为2个选项
+}
   ElMessageBox.confirm('确定要删除该题目吗？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -276,9 +651,6 @@ const handleDelete = (row) => {
     loadData()
     ElMessage.success('删除成功')
   }).catch(() => {})
-}
-
-const handleDialogClose = () => {}
 
 onMounted(() => {
   loadData()

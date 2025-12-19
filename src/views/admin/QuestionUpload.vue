@@ -237,8 +237,8 @@ const handleExcelUpload = async () => {
     // 获取选中的课程名和章节名
     const selectedCourse = courseList.value.find(c => c.id === excelForm.value.courseId)
     const selectedChapter = chapterList.value.find(c => c.id === excelForm.value.chapterId)
-    const curriculumName = selectedCourse?.name || ''
-    const chapterName = selectedChapter?.name || ''
+    const curriculumId = selectedCourse?.id || ''
+    const chapterId = selectedChapter?.id || ''
     
     // 转换为后端需要的格式
     const questions = result.data.map(item => {
@@ -265,8 +265,8 @@ const handleExcelUpload = async () => {
         analysis: item.analysis || '',
         isUse: true,
         year: String(item.year || ''),
-        curriculumName,
-        chapterName
+        curriculumId,
+        chapterId
       }
     })
     
@@ -355,14 +355,14 @@ const handleJsonUpload = async () => {
     // 获取选中的课程名和章节名
     const selectedCourse = courseList.value.find(c => c.id === jsonForm.value.courseId)
     const selectedChapter = chapterList.value.find(c => c.id === jsonForm.value.chapterId)
-    const curriculumName = selectedCourse?.name || ''
-    const chapterName = selectedChapter?.name || ''
+    const curriculumId = selectedCourse?.id || ''
+    const chapterId = selectedChapter?.id || ''
     
     // 为每道题添加课程名和章节名
     const questionsWithNames = questions.map(item => ({
       ...item,
-      curriculumName,
-      chapterName,
+      curriculumId,
+      chapterId,
       // 确保必填字段有默认值
       analysis: item.analysis ?? '',
       answer: item.answer ?? '',

@@ -28,6 +28,13 @@
           <el-table-column prop="remarks" label="课程描述" min-width="250" show-overflow-tooltip />
           <el-table-column prop="chapterCount" label="章节数" width="100" align="center" />
           <el-table-column prop="questionCount" label="题目数" width="100" align="center" />
+          <el-table-column label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.isUse ? 'success' : 'info'">
+                {{ row.isUse ? '启用' : '禁用' }}
+              </el-tag>
+            </template>
+          </el-table-column>
           <el-table-column prop="createTime" label="创建时间" width="180" />
           <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
@@ -81,6 +88,10 @@
               placeholder="请输入课程描述"
             />
           </el-form-item>
+
+          <el-form-item label="是否启用" prop="isUse">
+            <el-switch v-model="formData.isUse" active-text="启用" inactive-text="禁用" />
+          </el-form-item>
         </el-form>
         
         <template #footer>
@@ -124,7 +135,8 @@ const dialogTitle = computed(() => isEdit.value ? '编辑课程' : '新增课程
 const formData = reactive({
   id: null,
   name: '',
-  remarks: ''
+  remarks: '',
+  isUse: true
 })
 
 // 表单验证规则
@@ -217,7 +229,8 @@ const handleAdd = () => {
   Object.assign(formData, {
     id: null,
     name: '',
-    remarks: ''
+    remarks: '',
+    isUse: true
   })
   dialogVisible.value = true
 }
@@ -228,7 +241,8 @@ const handleEdit = (row) => {
   Object.assign(formData, {
     id: row.id,
     name: row.name,
-    remarks: row.remarks
+    remarks: row.remarks,
+    isUse: row.isUse
   })
   dialogVisible.value = true
 }
@@ -279,10 +293,11 @@ const handleSubmit = async () => {
         //     remarks: formData.remarks
         //   })
         // }
-        // 新增
+        // 编辑
         const newCourse = {
           name: formData.name,
           remarks: formData.remarks,
+          isUse: formData.isUse
         }
         const data=await updateCourse(formData.id,newCourse);
         // allCourses.value.unshift(newCourse)
@@ -293,6 +308,7 @@ const handleSubmit = async () => {
           // id: allCourses.value.length + 1,
           name: formData.name,
           remarks: formData.remarks,
+          isUse: formData.isUse
           // chapterCount: 0,
           // questionCount: 0,
           // createTime: new Date().toLocaleString('zh-CN')
