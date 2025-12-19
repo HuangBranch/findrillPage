@@ -15,21 +15,25 @@
         <div style="width: 40px;"></div>
       </div>
     </div>
-
     <!-- 内容区域 -->
     <div class="page-content">
-      <el-empty v-if="groupedWrongQuestions.length === 0" description="暂无错题">
+      <!-- 加载中状态 -->
+      <el-skeleton v-if="loading" :count="5" class="skeleton-container" />
+
+      <!-- 无数据状态 -->
+      <el-empty v-else-if="groupedWrongQuestions.length === 0" description="暂无错题">
         <el-button type="primary" @click="$router.push('/courses')">
           去做题
         </el-button>
       </el-empty>
 
+      <!-- 错题列表 -->
       <div v-else class="wrong-content">
         <!-- 按课程分组显示 -->
         <div
-          v-for="group in groupedWrongQuestions"
-          :key="group.courseId"
-          class="course-section"
+            v-for="group in groupedWrongQuestions"
+            :key="group.courseId"
+            class="course-section"
         >
           <!-- 课程头部 - 可折叠 -->
           <div class="section-header" @click="toggleCourse(group.courseId)">
@@ -43,22 +47,21 @@
               </div>
             </div>
             <el-button
-              type="primary"
-              size="default"
-              @click.stop="startPractice(group.courseId)"
+                type="primary"
+                size="default"
+                @click.stop="startPractice(group.courseId)"
             >
               <el-icon><VideoPlay /></el-icon>
               开始练习
             </el-button>
           </div>
-
           <!-- 章节列表 - 折叠展开 -->
           <transition name="collapse">
             <div v-show="expandedCourses.has(group.courseId)" class="chapter-list">
               <div
-                v-for="chapter in group.chapters"
-                :key="chapter.chapterId"
-                class="chapter-group"
+                  v-for="chapter in group.chapters"
+                  :key="chapter.chapterId"
+                  class="chapter-group"
               >
                 <!-- 章节头部 - 可折叠 -->
                 <div class="chapter-header" @click="toggleChapter(group.courseId, chapter.chapterId)">
@@ -70,148 +73,253 @@
                   </div>
                   <el-tag size="small">{{ chapter.questions.length }} 题</el-tag>
                 </div>
-
                 <!-- 题目列表 - 折叠展开 -->
                 <transition name="collapse">
                   <div v-show="expandedChapters.has(`${group.courseId}-${chapter.chapterId}`)" class="question-list">
-                  <div
-                    v-for="(question, index) in chapter.questions"
-                    :key="question.timestamp"
-                    class="question-item"
-                  >
-                    <div class="question-content">
-                      <div class="question-header-row">
-                        <div class="question-meta">
-                          <el-tag :type="getQuestionTypeTag(question.type)" size="small">
-                            {{ getQuestionTypeName(question.type) }}
-                          </el-tag>
-                          <span class="question-time">{{ formatTime(question.timestamp) }}</span>
+                    <div
+                        v-for="(question, index) in chapter.questions"
+                        :key="question.id"
+                        class="question-item"
+                    >
+                      <div class="question-content">
+                        <div class="question-header-row">
+                          <div class="question-meta">
+                            <el-tag :type="getQuestionTypeTag(question.type)" size="small">
+                              {{ getQuestionTypeName(question.type) }}
+                            </el-tag>
+                            <el-tag size="small" type="info">{{ question.knowledgePoint }}</el-tag>
+                            <span class="question-time">{{ formatTime(question.timestamp) }}</span>
+                          </div>
+                        </div>
+                        <div class="question-text">{{ index + 1 }}. {{ question.subject }}</div>
+
+                        <!-- 显示选项 -->
+                        <div class="question-options">
+                          <div
+                              v-for="option in question.options"
+                              :key="option.option"
+                              class="option-item"
+                              :class="{
+                              'option-correct': option.option === question.answer,
+                              'option-wrong': question.userAnswer === option.option && option.option !== question.answer
+                            }"
+                          >
+                            <span class="option-label">{{ option.option }}.</span>
+                            <span class="option-text">{{ option.text }}</span>
+                            <el-icon v-if="option.option === question.answer" class="option-icon correct">
+                              <Check />
+                            </el-icon>
+                            <el-icon v-if="question.userAnswer === option.option && option.option !== question.answer" class="option-icon wrong">
+                              <Close />
+                            </el-icon>
+                          </div>
+                        </div>
+
+                        <div class="question-answer">
+                          <span class="answer-item">
+                            <span class="answer-label">你的答案：</span>
+                            <span class="user-answer wrong">{{ question.userAnswer || '未作答' }}</span>
+                          </span>
+                          <span class="answer-item">
+                            <span class="answer-label">正确答案：</span>
+                            <span class="correct-answer">{{ question.answer }}</span>
+                          </span>
+                        </div>
+
+                        <!-- 题目解析 -->
+                        <div class="question-analysis" v-if="question.analysis">
+                          <el-divider content-position="left">题目解析</el-divider>
+                          <p class="analysis-text">{{ question.analysis }}</p>
                         </div>
                       </div>
-                      <div class="question-text">{{ index + 1 }}. {{ question.question }}</div>
-                      
-                      <!-- 显示选项 -->
-                      <div class="question-options">
-                        <div
-                          v-for="(option, optIndex) in question.options"
-                          :key="optIndex"
-                          class="option-item"
-                          :class="{
-                            'option-correct': option.isCorrect,
-                            'option-wrong': isUserSelectedOption(question, optIndex) && !option.isCorrect
-                          }"
+                      <div class="question-actions">
+                        <el-button
+                            type="danger"
+                            size="small"
+                            plain
+                            @click="removeWrongQuestion(question)"
                         >
-                          <span class="option-label">{{ getOptionLabel(question.type, optIndex) }}.</span>
-                          <span class="option-text">{{ option.text }}</span>
-                          <el-icon v-if="option.isCorrect" class="option-icon correct">
-                            <Check />
-                          </el-icon>
-                          <el-icon v-if="isUserSelectedOption(question, optIndex) && !option.isCorrect" class="option-icon wrong">
-                            <Close />
-                          </el-icon>
-                        </div>
+                          <el-icon><Delete /></el-icon>
+                          删除
+                        </el-button>
                       </div>
-                      
-                      <div class="question-answer">
-                        <span class="answer-item">
-                          <span class="answer-label">你的答案：</span>
-                          <span class="user-answer wrong">{{ question.userAnswer || '未作答' }}</span>
-                        </span>
-                        <span class="answer-item">
-                          <span class="answer-label">正确答案：</span>
-                          <span class="correct-answer">{{ getCorrectAnswer(question) }}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <div class="question-actions">
-                      <el-button
-                        type="danger"
-                        size="small"
-                        plain
-                        @click="removeWrongQuestion(question)"
-                      >
-                        <el-icon><Delete /></el-icon>
-                        删除
-                      </el-button>
                     </div>
                   </div>
-                </div>
-              </transition>
+                </transition>
               </div>
             </div>
           </transition>
         </div>
+
+        <!-- 分页控件 -->
+        <div class="pagination-container">
+          <el-pagination
+              @size-change="handleSizeChange"
+              @current-change="handleCurrentChange"
+              :current-page="page"
+              :page-sizes="[10, 20, 50]"
+              :page-size="pageSize"
+              layout="total, sizes, prev, pager, next, jumper"
+              :total="totalWrong"
+          />
+        </div>
       </div>
     </div>
-
     <!-- 底部导航 -->
     <BottomNav />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { ElMessageBox, ElMessage } from 'element-plus'
-import { VideoPlay, Delete, ArrowLeft, Reading, Flag, User, ArrowRight, Check, Close } from '@element-plus/icons-vue'
+import { ElMessageBox, ElMessage, ElSkeleton, ElDivider, ElPagination } from 'element-plus'
+import { VideoPlay, Delete, ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
+import {getWrongList} from "@/api/wrong.js";
+import {getCourseList} from "@/api/course.js";
+import {getChapterList} from "@/api/chapter.js";
 
 const router = useRouter()
 const route = useRoute()
+
+// 接口参数
+const page = ref(1)
+const pageSize = ref(10)
+const curriculumId = ref('') // 课程ID
+const chapterId = ref('') // 章节ID
+const loading = ref(false)
+
+// 课程&章节映射（从接口获取）
+const courses = ref({}) // 格式：{ curriculumId: "课程名称" }
+const chapters = ref({}) // 格式：{ curriculumId: { chapterId: "章节名称" } }
+
+
+// 错题数据
 const wrongQuestions = ref([])
+const totalWrong = ref(0)
 
 // 折叠状态管理
 const expandedCourses = ref(new Set())
 const expandedChapters = ref(new Set())
 
-// 总错题数
-const totalWrong = computed(() => wrongQuestions.value.length)
-
-// 按课程和章节分组
+// 按课程和章节分组（使用接口获取的真实名称）
 const groupedWrongQuestions = computed(() => {
   const groups = {}
-  
+
   wrongQuestions.value.forEach(q => {
-    if (!groups[q.courseId]) {
-      groups[q.courseId] = {
-        courseId: q.courseId,
-        courseName: q.courseName,
+    const courseId = q.curriculumId
+    // 初始化课程分组
+    if (!groups[courseId]) {
+      groups[courseId] = {
+        courseId: courseId,
+        courseName: courses.value[courseId] || `课程${courseId}`, // 接口获取的课程名
         questions: [],
         chapters: {}
       }
     }
-    
-    groups[q.courseId].questions.push(q)
-    
-    if (!groups[q.courseId].chapters[q.chapterId]) {
-      groups[q.courseId].chapters[q.chapterId] = {
+
+    groups[courseId].questions.push(q)
+
+    // 初始化章节分组
+    if (!groups[courseId].chapters[q.chapterId]) {
+      const chapterName = chapters.value[courseId]?.[q.chapterId] || `章节${q.chapterId}` // 接口获取的章节名
+      groups[courseId].chapters[q.chapterId] = {
         chapterId: q.chapterId,
-        chapterName: q.chapterName,
+        chapterName: chapterName,
         questions: []
       }
     }
-    
-    groups[q.courseId].chapters[q.chapterId].questions.push(q)
+
+    groups[courseId].chapters[q.chapterId].questions.push(q)
   })
-  
-  const result = Object.values(groups).map(group => ({
+
+  // 转换为数组格式
+  return Object.values(groups).map(group => ({
     ...group,
     chapters: Object.values(group.chapters)
   }))
-  
-  console.log('Grouped wrong questions:', result)
-  return result
 })
 
-// 加载错题
-const loadWrongQuestions = () => {
-  const saved = localStorage.getItem('wrong_questions')
-  if (saved) {
-    wrongQuestions.value = JSON.parse(saved)
+// 1. 请求课程列表（/api/courses）
+const fetchCourses = async () => {
+  try {
+    const res = await getCourseList()
+    console.log(res)
+    if (res) {
+      // 假设接口返回格式：[{ curriculumId: 21, name: "计算机网络" }, ...]
+      res.forEach(course => {
+        courses.value[course.id] = course.name
+      })
+    } else {
+      ElMessage.error('获取课程列表失败')
+    }
+  } catch (error) {
+    console.error('课程列表请求失败:', error)
+    ElMessage.error('网络错误，请重试')
   }
 }
 
-// 保存错题
+// 2. 根据课程ID请求章节列表（/api/chapters）
+const fetchChaptersByCurriculumId = async (cid) => {
+  if (!cid || chapters.value[cid]) return // 避免重复请求
+  try {
+    const params = new URLSearchParams({ curriculumId: cid })
+    const res = await getChapterList(params)
+
+    if (res) {
+      // 假设接口返回格式：[{ chapterId: 3, name: "计算机网络基础" }, ...]
+      const chapterMap = {}
+      res.forEach(chapter => {
+        chapterMap[chapter.chapterId] = chapter.name
+      })
+      chapters.value[cid] = chapterMap
+    } else {
+      ElMessage.error(`获取课程${cid}的章节失败`)
+    }
+  } catch (error) {
+    console.error('章节列表请求失败:', error)
+    ElMessage.error('网络错误，请重试')
+  }
+}
+
+// 接口请求：获取错题列表
+const fetchWrongQuestions = async () => {
+  loading.value = true
+  try {
+    // 构造请求参数
+    const params = {
+      page: page.value,
+      pageSize: pageSize.value,
+      // curriculumId: curriculumId.value,
+      // chapterId: chapterId.value
+    }
+
+    // 发送请求（替换为实际接口地址）
+    const res = await getWrongList(params)
+
+    if (res) {
+      // 接口返回的data直接是错题数组
+      wrongQuestions.value = res.map(item => ({
+        ...item,
+        // 补充用户答案字段（接口返回的wrongAnswers可能存储用户错误答案）
+        userAnswer: item.wrongAnswers || '',
+        // 补充时间戳（使用当前时间模拟，实际应从接口获取）
+        timestamp: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)
+      }))
+      totalWrong.value = res.length // 实际项目中应使用接口返回的total字段
+    } else {
+      ElMessage.error('获取错题列表失败')
+    }
+  } catch (error) {
+    console.error('错题列表请求失败:', error)
+    ElMessage.error('网络错误，请重试')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 保存错题到本地存储
 const saveWrongQuestions = () => {
   localStorage.setItem('wrong_questions', JSON.stringify(wrongQuestions.value))
 }
@@ -220,23 +328,24 @@ const saveWrongQuestions = () => {
 const removeWrongQuestion = async (question) => {
   try {
     await ElMessageBox.confirm(
-      '确定要从错题本中移除这道题吗？',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        '确定要从错题本中移除这道题吗？',
+        '确认删除',
+        {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }
     )
-    
-    const index = wrongQuestions.value.findIndex(
-      q => q.timestamp === question.timestamp
-    )
-    
+
+    // 本地删除
+    const index = wrongQuestions.value.findIndex(q => q.id === question.id)
     if (index !== -1) {
       wrongQuestions.value.splice(index, 1)
       saveWrongQuestions()
       ElMessage.success('已移除')
+
+      // 同步删除接口（如果需要）
+      // await fetch(`/api/wrong/delete/${question.id}`, { method: 'DELETE' })
     }
   } catch {
     // 用户取消
@@ -264,44 +373,12 @@ const toggleChapter = (courseId, chapterId) => {
   expandedChapters.value = new Set(expandedChapters.value)
 }
 
-// 判断选项是否被用户选择
-const isUserSelectedOption = (question, optIndex) => {
-  if (!question.userAnswer) return false
-  
-  if (question.type === 'judge') {
-    // 判断题：正确对应索引0，错误对应索引1
-    return (question.userAnswer === '正确' && optIndex === 0) || 
-           (question.userAnswer === '错误' && optIndex === 1)
-  } else {
-    // 单选和多选题
-    const userAnswers = question.userAnswer.split('、')
-    const optionLabel = String.fromCharCode(65 + optIndex)
-    return userAnswers.includes(optionLabel)
-  }
-}
-
-// 获取选项标签
-const getOptionLabel = (type, index) => {
-  if (type === 'judge') {
-    return index === 0 ? '√' : '×'
-  }
-  return String.fromCharCode(65 + index)
-}
-
-// 开始练习
-const startPractice = (courseId) => {
-  router.push({
-    path: '/wrong/practice',
-    query: { courseId }
-  })
-}
-
-// 获取题目类型名称
+// 获取题目类型名称（接口type为数字：1=单选）
 const getQuestionTypeName = (type) => {
   const map = {
-    single: '单选',
-    multiple: '多选',
-    judge: '判断'
+    1: '单选',
+    2: '多选',
+    3: '判断'
   }
   return map[type] || '未知'
 }
@@ -309,28 +386,11 @@ const getQuestionTypeName = (type) => {
 // 获取题目类型标签
 const getQuestionTypeTag = (type) => {
   const map = {
-    single: 'primary',
-    multiple: 'warning',
-    judge: 'info'
+    1: 'primary',
+    2: 'warning',
+    3: 'info'
   }
   return map[type] || 'default'
-}
-
-// 获取正确答案
-const getCorrectAnswer = (question) => {
-  const correctOptions = question.options
-    .map((opt, idx) => {
-      if (opt.isCorrect) {
-        if (question.type === 'judge') {
-          return idx === 0 ? '正确' : '错误'
-        }
-        return String.fromCharCode(65 + idx)
-      }
-      return null
-    })
-    .filter(Boolean)
-  
-  return correctOptions.join('、')
 }
 
 // 格式化时间
@@ -338,121 +398,65 @@ const formatTime = (timestamp) => {
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now - date
-  
+
   // 小于1小时
   if (diff < 3600000) {
     const minutes = Math.floor(diff / 60000)
     return minutes < 1 ? '刚刚' : `${minutes}分钟前`
   }
-  
+
   // 小于24小时
   if (diff < 86400000) {
     const hours = Math.floor(diff / 3600000)
     return `${hours}小时前`
   }
-  
+
   // 小于7天
   if (diff < 604800000) {
     const days = Math.floor(diff / 86400000)
     return `${days}天前`
   }
-  
+
   // 显示日期
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
-// 生成测试错题数据
-const generateMockWrongQuestions = () => {
-  const saved = localStorage.getItem('wrong_questions')
-  if (saved && JSON.parse(saved).length > 0) {
-    return // 已有数据，不覆盖
-  }
-  
-  const mockData = []
-  const courses = [
-    { cId: 1, cName: '高等数学' },
-    { cId: 2, cName: '大学英语' },
-    { cId: 3, cName: '计算机基础' }
-  ]
-  
-  const chapters = [
-    { chapterId: 1, chapterName: '第一章 基础知识' },
-    { chapterId: 2, chapterName: '第二章 进阶内容' },
-    { chapterId: 3, chapterName: '第三章 综合应用' }
-  ]
-  
-  let questionId = 1
-  
-  courses.forEach((course, courseIdx) => {
-    chapters.slice(0, courseIdx + 1).forEach(chapter => {
-      // 每个章节生成3-5道错题
-      const questionCount = 3 + Math.floor(Math.random() * 3)
-      
-      for (let i = 0; i < questionCount; i++) {
-        const types = ['single', 'multiple', 'judge']
-        const type = types[Math.floor(Math.random() * types.length)]
-        
-        let question, options, userAnswer
-        
-        if (type === 'judge') {
-          question = `${course.cName} - ${chapter.chapterName}：判断题示例 ${i + 1}`
-          options = [
-            { text: '正确', isCorrect: Math.random() > 0.5 },
-            { text: '错误', isCorrect: false }
-          ]
-          options[1].isCorrect = !options[0].isCorrect
-          userAnswer = options[0].isCorrect ? '错误' : '正确'
-        } else if (type === 'single') {
-          question = `${course.cName} - ${chapter.chapterName}：单选题示例 ${i + 1}，以下哪个选项是正确的？`
-          const correctIdx = Math.floor(Math.random() * 4)
-          options = ['A', 'B', 'C', 'D'].map((label, idx) => ({
-            text: `选项${label}：这是${label}选项的内容描述`,
-            isCorrect: idx === correctIdx
-          }))
-          const wrongIdx = (correctIdx + 1 + Math.floor(Math.random() * 3)) % 4
-          userAnswer = String.fromCharCode(65 + wrongIdx)
-        } else {
-          question = `${course.cName} - ${chapter.chapterName}：多选题示例 ${i + 1}，以下哪些选项是正确的？`
-          options = ['A', 'B', 'C', 'D'].map((label, idx) => ({
-            text: `选项${label}：这是${label}选项的内容描述`,
-            isCorrect: Math.random() > 0.5
-          }))
-          if (!options.some(o => o.isCorrect)) options[0].isCorrect = true
-          const correctLabels = options.map((o, i) => o.isCorrect ? String.fromCharCode(65 + i) : '').filter(Boolean)
-          const wrongAnswers = correctLabels.slice(0, -1)
-          userAnswer = wrongAnswers.join('、') || String.fromCharCode(65)
-        }
-        
-        mockData.push({
-          id: questionId++,
-          courseId: course.cId,
-          courseName: course.cName,
-          chapterId: chapter.chapterId,
-          chapterName: chapter.chapterName,
-          type,
-          question,
-          options,
-          userAnswer,
-          timestamp: Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000),
-          analysis: `这道题的正确答案应该是${type === 'judge' ? (options[0].isCorrect ? '正确' : '错误') : options.map((o, i) => o.isCorrect ? String.fromCharCode(65 + i) : '').filter(Boolean).join('、')}。需要注意理解核心概念。`
-        })
-      }
-    })
+// 开始练习
+const startPractice = (courseId) => {
+  router.push({
+    path: '/wrong/practice',
+    query: { courseId, chapterId: chapterId.value }
   })
-  
-  localStorage.setItem('wrong_questions', JSON.stringify(mockData))
 }
 
-onMounted(() => {
-  generateMockWrongQuestions()
-  loadWrongQuestions()
-  
-  // 默认展开第一个课程
+// 分页相关方法
+const handleSizeChange = (val) => {
+  pageSize.value = val
+  fetchWrongQuestions()
+}
+
+const handleCurrentChange = (val) => {
+  page.value = val
+  fetchWrongQuestions()
+}
+
+// 页面加载时获取数据
+onMounted(async () => {
+  await fetchCourses() // 先获取所有课程名称
+  curriculumId.value = route.query.curriculumId || ''
+  chapterId.value = route.query.chapterId || ''
+  await fetchWrongQuestions() // 再获取错题
+  // 最后获取错题对应的章节名称
+  const uniqueCourseIds = [...new Set(wrongQuestions.value.map(q => q.curriculumId))]
+  for (const cid of uniqueCourseIds) {
+    await fetchChaptersByCurriculumId(cid)
+  }
+
+  // 默认展开第一个课程和章节
   nextTick(() => {
     if (groupedWrongQuestions.value.length > 0) {
       const firstCourse = groupedWrongQuestions.value[0]
       expandedCourses.value.add(firstCourse.courseId)
-      // 默认展开第一个课程的第一个章节
       if (firstCourse.chapters.length > 0) {
         expandedChapters.value.add(`${firstCourse.courseId}-${firstCourse.chapters[0].chapterId}`)
       }
@@ -513,6 +517,11 @@ onMounted(() => {
   overflow-x: hidden;
   padding: 1.5rem;
   padding-bottom: 100px;
+}
+
+.skeleton-container {
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .wrong-content {
@@ -672,6 +681,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .question-time {
@@ -695,7 +705,7 @@ onMounted(() => {
 
 .option-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
   border-radius: 6px;
@@ -719,6 +729,7 @@ onMounted(() => {
   font-weight: 600;
   color: #606266;
   min-width: 24px;
+  margin-top: 2px;
 }
 
 .option-text {
@@ -730,6 +741,7 @@ onMounted(() => {
 .option-icon {
   font-size: 18px;
   flex-shrink: 0;
+  margin-top: 2px;
 }
 
 .option-icon.correct {
@@ -747,6 +759,7 @@ onMounted(() => {
   font-size: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid #ebeef5;
+  margin-bottom: 0.75rem;
 }
 
 .answer-item {
@@ -778,13 +791,31 @@ onMounted(() => {
   background: #f0f9ff;
 }
 
+.question-analysis {
+  margin-top: 1rem;
+}
+
+.analysis-text {
+  font-size: 0.875rem;
+  color: #606266;
+  line-height: 1.6;
+  margin: 0.5rem 0 0 0;
+  padding-left: 0.5rem;
+  border-left: 2px solid #409eff;
+}
+
 .question-actions {
   display: flex;
   align-items: center;
   margin-left: 1rem;
 }
 
-/* 底部导航 */
+.pagination-container {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+/* 底部导航样式 */
 .bottom-nav-wrapper {
   position: fixed;
   bottom: 0;
@@ -818,7 +849,7 @@ onMounted(() => {
   top: 6px;
   left: 0;
   transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94),
-              width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  width 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   will-change: transform, width;
   box-shadow: 0 2px 8px rgba(64, 158, 255, 0.3);
 }
@@ -859,53 +890,52 @@ onMounted(() => {
   .page-content {
     padding: 1rem;
   }
-  
+
   .course-section {
-    padding: 1rem;
     margin-bottom: 1rem;
   }
-  
+
   .section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .section-header .el-button {
     width: 100%;
   }
-  
+
   .question-item {
     flex-direction: column;
     gap: 0.75rem;
   }
-  
+
   .question-actions {
     margin-left: 0;
   }
-  
+
   .question-actions .el-button {
     width: 100%;
   }
-  
+
   .bottom-nav {
     width: 240px;
     max-width: calc(100% - 32px);
     padding: 4px;
   }
-  
+
   .nav-indicator {
     height: calc(100% - 8px);
     top: 4px;
   }
-  
+
   .nav-item {
     padding: 6px 16px;
     min-width: 56px;
     gap: 2px;
     font-size: 11px;
   }
-  
+
   .nav-item .el-icon {
     font-size: 20px;
   }

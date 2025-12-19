@@ -16,7 +16,7 @@ export const getWrongSummary = () => {
  */
 export const getWrongList = (params) => {
   return request({
-    url: '/wrong-questions',
+    url: '/wrong/list',
     method: 'GET',
     params
   })
