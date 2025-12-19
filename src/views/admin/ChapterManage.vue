@@ -134,14 +134,6 @@ import {
   updateCourse
 } from "@/api/admin.js";
 
-// 课程列表
-// [
-//   { id: 1, name: 'Java 基础' },
-//   { id: 2, name: 'Python 入门' },
-//   { id: 3, name: 'JavaScript 高级' },
-//   { id: 4, name: 'Vue 3 实战' },
-//   { id: 5, name: 'React 开发' }
-// ]
 const courseList = ref()
 
 // 搜索条件
@@ -186,29 +178,6 @@ const formRules = {
     { max: 200, message: '长度不超过 200 个字符', trigger: 'blur' }
   ]
 }
-
-// 初始化模拟数据
-// const initMockData = () => {
-//   const chapters = []
-//   const chapterNames = ['第一章', '第二章', '第三章', '第四章', '第五章', '第六章', '第七章', '第八章']
-//
-//   courseList.value.forEach(course => {
-//     for (let i = 0; i < 5; i++) {
-//       chapters.push({
-//         id: chapters.length + 1,
-//         courseId: course.id,
-//         courseName: course.name,
-//         name: `${chapterNames[i]} - ${course.name.split(' ')[0]}知识点`,
-//         description: `本章节主要讲解${course.name}的相关知识点`,
-//         questionCount: Math.floor(Math.random() * 100) + 20,
-//         createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
-//       })
-//     }
-//   })
-//
-//   return chapters
-// }
-
 // const allChapters = ref(initMockData())
 //加载课程数据
 const courseData = async () => {

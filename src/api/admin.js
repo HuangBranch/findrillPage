@@ -127,7 +127,7 @@ export const batchDeleteQuestions = (data) => {
 
 // 获取考试/练习记录列表
 export const getTraceList = (params) => {
-  return request({ url: '/admin/traces', method: 'GET', params })
+  return request({ url: '/admin/exam', method: 'GET', params })
 }
 
 // 获取记录详情

@@ -139,10 +139,8 @@ const loadChapters = async () => {
   loading.value = true
   
   try {
-
-    const courseId = route.params.courseId
     console.log(courseStore, )
-    const data = await getChapterList({ curriculumId: courseId})
+    const data = await getChapterList({ curriculumId: route.params.courseId,curriculumName: route.query.curriculumName })
     chapterList.value = data || []
     courseStore.setChapterList(chapterList.value)
   } catch (error) {
