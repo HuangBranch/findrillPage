@@ -54,11 +54,25 @@ export const parseExcelFile = (file) => {
  * @returns {Object} 格式化后的题目对象
  */
 const formatQuestionData = (row, index) => {
+  // 难度映射：简单->1, 中等->2, 困难->3
+  let difficulty = row['难度'] || 2
+  if (typeof difficulty === 'string') {
+    const difficultyMap = {
+      '简单': 1,
+      '中等': 2,
+      '困难': 3,
+      '1': 1,
+      '2': 2,
+      '3': 3
+    }
+    difficulty = difficultyMap[difficulty.trim()] || 2
+  }
+  
   const question = {
     rowNumber: index + 2, // Excel 行号（从2开始，因为第1行是表头）
     year: row['年份'] || new Date().getFullYear(),
     type: row['题型'] || 'single',
-    difficulty: row['难度'] || 2,
+    difficulty: difficulty,
     knowledgePoint: row['知识点'] || '',
     questionTitle: row['题目标题'] || row['题目'] || '',
     options: {},
@@ -159,10 +173,10 @@ export const downloadTemplate = () => {
   const templateData = [
     {
       年份: 2024,
-      题型: 'single',
-      难度: 2,
+      题型: '单选题',
+      难度: '简单',
       知识点: '物理层',
-      题目标题: 'OSI 参考模型的最底层是？',
+      题目: 'OSI 参考模型的最底层是？',
       选项A: '物理层',
       选项B: '数据链路层',
       选项C: '网络层',
@@ -172,16 +186,27 @@ export const downloadTemplate = () => {
     },
     {
       年份: 2024,
-      题型: 'multiple',
-      难度: 3,
+      题型: '多选题',
+      难度: '困难',
       知识点: '传输层',
-      题目标题: '以下哪些属于传输层协议？',
+      题目: '以下哪些属于传输层协议？',
       选项A: 'TCP',
       选项B: 'UDP',
       选项C: 'IP',
       选项D: 'HTTP',
-      答案: 'A,B',
+      答案: 'AB',
       解析: 'TCP 和 UDP 都是传输层协议'
+    },
+    {
+      年份: 2024,
+      题型: '判断题',
+      难度: '中等',
+      知识点: 'HTTP协议',
+      题目: 'HTTP是无状态协议',
+      选项A: '正确',
+      选项B: '错误',
+      答案: 'A',
+      解析: 'HTTP协议本身不维护状态信息'
     }
   ]
 

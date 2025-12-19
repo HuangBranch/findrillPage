@@ -104,10 +104,10 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getQuestionList } from '@/api/admin'
+import { getQuestionList, getQuestionDetail } from '@/api/admin'
 
 const courseList = ref([])
 const chapterList = ref([])
@@ -222,9 +222,40 @@ const getTypeTag = (type) => ({ 1: '', 2: 'success', 3: 'warning' }[type] || '')
 const getDifficultyName = (d) => ({ 1: '简单', 2: '中等', 3: '困难' }[d] || '未知')
 const getDifficultyTag = (d) => ({ 1: 'success', 2: '', 3: 'warning' }[d] || '')
 
-const handleView = (row) => {
-  currentQuestion.value = row
-  viewDialogVisible.value = true
+const handleView = async (row) => {
+  // 显示加载动画
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '加载题目详情中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+  
+  try {
+    const detail = await getQuestionDetail(row.id)
+    
+    if (detail) {
+      currentQuestion.value = {
+        id: detail.id,
+        courseName: row.courseName,
+        chapterName: row.chapterName,
+        type: detail.type,
+        subject: detail.subject,
+        difficulty: detail.difficulty,
+        correctAnswer: detail.answer,
+        knowledgePoint: detail.knowledgePoint || '',
+        analysis: detail.analysis || '',
+        isUse: detail.isUse,
+        options: detail.options || []
+      }
+      
+      viewDialogVisible.value = true
+    }
+  } catch (error) {
+    console.error('获取题目详情失败:', error)
+    ElMessage.error('获取题目详情失败')
+  } finally {
+    loadingInstance.close()
+  }
 }
 
 const handleAdd = () => {

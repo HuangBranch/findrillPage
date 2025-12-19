@@ -68,6 +68,11 @@ export const getAdminCourseList = (params) => {
   return request({ url: '/admin/courses', method: 'GET', params })
 }
 
+// 获取课程字典（下拉选项）
+export const getCourseDict = () => {
+  return request({ url: '/admin/courses/dict', method: 'GET' })
+}
+
 // 创建课程
 export const createCourse = (data) => {
   return request({ url: '/admin/courses', method: 'POST', data })
@@ -90,6 +95,11 @@ export const deleteCourse = (courseId) => {
 // 获取章节列表
 export const getAdminChapterList = (params) => {
   return request({ url: '/admin/chapters', method: 'GET', params })
+}
+
+// 获取章节字典（根据课程ID）
+export const getChapterDict = (courseId) => {
+  return request({ url: `/admin/chapters/dict/${courseId}`, method: 'GET' })
 }
 
 // 创建章节
@@ -116,9 +126,19 @@ export const getQuestionList = (params) => {
   return request({ url: '/admin/questions', method: 'GET', params })
 }
 
+// 获取题目详情
+export const getQuestionDetail = (questionId) => {
+  return request({ url: `/admin/questions/${questionId}`, method: 'GET' })
+}
+
 // 单题目上传
 export const createQuestion = (data) => {
   return request({ url: '/admin/questions/single-upload', method: 'POST', data })
+}
+
+// 批量上传题目
+export const batchAddQuestions = (data) => {
+  return request({ url: '/admin/questions/batchAdd', method: 'POST', data })
 }
 
 // 更新题目
@@ -157,12 +177,12 @@ export const getTraceList = (params) => {
 
 // 获取记录详情
 export const getTraceDetail = (traceId) => {
-  return request({ url: `/admin/traces/${traceId}`, method: 'GET' })
+  return request({ url: `/admin/exam/${traceId}`, method: 'GET' })
 }
 
-// 删除记录
-export const deleteTrace = (traceId) => {
-  return request({ url: `/admin/traces/${traceId}`, method: 'DELETE' })
+// 删除记录（单个或批量）
+export const deleteTraces = (ids) => {
+  return request({ url: '/admin/exam/delete', method: 'POST', data: ids })
 }
 
 /**
@@ -201,7 +221,7 @@ export default {
   // 记录管理
   getTraceList,
   getTraceDetail,
-  deleteTrace,
+  deleteTraces,
   // 统计
   getAdminStats
 }

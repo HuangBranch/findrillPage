@@ -127,14 +127,14 @@
     <!-- 底部操作栏 -->
     <div class="page-footer">
       <el-button
-        :disabled="currentIndex === 0"
+        v-if="currentIndex > 0"
         @click="handlePrevious"
       >
         上一题
       </el-button>
       
       <el-button
-        :disabled="currentIndex >= total.values - 1"
+        v-if="currentIndex < total.values - 1"
         @click="handleNext"
       >
         下一题
