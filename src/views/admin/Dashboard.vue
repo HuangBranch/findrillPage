@@ -2,7 +2,7 @@
   <AdminLayout>
     <div class="dashboard-page">
       <!-- 统计卡片 -->
-      <el-row :gutter="20" class="stats-row">
+      <el-row :gutter="20" class="stats-row" v-loading="statsLoading">
         <el-col :xs="12" :sm="12" :md="6">
           <el-card class="stat-card">
             <div class="stat-content">
@@ -63,41 +63,35 @@
       <!-- 图表区域 -->
       <el-row :gutter="20" class="charts-row">
         <el-col :xs="24" :md="12">
-          <el-card>
+          <el-card v-loading="examChartLoading">
             <template #header>
               <div class="card-header">
-                <span>用户增长趋势</span>
-                <el-radio-group v-model="userChartType" size="small">
+                <span>考试情况统计</span>
+                <el-radio-group v-model="examChartType" size="small" @change="handleExamChartTypeChange">
                   <el-radio-button value="week">本周</el-radio-button>
                   <el-radio-button value="month">本月</el-radio-button>
                 </el-radio-group>
               </div>
             </template>
             <div class="chart-container">
-              <div class="chart-placeholder">
-                <el-icon :size="64" color="#909399"><TrendCharts /></el-icon>
-                <p>用户增长图表</p>
-              </div>
+              <div ref="examChartRef" class="chart"></div>
             </div>
           </el-card>
         </el-col>
         
         <el-col :xs="24" :md="12">
-          <el-card>
+          <el-card v-loading="userChartLoading">
             <template #header>
               <div class="card-header">
-                <span>考试情况统计</span>
-                <el-radio-group v-model="examChartType" size="small">
+                <span>用户增长趋势</span>
+                <el-radio-group v-model="userChartType" size="small" @change="updateUserChart">
                   <el-radio-button value="week">本周</el-radio-button>
                   <el-radio-button value="month">本月</el-radio-button>
                 </el-radio-group>
               </div>
             </template>
             <div class="chart-container">
-              <div class="chart-placeholder">
-                <el-icon :size="64" color="#909399"><PieChart /></el-icon>
-                <p>考试统计图表</p>
-              </div>
+              <div ref="userChartRef" class="chart"></div>
             </div>
           </el-card>
         </el-col>
@@ -115,7 +109,7 @@
                 </el-button>
               </div>
             </template>
-            <el-table :data="recentExams" style="width: 100%" v-loading="loading">
+            <el-table :data="recentExams" style="width: 100%" v-loading="recentExamsLoading">
               <el-table-column prop="userName" label="用户" width="120" />
               <el-table-column prop="courseName" label="课程" min-width="150" />
               <el-table-column prop="chapterName" label="章节" min-width="150" />
@@ -136,11 +130,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { User, Reading, Document, Tickets, TrendCharts, PieChart, ArrowRight } from '@element-plus/icons-vue'
-import { getAdminStats, getTraceList } from '@/api/admin'
+import { getAdminStats, getExamStats, getUserGrowth, getTraceList } from '@/api/admin'
+import * as echarts from 'echarts'
 
 // 统计数据
 const stats = ref({
@@ -150,37 +145,61 @@ const stats = ref({
   examCount: 0
 })
 
-const loading = ref(false)
+const statsLoading = ref(false)
+const examChartLoading = ref(false)
+const userChartLoading = ref(false)
+const recentExamsLoading = ref(false)
 
 // 图表类型
 const userChartType = ref('week')
 const examChartType = ref('week')
+
+// 图表实例
+const userChartRef = ref(null)
+let userChartInstance = null
+const examChartRef = ref(null)
+let examChartInstance = null
+
+// 用户增长数据
+const userGrowthData = ref({
+  week: [],
+  month: []
+})
+
+// 考试统计数据
+const examStatsData = ref({
+  week: [],
+  month: []
+})
 
 // 最近考试记录
 const recentExams = ref([])
 
 // 加载统计数据
 const loadStats = async () => {
+  statsLoading.value = true
   try {
     const data = await getAdminStats()
-    console.log('统计数据返回:', data) // 调试信息
+    console.log('统计数据返回:', data)
     if (data) {
       stats.value = {
-        userCount: data.userCount || data.userTotal || data.users || 0,
-        courseCount: data.courseCount || data.courseTotal || data.courses || 0,
-        questionCount: data.questionCount || data.questionTotal || data.questions || 0,
-        examCount: data.examCount || data.examTotal || data.exams || data.traceCount || 0
+        userCount: data.userCount || 0,
+        courseCount: data.courseCount || 0,
+        questionCount: data.questionCount || 0,
+        examCount: data.examCount || 0
       }
     }
   } catch (error) {
     console.error('获取统计数据失败:', error)
     ElMessage.error('获取统计数据失败')
+  } finally {
+    statsLoading.value = false
   }
 }
 
 // 加载最近考试记录
 const loadRecentExams = async () => {
-  loading.value = true
+  recentExamsLoading.value = true
   try {
     const data = await getTraceList({
       page: 1,
@@ -201,13 +220,243 @@ const loadRecentExams = async () => {
     console.error('获取考试记录失败:', error)
     ElMessage.error('获取考试记录失败')
   } finally {
-    loading.value = false
+    recentExamsLoading.value = false
   }
+}
+
+// 加载用户增长趋势数据
+const loadUserGrowth = async () => {
+  userChartLoading.value = true
+  try {
+    const data = await getUserGrowth()
+    console.log('用户增长数据返回:', data)
+    if (data) {
+      userGrowthData.value = {
+        week: data.week || [],
+        month: data.month || []
+      }
+      // 初始化图表
+      await nextTick()
+      initUserChart()
+    }
+  } catch (error) {
+    console.error('获取用户增长数据失败:', error)
+    ElMessage.error('获取用户增长数据失败')
+  } finally {
+    userChartLoading.value = false
+  }
+}
+
+// 初始化用户增长图表
+const initUserChart = () => {
+  if (!userChartRef.value) return
+  
+  // 销毁旧实例
+  if (userChartInstance) {
+    userChartInstance.dispose()
+  }
+  
+  // 创建新实例
+  userChartInstance = echarts.init(userChartRef.value)
+  
+  updateUserChart()
+}
+
+// 更新用户增长图表
+const updateUserChart = () => {
+  if (!userChartInstance) return
+  
+  const data = userChartType.value === 'week' ? userGrowthData.value.week : userGrowthData.value.month
+  const dates = data.map(item => {
+    // 处理日期格式：2025-12-15 -> 12-15
+    if (item.date.includes('-')) {
+      const parts = item.date.split('-')
+      return `${parts[1]}-${parts[2]}`
+    }
+    return item.date
+  })
+  const counts = data.map(item => item.count)
+  
+  const option = {
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: {
+        type: 'cross'
+      }
+    },
+    grid: {
+      left: '3%',
+      right: '4%',
+      bottom: '3%',
+      containLabel: true
+    },
+    xAxis: {
+      type: 'category',
+      boundaryGap: false,
+      data: dates,
+      axisLine: {
+        lineStyle: {
+          color: '#999'
+        }
+      }
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: {
+        lineStyle: {
+          color: '#999'
+        }
+      },
+      splitLine: {
+        lineStyle: {
+          type: 'dashed'
+        }
+      }
+    },
+    series: [
+      {
+        name: '新增用户',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 8,
+        lineStyle: {
+          width: 3,
+          color: '#5470c6'
+        },
+        itemStyle: {
+          color: '#5470c6',
+          borderWidth: 2,
+          borderColor: '#fff'
+        },
+        areaStyle: {
+          color: {
+            type: 'linear',
+            x: 0,
+            y: 0,
+            x2: 0,
+            y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(84, 112, 198, 0.3)' },
+              { offset: 1, color: 'rgba(84, 112, 198, 0.05)' }
+            ]
+          }
+        },
+        data: counts
+      }
+    ]
+  }
+  
+  userChartInstance.setOption(option)
+}
+
+// 切换用户增长周期
+const handleUserChartTypeChange = () => {
+  updateUserChart()
+}
+
+// 加载考试统计数据
+const loadExamStats = async () => {
+  examChartLoading.value = true
+  try {
+    const data = await getExamStats()
+    console.log('考试统计数据返回:', data)
+    if (data) {
+      examStatsData.value = {
+        week: data.week || [],
+        month: data.month || []
+      }
+      // 初始化图表
+      await nextTick()
+      initExamChart()
+    }
+  } catch (error) {
+    console.error('获取考试统计失败:', error)
+    ElMessage.error('获取考试统计失败')
+  } finally {
+    examChartLoading.value = false
+  }
+}
+
+// 初始化考试统计图表
+const initExamChart = () => {
+  if (!examChartRef.value) return
+  
+  // 销毁旧实例
+  if (examChartInstance) {
+    examChartInstance.dispose()
+  }
+  
+  // 创建新实例
+  examChartInstance = echarts.init(examChartRef.value)
+  
+  updateExamChart()
+}
+
+// 更新考试统计图表
+const updateExamChart = () => {
+  if (!examChartInstance) return
+  
+  const data = examChartType.value === 'week' ? examStatsData.value.week : examStatsData.value.month
+  
+  const option = {
+    tooltip: {
+      trigger: 'item',
+      formatter: '{a} <br/>{b}: {c} ({d}%)'
+    },
+    legend: {
+      orient: 'vertical',
+      left: 'left',
+      top: 'center',
+      textStyle: {
+        fontSize: 12
+      }
+    },
+    series: [
+      {
+        name: '考试成绩分布',
+        type: 'pie',
+        radius: ['40%', '70%'],
+        center: ['60%', '50%'],
+        avoidLabelOverlap: false,
+        itemStyle: {
+          borderRadius: 10,
+          borderColor: '#fff',
+          borderWidth: 2
+        },
+        label: {
+          show: false,
+          position: 'center'
+        },
+        emphasis: {
+          label: {
+            show: true,
+            fontSize: 16,
+            fontWeight: 'bold'
+          }
+        },
+        labelLine: {
+          show: false
+        },
+        data: data,
+        color: ['#5470c6', '#91cc75', '#fac858', '#ee6666', '#73c0de']
+      }
+    ]
+  }
+  
+  examChartInstance.setOption(option)
+}
+
+// 切换考试统计周期
+const handleExamChartTypeChange = () => {
+  updateExamChart()
 }
 
 onMounted(() => {
   loadStats()
   loadRecentExams()
+  loadUserGrowth()
+  loadExamStats()
 })
 </script>
 
@@ -295,6 +544,11 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.chart {
+  width: 100%;
+  height: 100%;
 }
 
 .chart-placeholder {

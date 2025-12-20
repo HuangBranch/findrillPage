@@ -14,7 +14,6 @@
         v-model="keyword"
         placeholder="搜索课程"
         clearable
-        @input="onSearch"
         class="search-input"
       >
         <template #prefix>
@@ -93,13 +92,24 @@ const keyword = ref('')
 const courseList = ref([])
 const loading = ref(false)
 
-// 搜索过滤
+// 搜索过滤（按题目数量排序）
 const filteredCourses = computed(() => {
-  if (!keyword.value) return courseList.value
-  return courseList.value.filter(course => 
-    course.name.toLowerCase().includes(keyword.value.toLowerCase()) ||
-    course.remarks.toLowerCase().includes(keyword.value.toLowerCase())
-  )
+  let courses = courseList.value
+  
+  // 搜索过滤
+  if (keyword.value) {
+    courses = courses.filter(course => 
+      course.name.toLowerCase().includes(keyword.value.toLowerCase()) ||
+      (course.remarks && course.remarks.toLowerCase().includes(keyword.value.toLowerCase()))
+    )
+  }
+  
+  // 按题目数量降序排序
+  return courses.sort((a, b) => {
+    const countA = a.questionCount || 0
+    const countB = b.questionCount || 0
+    return countB - countA
+  })
 })
 
 // 加载课程列表

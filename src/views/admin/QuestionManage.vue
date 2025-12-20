@@ -642,6 +642,8 @@ const handleDialogClose = () => {
   formChapterList.value = []
   optionCount.value = 2 // 重置为2个选项
 }
+
+const handleDelete = (row) => {
   ElMessageBox.confirm('确定要删除该题目吗？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
@@ -651,6 +653,7 @@ const handleDialogClose = () => {
     loadData()
     ElMessage.success('删除成功')
   }).catch(() => {})
+}
 
 onMounted(() => {
   loadData()

@@ -191,7 +191,17 @@ export const deleteTraces = (ids) => {
 
 // 获取后台统计数据
 export const getAdminStats = () => {
-  return request({ url: '/admin/stats', method: 'GET' })
+  return request({ url: '/admin/count', method: 'GET' })
+}
+
+// 获取考试情况统计
+export const getExamStats = () => {
+  return request({ url: '/admin/count/exam', method: 'GET' })
+}
+
+// 获取用户增长趋势
+export const getUserGrowth = () => {
+  return request({ url: '/admin/count/growth', method: 'GET' })
 }
 
 export default {
@@ -223,5 +233,7 @@ export default {
   getTraceDetail,
   deleteTraces,
   // 统计
-  getAdminStats
+  getAdminStats,
+  getExamStats,
+  getUserGrowth
 }
