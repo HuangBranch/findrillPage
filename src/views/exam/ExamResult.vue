@@ -28,14 +28,14 @@
             <div class="stat-icon"><el-icon><DocumentChecked /></el-icon></div>
             <div class="stat-info">
               <div class="stat-label">答对题数</div>
-              <div class="stat-value">{{ record.correctCount }}/{{ record.totalCount }}</div>
+              <div class="stat-value">{{ record.rightCount }}/{{ record.totalQuestion }}</div>
             </div>
           </div>
           <div class="stat-item">
             <div class="stat-icon"><el-icon><Clock /></el-icon></div>
             <div class="stat-info">
               <div class="stat-label">用时</div>
-              <div class="stat-value">{{ formatDuration(record.duration) }}</div>
+              <div class="stat-value">{{ formatDuration() }}</div>
             </div>
           </div>
           <div class="stat-item">
@@ -53,7 +53,7 @@
           <div class="info-list">
             <div class="info-item">
               <span class="info-label">课程名称</span>
-              <span class="info-value">{{ record.courseName || '未知课程' }}</span>
+              <span class="info-value">{{ record.curriculumName || '未知课程' }}</span>
             </div>
             <div class="info-item">
               <span class="info-label">章节名称</span>
@@ -61,11 +61,11 @@
             </div>
             <div class="info-item">
               <span class="info-label">考试时间</span>
-              <span class="info-value">{{ formatTime(record.timestamp) }}</span>
+              <span class="info-value">{{ formatTime(record.submitTime) }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">提交方式</span>
-              <span class="info-value">{{ getSubmitType(record.autoSubmit) }}</span>
+              <span class="info-label">考试状态</span>
+              <span class="info-value">{{ getStatusText(record.status) }}</span>
             </div>
           </div>
         </div>
@@ -76,11 +76,11 @@
           <div class="detail-stats">
             <div class="detail-item correct">
               <el-icon><CircleCheck /></el-icon>
-              <span>正确: {{ correctCount }}</span>
+              <span>正确: {{ record.rightCount }}</span>
             </div>
             <div class="detail-item wrong">
               <el-icon><CircleClose /></el-icon>
-              <span>错误: {{ wrongCount }}</span>
+              <span>错误: {{ record.wrongCount }}</span>
             </div>
             <div class="detail-item unanswered">
               <el-icon><Remove /></el-icon>
@@ -91,7 +91,7 @@
 
         <!-- 操作按钮 -->
         <div class="action-buttons">
-          <el-button size="large" @click="viewWrongQuestions" v-if="wrongCount > 0">
+          <el-button size="large" @click="viewWrongQuestions" v-if="record.wrongCount > 0">
             <el-icon><View /></el-icon>
             查看错题
           </el-button>
@@ -118,64 +118,93 @@ const route = useRoute()
 
 const record = ref(null)
 
-// 🟢 修改点 1：直接从 record 读取分数，而不是计算
+// 根据接口数据判断是否通过
 const isPassed = computed(() => (record.value?.score || 0) >= 60)
 
+// 计算正确率
 const accuracy = computed(() => {
-  if (!record.value || !record.value.totalCount) return 0
+  if (!record.value || !record.value.totalQuestion) return 0
   // 防止除以0
-  return Math.round((record.value.correctCount / record.value.totalCount) * 100)
+  return Math.round((record.value.rightCount / record.value.totalQuestion) * 100)
 })
 
-const correctCount = computed(() => record.value?.correctCount || 0)
-const wrongCount = computed(() => record.value?.wrongCount || 0)
-const unansweredCount = computed(() => record.value?.unansweredCount || 0)
+// 计算未答题数
+const unansweredCount = computed(() => {
+  if (!record.value) return 0
+  return (record.value.totalQuestion || 0) - (record.value.rightCount || 0) - (record.value.wrongCount || 0)
+})
 
 // 初始化
 onMounted(() => {
   loadRecord()
 })
 
-// 加载考试记录
-const loadRecord = () => {
-  console.log('Route params:', history.state, route.params)
-  // 先从路由状态获取
-  if (history.state?.record) {
-    record.value = history.state.record
-    return
-  }
-  
-  // 从本地存储获取
-  const recordsKey = 'exam_records'
-  const saved = localStorage.getItem(recordsKey)
-  if (saved) {
-    const records = JSON.parse(saved)
-    record.value = records.find(r => r.timestamp === Number(recordId))
+// 加载考试记录（实际项目中这里应该是接口请求）
+const loadRecord = async () => {
+  try {
+    // 这里模拟接口请求，实际项目中替换为真实接口调用
+    // const response = await api.getExamResult(route.params.id)
+    // record.value = response.data
+
+    // 临时使用示例数据
+    record.value = {
+      "chapterId": 0,
+      "chapterName": "JavaScript基础",
+      "curriculumId": 1,
+      "curriculumName": "Web前端开发",
+      "examType": 0,
+      "id": 1001,
+      "remarks": "",
+      "rightCount": 8,
+      "score": 80,
+      "startTime": "2023-10-15 09:30:00",
+      "status": 1,
+      "submitTime": "2023-10-15 09:50:30",
+      "totalQuestion": 10,
+      "userId": 123,
+      "wrongCount": 2
+    }
+  } catch (error) {
+    console.error('加载考试记录失败:', error)
   }
 }
 
-// 格式化时长
-const formatDuration = (seconds) => {
+// 格式化考试时长（根据开始时间和提交时间计算）
+const formatDuration = () => {
+  if (!record.value || !record.value.startTime || !record.value.submitTime) {
+    return '0分0秒'
+  }
+
+  const start = dayjs(record.value.startTime)
+  const end = dayjs(record.value.submitTime)
+  const seconds = end.diff(start, 'second')
+
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}分${secs}秒`
 }
 
-// 格式化时间
-const formatTime = (timestamp) => {
-  return dayjs(timestamp).format('YYYY-MM-DD HH:mm:ss')
+// 格式化时间显示
+const formatTime = (timeStr) => {
+  return timeStr ? dayjs(timeStr).format('YYYY-MM-DD HH:mm:ss') : '未知时间'
 }
 
-// 提交方式
-const getSubmitType = (autoSubmit) => {
-  if (autoSubmit === true) return '自动提交'
-  if (autoSubmit === false) return '手动提交'
-  return '未知'
+// 转换考试状态文本
+const getStatusText = (status) => {
+  const statusMap = {
+    0: '未完成',
+    1: '已完成',
+    2: '已过期'
+  }
+  return statusMap[status] || '未知状态'
 }
 
 // 查看错题
 const viewWrongQuestions = () => {
-  router.push('/wrong')
+  router.push({
+    path: '/wrong',
+    state: { examId: record.value.id }
+  })
 }
 
 // 返回课程列表
@@ -190,6 +219,7 @@ const handleBack = () => {
 </script>
 
 <style scoped>
+/* 样式部分保持不变 */
 .result-page {
   position: fixed;
   top: 0;

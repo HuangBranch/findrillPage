@@ -137,7 +137,7 @@
                             type="danger"
                             size="small"
                             plain
-                            @click="removeWrongQuestion(question)"
+                            @click="handleDelete(question)"
                         >
                           <el-icon><Delete /></el-icon>
                           删除
@@ -176,7 +176,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox, ElMessage, ElSkeleton, ElDivider, ElPagination } from 'element-plus'
 import { VideoPlay, Delete, ArrowLeft, ArrowRight, Check, Close } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
-import {getWrongList} from "@/api/wrong.js";
+import {getWrongList, removeWrongQuestion} from "@/api/wrong.js";
 import {getCourseList} from "@/api/course.js";
 import {getChapterList} from "@/api/chapter.js";
 
@@ -266,14 +266,14 @@ const fetchChaptersByCurriculumId = async (cid) => {
   try {
     const params = new URLSearchParams({ curriculumId: cid })
     const res = await getChapterList(params)
-
     if (res) {
       // 假设接口返回格式：[{ chapterId: 3, name: "计算机网络基础" }, ...]
       const chapterMap = {}
       res.forEach(chapter => {
-        chapterMap[chapter.chapterId] = chapter.name
+        chapterMap[chapter.id] = chapter.name
       })
       chapters.value[cid] = chapterMap
+
     } else {
       ElMessage.error(`获取课程${cid}的章节失败`)
     }
@@ -325,30 +325,33 @@ const saveWrongQuestions = () => {
 }
 
 // 移除错题
-const removeWrongQuestion = async (question) => {
+const handleDelete = async (row) => {
   try {
+    // 等待用户确认删除操作（ElMessageBox.confirm 本身返回 Promise）
     await ElMessageBox.confirm(
-        '确定要从错题本中移除这道题吗？',
-        '确认删除',
+        `确定要删除该错题吗？此操作不可恢复。`,
+        '警告',
         {
           confirmButtonText: '确定',
           cancelButtonText: '取消',
           type: 'warning'
         }
-    )
+    );
+    console.log(row.id)
+    // 等待删除接口执行完成（关键：确保删除操作先完成）
+    const res=await removeWrongQuestion(row.id);
 
-    // 本地删除
-    const index = wrongQuestions.value.findIndex(q => q.id === question.id)
-    if (index !== -1) {
-      wrongQuestions.value.splice(index, 1)
-      saveWrongQuestions()
-      ElMessage.success('已移除')
-
-      // 同步删除接口（如果需要）
-      // await fetch(`/api/wrong/delete/${question.id}`, { method: 'DELETE' })
+    // 等待数据重新加载完成（确保加载的是删除后的最新数据）
+    await loadData();
+    // 只有上面两步都完成，才提示删除成功
+    ElMessage.success('删除成功');
+  } catch (error) {
+    // 区分“用户取消删除”和“真正的接口错误”
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败：' + (error.message || '服务器异常'));
+      console.error('删除错题失败：', error); // 便于调试问题
     }
-  } catch {
-    // 用户取消
+    // 如果是用户取消（error === 'cancel'），则什么都不做
   }
 }
 

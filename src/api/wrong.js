@@ -28,7 +28,7 @@ export const getWrongList = (params) => {
  */
 export const getWrongPracticeQuestions = (params) => {
   return request({
-    url: '/wrong-questions/practice',
+    url: '/wrong/practice',
     method: 'GET',
     params
   })
@@ -48,12 +48,12 @@ export const submitWrongAnswer = (data) => {
 
 /**
  * 移除单个错题
- * @param {Number} wrongId - 错题记录ID
+ * @param {Number} id - 错题记录ID
  */
-export const removeWrongQuestion = (wrongId) => {
+export const removeWrongQuestion = (id) => {
   return request({
-    url: `/wrong-questions/${wrongId}`,
-    method: 'DELETE'
+    url: `/wrong/{id}/remove`,
+    method: 'PATCH'
   })
 }
 

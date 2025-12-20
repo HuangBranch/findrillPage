@@ -8,18 +8,17 @@
         <div style="width: 40px"></div>
       </div>
     </div>
-
     <!-- 筛选栏 -->
     <div class="filter-bar">
       <el-select v-model="filterType" placeholder="全部课程" clearable @change="onFilterChange">
         <el-option
-          v-for="course in courseList"
-          :key="course.cId"
-          :label="course.cName"
-          :value="course.cId"
+            v-for="course in courseList"
+            :key="course.cId"
+            :label="course.cName"
+            :value="course.cId"
         />
       </el-select>
-      
+
       <el-select v-model="sortType" @change="onSortChange">
         <el-option label="最新优先" value="latest" />
         <el-option label="最早优先" value="earliest" />
@@ -27,7 +26,6 @@
         <el-option label="分数从低到高" value="lowScore" />
       </el-select>
     </div>
-
     <!-- 统计卡片 -->
     <div class="stats-card">
       <div class="stat-item">
@@ -47,7 +45,6 @@
         <div class="stat-value">{{ passRate }}%</div>
       </div>
     </div>
-
     <!-- 记录列表 -->
     <div class="page-content">
       <div v-if="filteredRecords.length === 0" class="empty-state">
@@ -55,113 +52,103 @@
           <el-button type="primary" @click="handleBack">开始考试</el-button>
         </el-empty>
       </div>
-
       <div v-else class="records-list">
         <div
-          v-for="record in filteredRecords"
-          :key="record.timestamp"
-          class="record-card"
-          @click="viewDetail(record)"
+            v-for="record in filteredRecords"
+            :key="record.id"
+        class="record-card"
+        @click="viewDetail(record)"
         >
-          <div class="card-header">
-            <div class="course-info">
-              <h3 class="course-name">{{ record.courseName }}</h3>
-              <p class="chapter-name">{{ record.chapterName }}</p>
+        <div class="card-header">
+          <div class="course-info">
+            <h3 class="course-name">{{ record.id }}</h3>
+            <p class="chapter-name">{{ record.chapterName }}</p>
+          </div>
+          <div class="score-badge" :class="getScoreClass(record.score)">
+            {{ record.score }}分
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <div class="info-item">
+              <el-icon><Clock /></el-icon>
+              <span>用时 {{ formatDuration(record.useTime) }}</span>
             </div>
-            <div class="score-badge" :class="getScoreClass(record.score)">
-              {{ record.score }}分
+            <div class="info-item">
+              <el-icon><Document /></el-icon>
+              <span>{{ record.wrongCount }}/{{ record.totalQuestion }} 题</span>
             </div>
           </div>
 
-          <div class="card-body">
-            <div class="info-row">
-              <div class="info-item">
-                <el-icon><Clock /></el-icon>
-                <span>用时 {{ formatDuration(record.duration) }}</span>
-              </div>
-              <div class="info-item">
-                <el-icon><Document /></el-icon>
-                <span>{{ record.correctCount }}/{{ record.totalCount }} 题</span>
-              </div>
+          <div class="info-row">
+            <div class="info-item">
+              <el-icon><Calendar /></el-icon>
+              <span>{{ formatDate(record.startTime) }}</span>
             </div>
-            
-            <div class="info-row">
-              <div class="info-item">
-                <el-icon><Calendar /></el-icon>
-                <span>{{ formatDate(record.timestamp) }}</span>
-              </div>
-              <div class="info-item" v-if="record.autoSubmit">
-                <el-tag type="warning" size="small">超时自动提交</el-tag>
-              </div>
+            <div class="info-item" v-if="record.autoSubmit">
+              <el-tag type="warning" size="small">超时自动提交</el-tag>
             </div>
           </div>
-
-          <div class="card-footer">
-            <el-button text type="primary" @click.stop="viewDetail(record)">
-              查看详情
-              <el-icon class="el-icon--right"><ArrowRight /></el-icon>
-            </el-button>
-            <el-button text type="danger" @click.stop="deleteRecord(record)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
-          </div>
+        </div>
+        <div class="card-footer">
+          <el-button text type="primary" @click.stop="viewDetail(record)">
+            查看详情
+            <el-icon class="el-icon--right"><ArrowRight /></el-icon>
+          </el-button>
+          <el-button text type="danger" @click.stop="deleteRecord(record)">
+            <el-icon><Delete /></el-icon>
+          </el-button>
         </div>
       </div>
     </div>
   </div>
+  </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import axios from 'axios' // 引入axios用于接口请求
 import {
   ArrowLeft, Clock, Document, Calendar, ArrowRight, Delete
 } from '@element-plus/icons-vue'
+import {getExamRecords} from "@/api/user.js";
+import {getExamList, getExamResult} from "@/api/exam.js";
 
 const router = useRouter()
 const courseStore = useCourseStore()
-
-const records = ref([])
+const records = ref([]) // 存储接口返回的考试记录
 const filterType = ref('')
 const sortType = ref('latest')
 
-// 课程列表（用于筛选）
+// 课程列表（从courseStore获取，不变）
 const courseList = computed(() => courseStore.courses || [])
 
-// 总考试次数
+// 统计数据（逻辑不变，基于接口返回的records计算）
 const totalExams = computed(() => records.value.length)
-
-// 平均分
 const averageScore = computed(() => {
   if (records.value.length === 0) return 0
   const total = records.value.reduce((sum, r) => sum + r.score, 0)
   return Math.round(total / records.value.length)
 })
-
-// 最高分
 const maxScore = computed(() => {
   if (records.value.length === 0) return 0
   return Math.max(...records.value.map(r => r.score))
 })
-
-// 及格率
 const passRate = computed(() => {
   if (records.value.length === 0) return 0
   const passCount = records.value.filter(r => r.score >= 60).length
   return Math.round((passCount / records.value.length) * 100)
 })
 
-// 筛选后的记录
+// 筛选排序（逻辑不变，基于接口数据计算）
 const filteredRecords = computed(() => {
   let result = [...records.value]
-
   // 按课程筛选
   if (filterType.value) {
     result = result.filter(r => r.courseId === filterType.value)
   }
-
   // 排序
   switch (sortType.value) {
     case 'latest':
@@ -177,107 +164,108 @@ const filteredRecords = computed(() => {
       result.sort((a, b) => a.score - b.score)
       break
   }
-
   return result
 })
 
-// 加载记录
-const loadRecords = () => {
-  const saved = localStorage.getItem('exam_records')
-  if (saved) {
-    records.value = JSON.parse(saved)
+/**
+ * 加载考试记录：替换LocalStorage为接口请求
+ * 接口：GET /api/exam/list（对应图片中考试记录接口）
+ */
+const loadRecords = async () => {
+  try {
+    const res = await getExamList()
+    // 假设接口返回格式与原LocalStorage数据一致（字段匹配）
+    // 若字段不匹配，需在这里做数据映射（如res.data.list → records.value）
+    records.value = res || []
+  } catch (error) {
+    ElMessage.error('加载考试记录失败：' + (error.message || '服务器异常'))
+    console.error('考试记录接口请求错误：', error)
+    records.value = [] // 失败时置空，避免页面异常
   }
 }
 
-// 获取分数等级样式
+// 原有工具函数（不变）
 const getScoreClass = (score) => {
   if (score >= 90) return 'excellent'
   if (score >= 80) return 'good'
   if (score >= 60) return 'pass'
   return 'fail'
 }
-
-// 格式化时长
 const formatDuration = (seconds) => {
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}分${secs}秒`
 }
-
-// 格式化日期
 const formatDate = (timestamp) => {
   const date = new Date(timestamp)
   const now = new Date()
   const diff = now - date
-
-  // 1分钟内
-  if (diff < 60000) {
-    return '刚刚'
-  }
-  // 1小时内
-  if (diff < 3600000) {
-    return `${Math.floor(diff / 60000)}分钟前`
-  }
-  // 今天
-  if (date.toDateString() === now.toDateString()) {
+  if (diff < 60000) return '刚刚'
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`
+  if (date.toDateString() === now.toDateString())
     return `今天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  }
-  // 昨天
-  const yesterday = new Date(now)
-  yesterday.setDate(yesterday.getDate() - 1)
-  if (date.toDateString() === yesterday.toDateString()) {
+  const yesterday = new Date(now); yesterday.setDate(yesterday.getDate() - 1)
+  if (date.toDateString() === yesterday.toDateString())
     return `昨天 ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`
-  }
-  // 其他
   return `${date.getMonth() + 1}月${date.getDate()}日`
 }
 
-// 筛选改变
-const onFilterChange = () => {
-  // 筛选逻辑已在 computed 中处理
+// 筛选/排序触发（逻辑不变）
+const onFilterChange = () => {}
+const onSortChange = () => {}
+
+// 查看详情（不变）
+const viewDetail = async (record) => {
+  try {
+    console.log(record)
+    const data =await getExamResult()
+    console.log(data)
+    router.replace({
+      path: `/exam/result/${record.id}`,
+      state: {
+        record: JSON.parse(JSON.stringify(data))
+      }
+    })
+    // router.push(`/exam/result/${record.id}`) // 改为用接口返回的id
+  }catch (error) {
+    ElMessage(error)
+  }
+
 }
 
-// 排序改变
-const onSortChange = () => {
-  // 排序逻辑已在 computed 中处理
-}
-
-// 查看详情
-const viewDetail = (record) => {
-  router.push(`/exam/result/${record.timestamp}`)
-}
-
-// 删除记录
+/**
+ * 删除考试记录：替换LocalStorage为接口请求
+ * 接口：DELETE /api/exam/{id}（按RESTful规范设计，需与后端对齐）
+ */
 const deleteRecord = async (record) => {
   try {
     await ElMessageBox.confirm(
-      '确定要删除这条考试记录吗？',
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        '确定要删除这条考试记录吗？',
+        '确认删除',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
-
-    const index = records.value.findIndex(r => r.timestamp === record.timestamp)
-    if (index !== -1) {
-      records.value.splice(index, 1)
-      localStorage.setItem('exam_records', JSON.stringify(records.value))
-      ElMessage.success('删除成功')
+    // 调用删除接口（传入记录id）
+    await axios.delete(`/api/exam/${record.id}`)
+    ElMessage.success('删除成功')
+    // 重新加载数据，确保页面与后端同步
+    await loadRecords()
+  } catch (error) {
+    // 排除用户取消的情况，只提示真实错误
+    if (error !== 'cancel' && !error.message.includes('cancel')) {
+      ElMessage.error('删除考试记录失败：' + (error.message || '服务器异常'))
+      console.error('删除考试记录错误：', error)
     }
-  } catch {
-    // 用户取消
   }
 }
 
-// 返回
+// 返回（不变）
 const handleBack = () => {
   router.back()
 }
 
-onMounted(() => {
-  loadRecords()
+// 页面挂载时加载数据（异步）
+onMounted(async () => {
+  await loadRecords()
 })
 </script>
 

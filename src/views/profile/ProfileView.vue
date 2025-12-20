@@ -1,6 +1,6 @@
 <template>
   <div class="profile-page">
-    <!-- 头部用户信息 -->
+    <!-- 头部用户信息（不变） -->
     <div class="profile-header">
       <div class="user-info">
         <div class="avatar-wrapper">
@@ -14,30 +14,42 @@
         </div>
       </div>
     </div>
-
+    <!-- 学习统计（数据来源改为接口） -->
     <!-- 学习统计 -->
     <div class="stats-section">
       <div class="section-title">学习统计</div>
       <div class="stats-grid">
         <div class="stat-item">
-          <div class="stat-value">{{ stats.totalCourses }}</div>
+          <!-- 加载中显示“--”+加载动画，加载完成显示真实数据 -->
+          <div class="stat-value">
+            <span v-if="isStatsLoading" class="loading-placeholder">--</span>
+            <span v-else>{{ stats.totalCourses || 0 }}</span>
+          </div>
           <div class="stat-label">学习课程</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">{{ stats.totalPractice }}</div>
+          <div class="stat-value">
+            <span v-if="isStatsLoading" class="loading-placeholder">--</span>
+            <span v-else>{{ stats.totalPractice || 0 }}</span>
+          </div>
           <div class="stat-label">练习次数</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">{{ stats.totalExams }}</div>
+          <div class="stat-value">
+            <span v-if="isStatsLoading" class="loading-placeholder">--</span>
+            <span v-else>{{ stats.totalExams || 0 }}</span>
+          </div>
           <div class="stat-label">考试次数</div>
         </div>
         <div class="stat-item">
-          <div class="stat-value">{{ stats.wrongCount }}</div>
+          <div class="stat-value">
+            <span v-if="isStatsLoading" class="loading-placeholder">--</span>
+            <span v-else>{{ stats.wrongCount || 0 }}</span>
+          </div>
           <div class="stat-label">错题数量</div>
         </div>
       </div>
     </div>
-
     <!-- 功能菜单 -->
     <div class="menu-section">
       <div class="menu-group">
@@ -48,7 +60,7 @@
           </div>
           <el-icon class="menu-arrow"><ArrowRight /></el-icon>
         </div>
-        
+
         <div class="menu-item" @click="goToPracticeRecords">
           <div class="menu-left">
             <el-icon class="menu-icon" :size="20"><Edit /></el-icon>
@@ -90,10 +102,10 @@
 
     <!-- 关于对话框 -->
     <el-dialog
-      v-model="showAboutDialog"
-      title="关于应用"
-      width="90%"
-      :style="{ maxWidth: '400px' }"
+        v-model="showAboutDialog"
+        title="关于应用"
+        width="90%"
+        :style="{ maxWidth: '400px' }"
     >
       <div class="about-content">
         <div class="app-logo">
@@ -121,34 +133,38 @@
     </el-dialog>
   </div>
 </template>
-
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { 
-  User, Document, Edit, InfoFilled, 
-  SwitchButton, ArrowRight 
+import axios from 'axios'
+import {
+  User, Document, Edit, InfoFilled,
+  SwitchButton, ArrowRight
 } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
+import {getPracticeList} from "@/api/practice.js";
+import {getExamRecords} from "@/api/user.js";
+import {getExamList} from "@/api/exam.js";
+import {getWrongList} from "@/api/wrong.js";
+import {getCourseList} from "@/api/course.js";
 
 const router = useRouter()
 const authStore = useAuthStore()
 const courseStore = useCourseStore()
-
 const showAboutDialog = ref(false)
+const isStatsLoading = ref(true);
 
-
-// 用户信息
+// 用户信息（不变，从authStore获取）
 const userInfo = computed(() => ({
-  username: authStore.user?.username || '未登录',
-  email: authStore.user?.email || '',
-  avatar: authStore.user?.avatar || ''
+  username: authStore.userInfo.name || '未登录',
+  email: authStore.userInfo.email || '',
+  avatar: authStore.userInfo.avatar || ''
 }))
 
-// 学习统计
+// 学习统计（初始值为空，从接口加载）
 const stats = ref({
   totalCourses: 0,
   totalPractice: 0,
@@ -156,367 +172,90 @@ const stats = ref({
   wrongCount: 0
 })
 
-// 加载统计数据
-const loadStats = () => {
-  // 获取课程数量
-  const courses = courseStore.courses || []
-  stats.value.totalCourses = courses.length
+/**
+ * 加载统计数据：从接口获取
+ * 1. 课程数量：从courseStore获取（不变）
+ * 2. 练习次数：调用GET /api/practice/list → 取列表长度
+ * 3. 考试次数：调用GET /api/exam/list → 取列表长度
+ * 4. 错题数量：调用GET /api/wrong-questions/count（新增接口，需后端支持）
+ */
+const loadStats = async () => {
+  isStatsLoading.value = true;
+  try {
+    // 1. 课程数量（不变）
+    const courses = await getCourseList()
+    const totalCourses = Array.isArray(courses) ? courses.length : 0;
 
-  // 获取练习记录数量
-  const practiceRecords = JSON.parse(localStorage.getItem('practice_records') || '[]')
-  stats.value.totalPractice = practiceRecords.length
+    // 2. 练习次数（调用练习记录接口）
+    const practiceRes = await getPracticeList()
+    const totalPractice = Array.isArray(practiceRes) ? practiceRes.length : 0;
 
-  // 获取考试记录数量
-  const examRecords = JSON.parse(localStorage.getItem('exam_records') || '[]')
-  stats.value.totalExams = examRecords.length
+    // 3. 考试次数（调用考试记录接口）
+    const examRes = await getExamList()
+    const totalExams = Array.isArray(examRes) ? examRes.length : 0;
 
-  // 获取错题数量
-  const wrongQuestions = JSON.parse(localStorage.getItem('wrong_questions') || '[]')
-  stats.value.wrongCount = wrongQuestions.length
+    // 4. 错题数量（调用错题统计接口）
+    const wrongRes = await getWrongList()
+    const wrongCount = Array.isArray(wrongRes) ? wrongRes.length : 0;
+
+    // 更新统计数据
+    stats.value = {
+      totalCourses,
+      totalPractice,
+      totalExams,
+      wrongCount
+    }
+  } catch (error) {
+    ElMessage.error('加载学习统计失败：' + (error.message || '服务器异常'))
+    console.error('统计数据接口请求错误：', error)
+    // 失败时置默认值
+    stats.value = {
+      totalCourses: 0,
+      totalPractice: 0,
+      totalExams: 0,
+      wrongCount: 0
+    }
+  }finally {
+    // 无论成功/失败，都结束加载状态（隐藏占位符）
+    isStatsLoading.value = false;
+  }
 }
 
-// 跳转到考试记录
+// 跳转功能（不变）
 const goToExamRecords = () => {
   router.push('/profile/exam-records')
 }
-
-// 跳转到练习记录
 const goToPracticeRecords = () => {
   router.push('/profile/practice-records')
 }
-
-// 跳转到错题本
 const goToWrongBook = () => {
   router.push('/wrong')
 }
 
-// 生成测试数据
-const generateTestData = () => {
-  // 检查是否已经有数据
-  const existingExamRecords = localStorage.getItem('exam_records')
-  const existingPracticeRecords = localStorage.getItem('practice_records')
-  
-  // 如果已经有数据，不再生成
-  if (existingExamRecords && existingPracticeRecords) {
-    const examRecords = JSON.parse(existingExamRecords)
-    const practiceRecords = JSON.parse(existingPracticeRecords)
-    if (examRecords.length > 0 && practiceRecords.length > 0) {
-      return
-    }
-  }
-  
-  const now = Date.now()
-  const courses = courseStore.courses || []
-  
-  if (courses.length === 0) return
-  
-  // 生成考试记录测试数据
-  const examRecords = [
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 1,
-      chapterName: '第一章：函数与极限',
-      score: 95,
-      correctCount: 19,
-      totalCount: 20,
-      duration: 1800,
-      results: [],
-      timestamp: now - 86400000 * 7,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 2,
-      chapterName: '第二章：导数与微分',
-      score: 88,
-      correctCount: 44,
-      totalCount: 50,
-      duration: 2700,
-      results: [],
-      timestamp: now - 86400000 * 5,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 3,
-      chapterName: '第三章：积分',
-      score: 72,
-      correctCount: 36,
-      totalCount: 50,
-      duration: 3000,
-      results: [],
-      timestamp: now - 86400000 * 3,
-      autoSubmit: true
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 1,
-      chapterName: '第一章：词汇语法',
-      score: 92,
-      correctCount: 46,
-      totalCount: 50,
-      duration: 2400,
-      results: [],
-      timestamp: now - 86400000 * 2,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 2,
-      chapterName: '第二章：阅读理解',
-      score: 85,
-      correctCount: 17,
-      totalCount: 20,
-      duration: 1500,
-      results: [],
-      timestamp: now - 86400000,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 4,
-      chapterName: '第四章：微分方程',
-      score: 58,
-      correctCount: 29,
-      totalCount: 50,
-      duration: 2100,
-      results: [],
-      timestamp: now - 3600000 * 12,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 3,
-      chapterName: '第三章：写作',
-      score: 78,
-      correctCount: 39,
-      totalCount: 50,
-      duration: 2800,
-      results: [],
-      timestamp: now - 3600000 * 5,
-      autoSubmit: false
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 1,
-      chapterName: '第一章：函数与极限',
-      score: 100,
-      correctCount: 30,
-      totalCount: 30,
-      duration: 1200,
-      results: [],
-      timestamp: now - 3600000 * 2,
-      autoSubmit: false
-    }
-  ]
-  
-  // 生成练习记录测试数据
-  const practiceRecords = [
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 1,
-      chapterName: '第一章：函数与极限',
-      mode: 'sequence',
-      correctCount: 28,
-      totalCount: 30,
-      accuracy: 93,
-      duration: 900,
-      typeStats: {
-        single: { correct: 18, total: 20 },
-        multiple: { correct: 7, total: 8 },
-        judge: { correct: 3, total: 2 }
-      },
-      timestamp: now - 86400000 * 6
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 2,
-      chapterName: '第二章：导数与微分',
-      mode: 'random',
-      correctCount: 35,
-      totalCount: 40,
-      accuracy: 88,
-      duration: 1200,
-      typeStats: {
-        single: { correct: 22, total: 25 },
-        multiple: { correct: 10, total: 12 },
-        judge: { correct: 3, total: 3 }
-      },
-      timestamp: now - 86400000 * 4
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 1,
-      chapterName: '第一章：词汇语法',
-      mode: 'sequence',
-      correctCount: 24,
-      totalCount: 25,
-      accuracy: 96,
-      duration: 750,
-      typeStats: {
-        single: { correct: 15, total: 15 },
-        multiple: { correct: 9, total: 10 }
-      },
-      timestamp: now - 86400000 * 3
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 3,
-      chapterName: '第三章：积分',
-      mode: 'sequence',
-      correctCount: 18,
-      totalCount: 30,
-      accuracy: 60,
-      duration: 1500,
-      typeStats: {
-        single: { correct: 10, total: 18 },
-        multiple: { correct: 5, total: 8 },
-        judge: { correct: 3, total: 4 }
-      },
-      timestamp: now - 86400000 * 2
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 2,
-      chapterName: '第二章：阅读理解',
-      mode: 'random',
-      correctCount: 19,
-      totalCount: 20,
-      accuracy: 95,
-      duration: 600,
-      typeStats: {
-        single: { correct: 12, total: 12 },
-        multiple: { correct: 7, total: 8 }
-      },
-      timestamp: now - 86400000
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 1,
-      chapterName: '第一章：函数与极限',
-      mode: 'wrong',
-      correctCount: 8,
-      totalCount: 10,
-      accuracy: 80,
-      duration: 480,
-      typeStats: {
-        single: { correct: 5, total: 6 },
-        multiple: { correct: 2, total: 3 },
-        judge: { correct: 1, total: 1 }
-      },
-      timestamp: now - 3600000 * 18
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 3,
-      chapterName: '第三章：写作',
-      mode: 'sequence',
-      correctCount: 16,
-      totalCount: 20,
-      accuracy: 80,
-      duration: 900,
-      typeStats: {
-        single: { correct: 10, total: 12 },
-        multiple: { correct: 6, total: 8 }
-      },
-      timestamp: now - 3600000 * 8
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 4,
-      chapterName: '第四章：微分方程',
-      mode: 'random',
-      correctCount: 22,
-      totalCount: 25,
-      accuracy: 88,
-      duration: 1080,
-      typeStats: {
-        single: { correct: 14, total: 15 },
-        multiple: { correct: 6, total: 8 },
-        judge: { correct: 2, total: 2 }
-      },
-      timestamp: now - 3600000 * 3
-    },
-    {
-      courseId: courses[1]?.cId || 2,
-      courseName: courses[1]?.cName || '大学英语',
-      chapterId: 1,
-      chapterName: '第一章：词汇语法',
-      mode: 'sequence',
-      correctCount: 29,
-      totalCount: 30,
-      accuracy: 97,
-      duration: 840,
-      typeStats: {
-        single: { correct: 20, total: 20 },
-        multiple: { correct: 9, total: 10 }
-      },
-      timestamp: now - 3600000
-    },
-    {
-      courseId: courses[0]?.cId || 1,
-      courseName: courses[0]?.cName || '高等数学',
-      chapterId: 2,
-      chapterName: '第二章：导数与微分',
-      mode: 'wrong',
-      correctCount: 12,
-      totalCount: 15,
-      accuracy: 80,
-      duration: 720,
-      typeStats: {
-        single: { correct: 8, total: 10 },
-        multiple: { correct: 4, total: 5 }
-      },
-      timestamp: now - 1800000
-    }
-  ]
-  
-  localStorage.setItem('exam_records', JSON.stringify(examRecords))
-  localStorage.setItem('practice_records', JSON.stringify(practiceRecords))
-}
+// 移除：生成测试数据（不再需要，因为数据来自接口）
+// const generateTestData = () => { ... }
 
-// 退出登录
+// 退出登录（不变）
 const handleLogout = async () => {
   try {
     await ElMessageBox.confirm(
-      '确定要退出登录吗？',
-      '提示',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
+        '确定要退出登录吗？',
+        '提示',
+        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
-    
     authStore.logout()
     router.push('/login')
     ElMessage.success('已退出登录')
   } catch {
-    // 用户取消
+    // 用户取消，不处理
   }
 }
 
-onMounted(() => {
-  // 生成测试数据
-  generateTestData()
-  
-  loadStats()
+// 页面挂载时加载统计数据
+onMounted(async () => {
+  // 生成测试数据（已废弃，注释或删除）
+  // generateTestData()
+  await loadStats()
 })
 </script>
 
@@ -749,5 +488,31 @@ onMounted(() => {
   .menu-section {
     margin: 1rem;
   }
+}
+/* 加载占位符样式 */
+.loading-placeholder {
+  display: inline-block;
+  width: 2rem;
+  height: 2rem;
+  position: relative;
+  color: #c0c4cc; /* 浅灰色，和未加载状态区分 */
+}
+
+/* 简单的闪烁动画（模拟加载中） */
+.loading-placeholder::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  animation: loadingFlash 1.5s infinite;
+}
+
+/* 动画关键帧 */
+@keyframes loadingFlash {
+  0% { background-position: -2rem 0; }
+  100% { background-position: 2rem 0; }
 }
 </style>

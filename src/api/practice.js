@@ -11,6 +11,16 @@ export const getPracticeQuestions = (params) => {
     params
   })
 }
+/**
+ * 获取刷题记录
+ * @param {Object} params - { courseId, chapterId, page, size }
+ */
+export const getPracticeList = () => {
+  return request({
+    url: '/practice/list',
+    method: 'GET',
+  })
+}
 
 /**
  * 提交练习记录（可选）
@@ -26,5 +36,6 @@ export const submitPracticeRecord = (data) => {
 
 export default {
   getPracticeQuestions,
-  submitPracticeRecord
+  submitPracticeRecord,
+  getPracticeList
 }

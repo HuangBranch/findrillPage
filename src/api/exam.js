@@ -26,11 +26,11 @@ export const submitExam = (data) => {
 
 /**
  * 获取考试结果
- * @param {Number} traceId - 考试记录ID
+ * @param {Number} examId - 考试记录ID
  */
-export const getExamResult = (traceId) => {
+export const getExamResult = (examId) => {
   return request({
-    url: `/exam/result/${traceId}`,
+    url: `/exam/result/${examId}`,
     method: 'GET'
   })
 }
@@ -46,10 +46,20 @@ export const getLastExamScore = (params) => {
     params
   })
 }
-
+/**
+ * 获取考试记录
+ * @param {Object} params - { courseId, chapterId, page, size }
+ */
+export const getExamList = () => {
+  return request({
+    url: '/exam/list',
+    method: 'GET',
+  })
+}
 export default {
   getExamPaper,
   submitExam,
   getExamResult,
-  getLastExamScore
+  getLastExamScore,
+  getExamList
 }
