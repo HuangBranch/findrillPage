@@ -620,8 +620,6 @@ const submitExam = async (autoSubmit = false) => {
   showSubmitDialog.value = false
   showAnswerSheet.value = false
 
-  // 计算得分
-  console.log('提交答案：', payload)
 
   try {
     const data = await examAPI.submitExam({

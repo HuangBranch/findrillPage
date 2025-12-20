@@ -139,46 +139,43 @@ onMounted(() => {
   loadRecord()
 })
 
-// 加载考试记录（实际项目中这里应该是接口请求）
+// 加载考试记录
 const loadRecord = async () => {
   try {
-    // 这里模拟接口请求，实际项目中替换为真实接口调用
-    // const response = await api.getExamResult(route.params.id)
-    // record.value = response.data
-
-    // 临时使用示例数据
-    record.value = {
-      "chapterId": 0,
-      "chapterName": "JavaScript基础",
-      "curriculumId": 1,
-      "curriculumName": "Web前端开发",
-      "examType": 0,
-      "id": 1001,
-      "remarks": "",
-      "rightCount": 8,
-      "score": 80,
-      "startTime": "2023-10-15 09:30:00",
-      "status": 1,
-      "submitTime": "2023-10-15 09:50:30",
-      "totalQuestion": 10,
-      "userId": 123,
-      "wrongCount": 2
+    // 从路由 state 中获取传递的数据
+    const state = window.history.state
+    if (state && state.record) {
+      const data = state.record
+      // 将传入的数据映射到组件期望的字段
+      record.value = {
+        score: data.score || 0,
+        rightCount: data.correctCount || 0,
+        wrongCount: data.wrongCount || 0,
+        totalQuestion: data.totalCount || 0,
+        curriculumName: data.courseName || '未知课程',
+        chapterName: data.chapterName || '未知章节',
+        submitTime: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
+        startTime: data.timestamp ? new Date(data.timestamp - (data.duration || 0) * 1000).toISOString() : new Date().toISOString(),
+        status: 1, // 已完成
+        duration: data.duration || 0,
+        autoSubmit: data.autoSubmit || false
+      }
+      console.log('加载考试记录:', record.value)
+    } else {
+      console.warn('未找到考试记录数据')
     }
   } catch (error) {
     console.error('加载考试记录失败:', error)
   }
 }
 
-// 格式化考试时长（根据开始时间和提交时间计算）
+// 格式化考试时长
 const formatDuration = () => {
-  if (!record.value || !record.value.startTime || !record.value.submitTime) {
+  if (!record.value) {
     return '0分0秒'
   }
 
-  const start = dayjs(record.value.startTime)
-  const end = dayjs(record.value.submitTime)
-  const seconds = end.diff(start, 'second')
-
+  const seconds = record.value.duration || 0
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}分${secs}秒`
