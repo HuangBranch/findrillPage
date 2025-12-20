@@ -115,7 +115,7 @@
                 </el-button>
               </div>
             </template>
-            <el-table :data="recentExams" style="width: 100%">
+            <el-table :data="recentExams" style="width: 100%" v-loading="loading">
               <el-table-column prop="userName" label="用户" width="120" />
               <el-table-column prop="courseName" label="课程" min-width="150" />
               <el-table-column prop="chapterName" label="章节" min-width="150" />
@@ -137,63 +137,77 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 import { User, Reading, Document, Tickets, TrendCharts, PieChart, ArrowRight } from '@element-plus/icons-vue'
+import { getAdminStats, getTraceList } from '@/api/admin'
 
 // 统计数据
 const stats = ref({
-  userCount: 156,
-  courseCount: 12,
-  questionCount: 2450,
-  examCount: 3280
+  userCount: 0,
+  courseCount: 0,
+  questionCount: 0,
+  examCount: 0
 })
+
+const loading = ref(false)
 
 // 图表类型
 const userChartType = ref('week')
 const examChartType = ref('week')
 
 // 最近考试记录
-const recentExams = ref([
-  {
-    userName: '张三',
-    courseName: 'Java 基础',
-    chapterName: '第一章',
-    score: 85,
-    createTime: '2025-12-16 14:30:25'
-  },
-  {
-    userName: '李四',
-    courseName: 'Python 入门',
-    chapterName: '第二章',
-    score: 92,
-    createTime: '2025-12-16 14:25:10'
-  },
-  {
-    userName: '王五',
-    courseName: 'JavaScript 高级',
-    chapterName: '第三章',
-    score: 58,
-    createTime: '2025-12-16 14:20:05'
-  },
-  {
-    userName: '赵六',
-    courseName: 'Vue 3 实战',
-    chapterName: '第一章',
-    score: 78,
-    createTime: '2025-12-16 14:15:30'
-  },
-  {
-    userName: '钱七',
-    courseName: 'React 开发',
-    chapterName: '第二章',
-    score: 95,
-    createTime: '2025-12-16 14:10:20'
+const recentExams = ref([])
+
+// 加载统计数据
+const loadStats = async () => {
+  try {
+    const data = await getAdminStats()
+    console.log('统计数据返回:', data) // 调试信息
+    if (data) {
+      stats.value = {
+        userCount: data.userCount || data.userTotal || data.users || 0,
+        courseCount: data.courseCount || data.courseTotal || data.courses || 0,
+        questionCount: data.questionCount || data.questionTotal || data.questions || 0,
+        examCount: data.examCount || data.examTotal || data.exams || data.traceCount || 0
+      }
+    }
+  } catch (error) {
+    console.error('获取统计数据失败:', error)
+    ElMessage.error('获取统计数据失败')
   }
-])
+}
+
+// 加载最近考试记录
+const loadRecentExams = async () => {
+  loading.value = true
+  try {
+    const data = await getTraceList({
+      page: 1,
+      pageSize: 5,
+      examType: 2 // 只获取考试记录
+    })
+    
+    if (data && data.list) {
+      recentExams.value = data.list.map(record => ({
+        userName: record.name || `用户${record.userId}`,
+        courseName: record.curriculumName || '未知课程',
+        chapterName: record.chapterName || '未知章节',
+        score: record.score || 0,
+        createTime: record.startTime || ''
+      }))
+    }
+  } catch (error) {
+    console.error('获取考试记录失败:', error)
+    ElMessage.error('获取考试记录失败')
+  } finally {
+    loading.value = false
+  }
+}
 
 onMounted(() => {
-  // 这里将来可以调用API获取真实数据
-  console.log('Dashboard mounted')
+  loadStats()
+  loadRecentExams()
 })
 </script>
 

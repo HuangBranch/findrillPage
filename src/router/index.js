@@ -110,6 +110,12 @@ const router = createRouter({
       meta: { title: '用户管理', requiresAuth: true, requiresAdmin: true }
     },
     {
+      path: '/admin/roles',
+      name: 'RoleManage',
+      component: () => import('@/views/admin/RoleManage.vue'),
+      meta: { title: '角色管理', requiresAuth: true, requiresAdmin: true }
+    },
+    {
       path: '/admin/courses',
       name: 'CourseManage',
       component: () => import('@/views/admin/CourseManage.vue'),

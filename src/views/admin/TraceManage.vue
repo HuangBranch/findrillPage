@@ -52,12 +52,12 @@
                     </el-table-column>
                     <el-table-column label="答题情况" width="120" align="center">
                         <template #default="{ row }">
-                            <span>{{ row.correctCount }}/{{ row.totalCount }}</span>
+                            <span>{{ row.completedQuestionCount }}/{{ row.totalCount }}</span>
                         </template>
                     </el-table-column>
                     <el-table-column prop="duration" label="用时" width="100" align="center">
                         <template #default="{ row }">
-                            {{ formatDuration(row.duration) }}
+                            {{ formatDuration(row.startTime && row.endTime ? calculateDuration(row.startTime, row.endTime) : 0) }}
                         </template>
                     </el-table-column>
                     <el-table-column label="状态" width="100">
@@ -116,7 +116,7 @@
                     <el-divider />
 
                     <h4>答题详情</h4>
-                    <el-table :data="currentTrace.details" style="width: 100%; margin-top: 16px">
+                    <el-table :data="paginatedDetails" style="width: 100%; margin-top: 16px">
                         <el-table-column prop="questionNum" label="题号" width="80" align="center" />
                         <el-table-column prop="questionContent" label="题目内容" min-width="250" show-overflow-tooltip />
                         <el-table-column label="答题结果" width="120" align="center">
@@ -129,6 +129,18 @@
                         <el-table-column prop="userAnswer" label="用户答案" width="100" align="center" />
                         <el-table-column prop="correctAnswer" label="正确答案" width="100" align="center" />
                     </el-table>
+                    
+                    <!-- 详情分页 -->
+                    <div class="detail-pagination">
+                        <el-pagination
+                            v-model:current-page="detailCurrentPage"
+                            v-model:page-size="detailPageSize"
+                            :page-sizes="[10, 20, 50]"
+                            layout="total, sizes, prev, pager, next, jumper"
+                            :total="detailTotal"
+                            small
+                        />
+                    </div>
                 </div>
             </el-dialog>
         </div>
@@ -136,11 +148,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import { Search, Delete } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getTraceList } from '@/api/admin'
+import { getTraceList, getTraceDetail, deleteTraces } from '@/api/admin'
 
 const searchType = ref('')
 const searchKeyword = ref('')
@@ -153,6 +165,19 @@ const total = ref(0)
 const selectedIds = ref([])
 const detailDialogVisible = ref(false)
 const currentTrace = ref(null)
+
+// 详情分页相关
+const detailCurrentPage = ref(1)
+const detailPageSize = ref(10)
+const detailTotal = computed(() => currentTrace.value?.details?.length || 0)
+
+// 分页后的详情数据
+const paginatedDetails = computed(() => {
+    if (!currentTrace.value?.details) return []
+    const start = (detailCurrentPage.value - 1) * detailPageSize.value
+    const end = start + detailPageSize.value
+    return currentTrace.value.details.slice(start, end)
+})
 
 // 获取记录类型名称
 const getExamTypeName = (type) => {
@@ -190,6 +215,17 @@ const loadData = async () => {
             params.keyword = searchKeyword.value
         }
 
+        // 添加时间范围筛选
+        if (searchDateRange.value && searchDateRange.value.length === 2) {
+            // 格式化开始时间为 YYYY-MM-DD 00:00:00
+            const startDate = new Date(searchDateRange.value[0])
+            params.startTime = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-${String(startDate.getDate()).padStart(2, '0')} 00:00:00`
+            
+            // 格式化结束时间为 YYYY-MM-DD 23:59:59
+            const endDate = new Date(searchDateRange.value[1])
+            params.submitTime = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')} 23:59:59`
+        }
+
         const data = await getTraceList(params)
 
         if (data && data.list) {
@@ -199,14 +235,17 @@ const loadData = async () => {
                 userId: record.userId,
                 type: record.examType === 2 ? 'exam' : (record.examType === 1 ? 'practice' : 'wrong'),
                 examType: record.examType,
-                userName: record.userName || `用户${record.userId}`,
+                userName: record.name || `用户${record.userId}`,
                 courseName: record.curriculumName || '未知课程',
                 chapterName: record.chapterName || '未知章节',
                 score: record.score || 0,
                 correctCount: 0, // 后端没有返回，需要查看详情获取
                 totalCount: record.totalQuestion || 0,
-                duration: 0, // 后端没有返回
+                duration:  0, // 后端没有返回
+                startTime: record.startTime || '',
+                endTime: record.submitTime || '',
                 status: record.status,
+                completedQuestionCount: record.completedQuestionCount || 0,
                 createTime: record.startTime || ''
             }))
 
@@ -227,6 +266,7 @@ const loadData = async () => {
 
 const handleSearch = () => {
     currentPage.value = 1
+    console.log(searchDateRange.value)
     loadData()
 }
 
@@ -243,9 +283,67 @@ const handleSelectionChange = (selection) => {
     selectedIds.value = selection.map(item => item.id)
 }
 
-const handleView = (row) => {
-    currentTrace.value = row
-    detailDialogVisible.value = true
+// 计算时间
+function calculateDuration(startTime, endTime) {
+    const start = new Date(startTime).getTime()
+    const end = new Date(endTime).getTime()
+    return Math.floor((end - start) / 1000) // 返回秒数
+}
+
+const handleView = async (row) => {
+    // 显示加载动画
+    const loadingInstance = ElLoading.service({
+        lock: true,
+        text: '加载详情中...',
+        background: 'rgba(0, 0, 0, 0.7)'
+    })
+
+    try {
+        const detail = await getTraceDetail(row.id)
+
+        if (detail) {
+            // 计算用时（秒）
+            let duration = 0
+            if (detail.startTime && detail.submitTime) {
+                duration = calculateDuration(detail.startTime, detail.submitTime)
+            }
+
+            // 构造详情数据
+            currentTrace.value = {
+                id: detail.id,
+                userId: detail.userId,
+                type: detail.examType === 2 ? 'exam' : (detail.examType === 1 ? 'practice' : 'wrong'),
+                examType: detail.examType,
+                userName: `${detail.name}`,
+                courseName: detail.curriculumName || '未知课程',
+                chapterName: detail.chapterName || '未知章节',
+                score: detail.score || 0,
+                correctCount: detail.rightCount || 0,
+                totalCount: detail.totalQuestion || 0,
+                duration: duration,
+                status: detail.status,
+                startTime: detail.startTime,
+                submitTime: detail.submitTime,
+                // 答题详情
+                details: detail.subjectList ? detail.subjectList.map((item, index) => ({
+                    questionNum: index + 1,
+                    questionContent: item.subject,
+                    isCorrect: item.isCorrect,
+                    userAnswer: item.userAnswer || '-',
+                    correctAnswer: item.answer
+                })) : []
+            }
+
+            // 重置详情分页
+            detailCurrentPage.value = 1
+            detailDialogVisible.value = true
+        }
+    } catch (error) {
+        console.error('获取记录详情失败:', error)
+        ElMessage.error('获取记录详情失败')
+    } finally {
+        loadingInstance.close()
+    }
 }
 
 const handleDelete = (row) => {
@@ -253,12 +351,16 @@ const handleDelete = (row) => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-    }).then(() => {
-        const index = allTraces.value.findIndex(t => t.id === row.id)
-        if (index > -1) {
-            allTraces.value.splice(index, 1)
-            loadData()
+    }).then(async () => {
+        loading.value = true
+        try {
+            await deleteTraces([row.id])
             ElMessage.success('删除成功')
+            await loadData()
+        } catch (error) {
+            console.error('删除失败:', error)
+            ElMessage.error('删除失败')
+            loading.value = false
         }
     }).catch(() => { })
 }
@@ -268,11 +370,18 @@ const handleBatchDelete = () => {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
         type: 'warning'
-    }).then(() => {
-        allTraces.value = allTraces.value.filter(t => !selectedIds.value.includes(t.id))
-        selectedIds.value = []
-        loadData()
-        ElMessage.success('批量删除成功')
+    }).then(async () => {
+        loading.value = true
+        try {
+            await deleteTraces(selectedIds.value)
+            ElMessage.success('批量删除成功')
+            selectedIds.value = []
+            await loadData()
+        } catch (error) {
+            console.error('批量删除失败:', error)
+            ElMessage.error('批量删除失败')
+            loading.value = false
+        }
     }).catch(() => { })
 }
 
@@ -295,6 +404,12 @@ onMounted(() => loadData())
     margin-top: 20px;
     display: flex;
     justify-content: flex-end;
+}
+
+.detail-pagination {
+    margin-top: 16px;
+    display: flex;
+    justify-content: center;
 }
 
 @media (max-width: 1024px) {
