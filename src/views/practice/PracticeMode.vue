@@ -134,7 +134,7 @@
       </el-button>
       
       <el-button
-        v-if="currentIndex < total.values - 1"
+        v-if="currentIndex < Number(total) - 1"
         @click="handleNext"
       >
         下一题
@@ -413,7 +413,7 @@ const loadQuestions = async (type = 'first') => {
     });
     examId.value = res?.examId || null
     questions.value = res?.subjectList || []
-    total.value = res?.total || questions.value.length
+    total.value = Number(res?.total) || questions.value.length
     loading.value = false
 }
 
