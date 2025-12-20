@@ -95,9 +95,9 @@
                       <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
                         {{ getQuestionTypeName(currentQuestion.type) }}
                       </el-tag>
-                      <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
+                      <el-tag :type="getDifficultyTag(currentQuestion.difficulty)" effect="plain">
                         {{ getDifficultyName(currentQuestion.difficulty) }}
-                      </span>
+                      </el-tag>
                     </div>
 
                     <div class="question-content">
@@ -243,14 +243,24 @@
         <el-button type="primary" @click="submitExam(false)">确认提交</el-button>
       </template>
     </el-dialog>
+
+    <!-- 提交加载遮罩 -->
+    <div v-if="submitting" class="submitting-overlay">
+      <div class="submitting-content">
+        <el-icon class="rotating">
+          <Loading />
+        </el-icon>
+        <p>正在提交试卷...</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter, useRoute, onBeforeRouteLeave } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
-import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid } from '@element-plus/icons-vue'
+import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import examAPI from '@/api/exam'
 
@@ -277,6 +287,8 @@ const showUnansweredDialog = ref(false)
 const isTransitioning = ref(false) // 防止移动端跳转过程中触发点击
 const renderKey = ref(0) // 强制重新渲染
 const loading = ref(false)
+const submitting = ref(false) // 提交中的加载状态
+const isManualSubmit = ref(false) // 标记是否为手动提交
 
 const total = route.query.questionCount
 // 当前题目
@@ -309,51 +321,129 @@ const opentions = ref([
 
 // 初始化
 onMounted(() => {
-  loadProgress()
   timer.value = total < 30 ? total : 30
+  
+  // 检查是否有刷新前的提交记录
+  const lastSubmitLog = localStorage.getItem('exam_submit_log')
+  if (lastSubmitLog) {
+    const log = JSON.parse(lastSubmitLog)
+    ElMessage({
+      type: 'info',
+      message: `检测到上次刷新时自动提交了试卷（${new Date(log.timestamp).toLocaleTimeString()}）`,
+      duration: 5000,
+      showClose: true
+    })
+    // 清除日志
+    localStorage.removeItem('exam_submit_log')
+  }
+  
+  // 监听页面刷新，显示提示
+  window.addEventListener('beforeunload', handleBeforeUnload)
+  // 监听页面可见性变化（用户切换标签页等）
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 })
 
-// 清理定时器
+// 清理定时器和事件监听
 onUnmounted(() => {
   if (timer.value) {
     clearInterval(timer.value)
   }
+  window.removeEventListener('beforeunload', handleBeforeUnload)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
+})
+// 路由离开守卫（返回按钮）
+onBeforeRouteLeave(async (to, from, next) => {
+  // 如果是手动提交跳转，直接放行
+  if (isManualSubmit.value) {
+    next()
+    return
+  }
+  
+  if (examStarted.value) {
+    try {
+      await ElMessageBox.confirm(
+        '离开页面将自动提交试卷，确定要离开吗？',
+        '提示',
+        {
+          confirmButtonText: '确定离开',
+          cancelButtonText: '继续答题',
+          type: 'warning'
+        }
+      )
+      // 显示加载动画
+      submitting.value = true
+      // 清理定时器
+      if (timer.value) {
+        clearInterval(timer.value)
+      }
+      // 先重置状态，避免重复弹窗
+      examStarted.value = false
+      // 自动提交试卷
+      await submitExam(true)
+      // 提交成功后会自动跳转，不需要 next()
+    } catch {
+      // 取消离开
+      next(false)
+    }
+  } else {
+    next()
+  }
 })
 
-// 加载进度
-const loadProgress = () => {
-  const courseId = courseStore.currentCourse?.id
-  const chapterId = courseStore.currentChapter?.id
-  if (!courseId || !chapterId) return
-
-  const key = `exam_${courseId}_${chapterId}`
-  const saved = localStorage.getItem(key)
-  if (saved) {
-    const data = JSON.parse(saved)
-    if (data.examStarted && data.remainingTime > 0) {
-      examStarted.value = data.examStarted
-      remainingTime.value = data.remainingTime
-      userAnswers.value = data.userAnswers || []
-      currentIndex.value = data.currentIndex || 0
-      startTimer()
-    }
+// 页面可见性变化时的处理
+const handleVisibilityChange = () => {
+  // 当页面隐藏时（用户关闭标签页、刷新等），尝试提交
+  if (document.hidden && examStarted.value) {
+    console.log('页面隐藏，准备提交试卷...')
+    submitDataBeforeLeave()
   }
 }
 
-// 保存进度
-const saveProgress = () => {
-  const courseId = courseStore.currentCourse?.id
-  const chapterId = courseStore.currentChapter?.id
-  if (!courseId || !chapterId) return
+// 页面刷新/关闭时的处理
+// 在页面关闭前提交数据
+const submitDataBeforeLeave = () => {
+  const payload = questions.value.map((q, index) => {
+    const ans = userAnswers.value[index]
+    const ansStr = Array.isArray(ans) ? ans.join('') : (ans || '')
+    return {
+      subjectId: q.id,
+      answer: ansStr
+    }
+  })
+  
+  const submitData = {
+    examId: examId.value,
+    answers: payload,
+    autoSubmit: true
+  }
+  
+  try {
+    // 记录提交日志到本地存储（刷新后可以看到）
+    const submitLog = {
+      timestamp: Date.now(),
+      examId: examId.value,
+      questionCount: questions.value.length,
+      answeredCount: userAnswers.value.filter(a => Array.isArray(a) && a.length > 0).length
+    }
+    localStorage.setItem('exam_submit_log', JSON.stringify(submitLog))
+    
+    // 使用 sendBeacon API（专为页面卸载场景设计）
+    const blob = new Blob([JSON.stringify(submitData)], { type: 'application/json' })
+    const apiUrl = import.meta.env.VITE_API_BASE_URL || ''
+    const url = `${apiUrl}/api/exam/submit`
+    const success = navigator.sendBeacon(url, blob)
+    
+    console.log(success ? '✅ 试卷已发送' : '⚠️ 发送失败')
+  } catch (error) {
+    console.error('❌ 提交失败:', error)
+  }
+}
 
-  const key = `exam_${courseId}_${chapterId}`
-  localStorage.setItem(key, JSON.stringify({
-    examStarted: examStarted.value,
-    remainingTime: remainingTime.value,
-    userAnswers: userAnswers.value,
-    currentIndex: currentIndex.value,
-    timestamp: Date.now()
-  }))
+// 处理页面刷新/关闭事件
+const handleBeforeUnload = (e) => {
+  if (examStarted.value && !submitting.value) {
+    submitDataBeforeLeave()
+  }
 }
 
 const loadQuestions = async (type = 'first') => {
@@ -368,9 +458,23 @@ const loadQuestions = async (type = 'first') => {
       count: timer.value || total || 30
     }
   )
-  questions.value = data?.subjectList || []
+  const loadedQuestions = data?.subjectList || []
+  // 按题型排序：1-单选题，2-多选题，3-判断题
+  questions.value = sortQuestionsByType(loadedQuestions)
   examId.value = data?.examId || 0
   loading.value = false
+}
+
+// 按题型排序题目
+const sortQuestionsByType = (questionList) => {
+  return [...questionList].sort((a, b) => {
+    // 先按题型排序：1(单选) < 2(多选) < 3(判断)
+    if (a.type !== b.type) {
+      return a.type - b.type
+    }
+    // 同一题型保持原有顺序
+    return 0
+  })
 }
 
 // 开始考试
@@ -380,7 +484,6 @@ const startExam = () => {
   remainingTime.value = examDuration.value * 60
   userAnswers.value = new Array(questions.value.length).fill(null).map(() => [])
   startTimer()
-  saveProgress()
 }
 
 // 开始计时
@@ -388,7 +491,6 @@ const startTimer = () => {
   timer.value = setInterval(() => {
     if (remainingTime.value > 0) {
       remainingTime.value--
-      saveProgress()
     } else {
       clearInterval(timer.value)
       ElMessage.warning('考试时间到，自动提交')
@@ -478,7 +580,6 @@ const handleSelectOption = (optionIndex) => {
     } else {
       answers.push(label)
     }
-    saveProgress()
   } else {
     // 单选题和判断题：自动跳转下一题
     // 立即上锁，防止重复点击
@@ -486,7 +587,6 @@ const handleSelectOption = (optionIndex) => {
 
     const currentIdx = currentIndex.value
     userAnswers.value[currentIdx] = [label]
-    saveProgress()
 
     // 立即切换题目，利用isTransitioning阻止显示选中状态
     if (currentIdx < questions.value.length - 1) {
@@ -604,6 +704,12 @@ const jumpToFirstUnanswered = () => {
 
 // 提交试卷
 const submitExam = async (autoSubmit = false) => {
+  submitting.value = true
+  // 如果不是自动提交，设置手动提交标志
+  if (!autoSubmit) {
+    isManualSubmit.value = true
+  }
+  
   if (timer.value) {
     clearInterval(timer.value)
   }
@@ -656,36 +762,16 @@ const submitExam = async (autoSubmit = false) => {
       }
     })
   } catch (error) {
+    submitting.value = false
+    isManualSubmit.value = false
     ElMessage.error('提交试卷失败，请稍后重试')
     return
   }
 }
 
-// 返回
-const handleBack = async () => {
-  if (examStarted.value) {
-    try {
-      await ElMessageBox.confirm(
-        '考试尚未提交，确定要退出吗？进度将会保存。',
-        '提示',
-        {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      )
-
-      if (timer.value) {
-        clearInterval(timer.value)
-      }
-      saveProgress()
-      router.back()
-    } catch {
-      // 取消退出
-    }
-  } else {
-    router.back()
-  }
+// 返回（由路由守卫处理提交逻辑）
+const handleBack = () => {
+  router.back()
 }
 
 // 题目类型名称
@@ -716,6 +802,16 @@ const getDifficultyName = (difficulty) => {
     3: '困难'
   }
   return map[difficulty] || '未知'
+}
+
+// 难度标签类型
+const getDifficultyTag = (difficulty) => {
+  const map = {
+    1: 'success',  // 简单 - 绿色
+    2: 'warning',  // 中等 - 橙色
+    3: 'danger'    // 困难 - 红色
+  }
+  return map[difficulty] || 'info'
 }
 </script>
 
@@ -959,28 +1055,6 @@ const getDifficultyName = (difficulty) => {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   align-items: center;
-}
-
-.question-difficulty {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.difficulty-easy {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.difficulty-medium {
-  background: #fef0f0;
-  color: #e6a23c;
-}
-
-.difficulty-hard {
-  background: #fef0f0;
-  color: #f56c6c;
 }
 
 .question-content {
@@ -1268,6 +1342,71 @@ const getDifficultyName = (difficulty) => {
 
   .answer-sheet {
     overflow-x: hidden;
+  }
+}
+
+/* 提交加载遮罩 */
+.submitting-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
+}
+
+.submitting-content {
+  background: white;
+  border-radius: 16px;
+  padding: 3rem 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.submitting-content .el-icon {
+  font-size: 48px;
+  color: #409eff;
+}
+
+.submitting-content p {
+  font-size: 1.125rem;
+  color: #303133;
+  margin: 0;
+  font-weight: 500;
+}
+
+.rotating {
+  animation: rotate 1s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 767px) {
+  .submitting-content {
+    padding: 2rem 3rem;
+  }
+  
+  .submitting-content .el-icon {
+    font-size: 40px;
+  }
+  
+  .submitting-content p {
+    font-size: 1rem;
   }
 }
 </style>

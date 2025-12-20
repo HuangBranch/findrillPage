@@ -60,9 +60,9 @@
                     <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
                       {{ getQuestionTypeName(currentQuestion.type) }}
                     </el-tag>
-                    <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
+                    <el-tag :type="getDifficultyTag(currentQuestion.difficulty)" effect="plain">
                       {{ getDifficultyName(currentQuestion.difficulty) }}
-                    </span>
+                    </el-tag>
                   </div>
                   
                   <div class="question-content">
@@ -380,7 +380,6 @@ const accuracy = computed(() => {
 // 初始化
 onMounted(() => {
   loadQuestions()
-  loadProgress()
   // 延迟解锁，确保页面完全渲染后再显示选项状态
   setTimeout(() => {
     isTransitioning.value = false
@@ -389,7 +388,9 @@ onMounted(() => {
 
 // 加载题目
 const loadQuestions = async (type = 'first') => {
+  console.log(questions.value.length, total.value)
     if (type === 'add') {
+      if (questions.value.length >= total.value) return;
       const res = await practiceApi.getPracticeQuestions({
         chapterId: route.query.chapterId,
         chapterName: route.query.chapterName,
@@ -399,7 +400,10 @@ const loadQuestions = async (type = 'first') => {
         page: Math.floor(questions.value.length / 50) + 1,
         pageSize: 50
       });
-      questions.value = questions.value.concat(res?.subjectList || [])
+      const newQuestions = res?.subjectList || []
+      // 按题型排序：1-单选题，2-多选题，3-判断题
+      const sortedQuestions = sortQuestionsByType(newQuestions)
+      questions.value = questions.value.concat(sortedQuestions)
       return
     }
     loading.value = true
@@ -412,27 +416,26 @@ const loadQuestions = async (type = 'first') => {
       pageSize: 50
     });
     examId.value = res?.examId || null
-    questions.value = res?.subjectList || []
+    const loadedQuestions = res?.subjectList || []
+    // 按题型排序：1-单选题，2-多选题，3-判断题
+    questions.value = sortQuestionsByType(loadedQuestions)
     total.value = Number(res?.total) || questions.value.length
     loading.value = false
 }
 
-// 加载进度
-const loadProgress = () => {
-  const courseId = courseStore.currentCourse?.id
-  const chapterId = courseStore.currentChapter?.id
-  if (!courseId || !chapterId) return
-
-  const key = `practice_${courseId}_${chapterId}`
-  const saved = localStorage.getItem(key)
-  if (saved) {
-    const data = JSON.parse(saved)
-    currentIndex.value = data.currentIndex || 0
-    userAnswers.value = data.userAnswers || []
-  }
+// 按题型排序题目
+const sortQuestionsByType = (questionList) => {
+  return [...questionList].sort((a, b) => {
+    // 先按题型排序：1(单选) < 2(多选) < 3(判断)
+    if (a.type !== b.type) {
+      return a.type - b.type
+    }
+    // 同一题型保持原有顺序
+    return 0
+  })
 }
 
-// 保存进度
+// 提交答案到后端
 const saveProgress = async (userAnswerStr, isCorrect) => {
   try{
       const submit_answers = await practiceApi.submitPracticeRecord({
@@ -639,18 +642,8 @@ const savePracticeRecord = () => {
     timestamp: Date.now()
   }
 
-  // 保存到本地
-  const recordsKey = 'practice_records'
-  const saved = localStorage.getItem(recordsKey)
-  const records = saved ? JSON.parse(saved) : []
-  records.unshift(practiceRecord)
-  
-  // 只保留最近100条记录
-  if (records.length > 100) {
-    records.splice(100)
-  }
-  
-  localStorage.setItem(recordsKey, JSON.stringify(records))
+  // TODO: 可以在这里调用 API 保存练习记录到服务器
+  console.log('练习记录:', practiceRecord)
 }
 
 // 完成练习（提交试卷）
@@ -698,6 +691,16 @@ const getDifficultyName = (difficulty) => {
     3: '困难'
   }
   return map[difficulty] || '未知'
+}
+
+// 难度标签类型
+const getDifficultyTag = (difficulty) => {
+  const map = {
+    1: 'success',  // 简单 - 绿色
+    2: 'warning',  // 中等 - 橙色
+    3: 'danger'    // 困难 - 红色
+  }
+  return map[difficulty] || 'info'
 }
 </script>
 
@@ -860,28 +863,6 @@ const getDifficultyName = (difficulty) => {
   gap: 0.75rem;
   margin-bottom: 1.5rem;
   align-items: center;
-}
-
-.question-difficulty {
-  padding: 0.25rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-}
-
-.difficulty-easy {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.difficulty-medium {
-  background: #fef0f0;
-  color: #e6a23c;
-}
-
-.difficulty-hard {
-  background: #fef0f0;
-  color: #f56c6c;
 }
 
 .question-content {
