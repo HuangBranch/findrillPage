@@ -67,8 +67,8 @@
               <h3 class="course-name">{{ record.id }}</h3>
               <p class="chapter-name">{{ record.chapterName }}</p>
             </div>
-            <div class="accuracy-badge" :class="getAccuracyClass(record.accuracy)">
-              {{ record.accuracy }}%
+            <div class="accuracy-badge" :class="getAccuracyClass(record.rightCount%record.wrongCount)">
+              {{ record.rightCount%record.wrongCount }}%
             </div>
           </div>
 
@@ -153,7 +153,7 @@ const averageAccuracy = computed(() => {
   return Math.round(total / records.value.length)
 })
 
-// 筛选排序（逻辑不变）
+// 筛选排序（预留位置，需要改动）
 const filteredRecords = computed(() => {
   let result = [...records.value]
   if (filterType.value) {

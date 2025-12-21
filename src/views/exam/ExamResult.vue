@@ -112,6 +112,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, CircleCheck, CircleClose, DocumentChecked, Clock, TrendCharts, View, House, Remove } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
+import {getExamResult} from "@/api/exam.js";
 
 const router = useRouter()
 const route = useRoute()
@@ -138,21 +139,21 @@ const unansweredCount = computed(() => {
 onMounted(() => {
   loadRecord()
 })
-
+const examId = route.params.id
 // 加载考试记录
 const loadRecord = async () => {
   try {
     // 从路由 state 中获取传递的数据
-    const state = window.history.state
-    if (state && state.record) {
-      const data = state.record
+    const data =await getExamResult(examId)
+    console.log(data)
+    if (data) {
       // 将传入的数据映射到组件期望的字段
       record.value = {
         score: data.score || 0,
         rightCount: data.correctCount || 0,
         wrongCount: data.wrongCount || 0,
         totalQuestion: data.totalCount || 0,
-        curriculumName: data.courseName || '未知课程',
+        curriculumName: data.curriculumName || '未知课程',
         chapterName: data.chapterName || '未知章节',
         submitTime: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
         startTime: data.timestamp ? new Date(data.timestamp - (data.duration || 0) * 1000).toISOString() : new Date().toISOString(),

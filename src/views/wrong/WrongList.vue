@@ -49,7 +49,7 @@
             <el-button
                 type="primary"
                 size="default"
-                @click.stop="startPractice(group.id)"
+                @click.stop="startPractice(group.courseId)"
             >
               <el-icon><VideoPlay /></el-icon>
               开始练习
@@ -266,6 +266,7 @@ const fetchChaptersByCurriculumId = async (cid) => {
   try {
     const params = new URLSearchParams({ curriculumId: cid })
     const res = await getChapterList(params)
+    console.log(res)
     if (res) {
       // 假设接口返回格式：[{ chapterId: 3, name: "计算机网络基础" }, ...]
       const chapterMap = {}
@@ -297,7 +298,7 @@ const fetchWrongQuestions = async () => {
 
     // 发送请求（替换为实际接口地址）
     const res = await getWrongList(params)
-
+    console.log(res)
     if (res) {
       // 接口返回的data直接是错题数组
       wrongQuestions.value = res.map(item => ({
@@ -426,10 +427,10 @@ const formatTime = (timestamp) => {
 
 // 开始练习
 const startPractice = (courseId) => {
+  console.log(courseId)
   // courseId 实际是错题数据的 id 字段，作为 examId 参数传递
   router.push({
-    path: '/wrong/practice',
-    query: { examId: courseId }
+    path: `/wrong/practice/${courseId}`,
   })
 }
 

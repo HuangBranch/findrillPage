@@ -335,6 +335,7 @@ onMounted(() => {
 // 加载错题 - 调用新接口
 const loadWrongQuestions = async () => {
   try {
+    console.log(route.params)
     // 从路由参数获取 examId（对应数据的 id 字段）
     examId.value = route.query.examId
     
@@ -347,8 +348,8 @@ const loadWrongQuestions = async () => {
     // 调用接口
     const res = await getWrongPracticeQuestions(params)
     
-    if (res && res.data) {
-      const { subjectList, total } = res.data
+    if (res ) {
+      const { subjectList, total } = res
       totalQuestions.value = total || 0
       
       // 转换接口返回的数据格式以适配前端

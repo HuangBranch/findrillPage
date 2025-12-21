@@ -67,7 +67,7 @@ const router = createRouter({
       meta: { title: '错题本', requiresAuth: true, requiresEmailVerified: true }
     },
     {
-      path: '/wrong/practice',
+      path: '/wrong/practice/:examId',
       name: 'WrongPractice',
       component: () => import('@/views/wrong/WrongPractice.vue'),
       meta: { title: '错题练习', requiresAuth: true, requiresEmailVerified: true }

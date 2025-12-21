@@ -30,7 +30,7 @@ export const submitExam = (data) => {
  */
 export const getExamResult = (examId) => {
   return request({
-    url: `/exam/result/${examId}`,
+    url: `/exam/${examId}`,
     method: 'GET'
   })
 }

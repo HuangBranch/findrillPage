@@ -217,14 +217,21 @@ const onSortChange = () => {}
 // 查看详情（不变）
 const viewDetail = async (record) => {
   try {
-    console.log(record)
-    const data =await getExamResult()
-    console.log(data)
-    router.replace({
+    // 校验record和record.id是否有效
+    if (!record || !record.id || record.id === 0) {
+      ElMessage.warning('考试记录ID无效，无法查看详情')
+      return
+    }
+    // 暂存，先不删除
+    // console.log(record)
+    // const data =await getExamResult(record.id)
+    // console.log(data)
+    router.push({
       path: `/exam/result/${record.id}`,
-      state: {
-        record: JSON.parse(JSON.stringify(data))
-      }
+      // 暂存，先不删除
+      // state: {
+      //   record: JSON.parse(JSON.stringify(data))
+      // }
     })
     // router.push(`/exam/result/${record.id}`) // 改为用接口返回的id
   }catch (error) {
