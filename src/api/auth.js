@@ -24,7 +24,7 @@ export const sendEmailVerificationLink = (email) => {
   }
   
   return request({
-    url: '/email',
+    url: '/api/email',
     method: 'GET',
     params
   })

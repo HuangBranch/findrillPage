@@ -226,44 +226,41 @@ const handleBindEmail = async () => {
   try {
     // 直接调用发送验证链接接口，携带邮箱参数
     // 后端会自动保存邮箱并发送验证链接，验证成功后自动绑定
-    const result = await sendEmailVerificationLink(inputEmail.value)
+    await sendEmailVerificationLink(inputEmail.value)
     
-    if (result && result.code === 200) {
-      // 临时更新本地用户信息（验证成功后后端会正式绑定）
-      authStore.updateUserInfo({ email: inputEmail.value })
-      showBindForm.value = false
-      emailSent.value = true
-      
-      // 记录发送时间
-      localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
-      countdown.value = 60
-      startCountdown()
-      
-      // 开始轮询检查验证状态
-      startPollingEmailStatus()
-      
-      ElMessage.success({
-        message: '验证链接已发送到您的邮箱，请查收',
-        duration: 3000
-      })
-      
-      // 开发环境提示
-      if (isDev) {
-        const frontendUrl = window.location.origin
-        setTimeout(() => {
-          ElMessage.info({
-            message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email-token?token=xxxxx`,
-            duration: 5000,
-            showClose: true
-          })
-        }, 1000)
-      }
-    } else {
-      throw new Error(result?.msg || '发送失败')
+    // 能执行到这里就是成功了
+    // 临时更新本地用户信息（验证成功后后端会正式绑定）
+    authStore.updateUserInfo({ email: inputEmail.value })
+    showBindForm.value = false
+    emailSent.value = true
+    
+    // 记录发送时间
+    localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
+    countdown.value = 60
+    startCountdown()
+    
+    // 开始轮询检查验证状态
+    startPollingEmailStatus()
+    
+    ElMessage.success({
+      message: '验证链接已发送到您的邮箱，请查收',
+      duration: 3000
+    })
+    
+    // 开发环境提示
+    if (isDev) {
+      const frontendUrl = window.location.origin
+      setTimeout(() => {
+        ElMessage.info({
+          message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email-token?token=xxxxx`,
+          duration: 5000,
+          showClose: true
+        })
+      }, 1000)
     }
   } catch (error) {
     console.error('发送验证链接失败：', error)
-    ElMessage.error(error.msg || error.message || '发送失败，请稍后重试')
+    ElMessage.error(error.message || '发送失败，请稍后重试')
   } finally {
     binding.value = false
   }
@@ -288,41 +285,38 @@ const sendVerificationLink = async () => {
   
   try {
     // 调用后端 API 发送验证链接
-    const result = await sendEmailVerificationLink()
+    await sendEmailVerificationLink()
     
-    if (result && result.code === 200) {
-      // 记录发送时间
-      localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
-      
-      emailSent.value = true
-      countdown.value = 60
-      startCountdown()
-      
-      // 开始轮询检查验证状态
-      startPollingEmailStatus()
-      
-      ElMessage.success({
-        message: result.msg || '验证链接已发送到您的邮箱，请查收',
-        duration: 3000
-      })
-      
-      // 开发环境提示
-      if (isDev) {
-        const frontendUrl = window.location.origin
-        setTimeout(() => {
-          ElMessage.info({
-            message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email?token=xxxxx`,
-            duration: 5000,
-            showClose: true
-          })
-        }, 1000)
-      }
-    } else {
-      throw new Error(result?.msg || '发送失败')
+    // 能执行到这里就是成功了
+    // 记录发送时间
+    localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
+    
+    emailSent.value = true
+    countdown.value = 60
+    startCountdown()
+    
+    // 开始轮询检查验证状态
+    startPollingEmailStatus()
+    
+    ElMessage.success({
+      message: '验证链接已发送到您的邮箱，请查收',
+      duration: 3000
+    })
+    
+    // 开发环境提示
+    if (isDev) {
+      const frontendUrl = window.location.origin
+      setTimeout(() => {
+        ElMessage.info({
+          message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email?token=xxxxx`,
+          duration: 5000,
+          showClose: true
+        })
+      }, 1000)
     }
   } catch (error) {
     console.error('发送验证链接失败：', error)
-    ElMessage.error(error.msg || error.message || '发送失败，请稍后重试')
+    ElMessage.error(error.message || '发送失败，请稍后重试')
   } finally {
     sending.value = false
   }
