@@ -24,7 +24,7 @@ export const getWrongList = (params) => {
 
 /**
  * 错题练习抽题
- * @param {Object} params - { courseId, chapterId, count }
+ * @param {Object} params - { examId, page, pageSize }
  */
 export const getWrongPracticeQuestions = (params) => {
   return request({

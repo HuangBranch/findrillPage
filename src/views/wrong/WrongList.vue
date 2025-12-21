@@ -49,7 +49,7 @@
             <el-button
                 type="primary"
                 size="default"
-                @click.stop="startPractice(group.courseId)"
+                @click.stop="startPractice(group.id)"
             >
               <el-icon><VideoPlay /></el-icon>
               开始练习
@@ -426,9 +426,10 @@ const formatTime = (timestamp) => {
 
 // 开始练习
 const startPractice = (courseId) => {
+  // courseId 实际是错题数据的 id 字段，作为 examId 参数传递
   router.push({
     path: '/wrong/practice',
-    query: { courseId, chapterId: chapterId.value }
+    query: { examId: courseId }
   })
 }
 

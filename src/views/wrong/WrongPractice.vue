@@ -30,7 +30,7 @@
               
               <div class="question-content">
                 <p class="question-text">{{ currentIndex + 1 }}. {{ currentQuestion.question }}</p>
-                <p v-if="currentQuestion.type === 'multiple'" class="question-hint">（多选题，选择完毕后请点击下一题）</p>
+                <p v-if="currentQuestion.type === 2" class="question-hint">（多选题，选择完毕后请点击下一题）</p>
               </div>
 
               <!-- 选项列表 -->
@@ -102,7 +102,7 @@
       </el-button>
       
       <el-button
-        v-if="currentQuestion.type === 'multiple' && !showAnswer && hasAnswer"
+        v-if="currentQuestion.type === 2 && !showAnswer && hasAnswer"
         type="primary"
         @click="handleSubmit"
       >
@@ -248,6 +248,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, CircleCheck, CircleClose, Document } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getWrongPracticeQuestions } from '@/api/wrong.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -262,7 +263,11 @@ const showAnswerCard = ref(false)
 const userAnswers = ref([])
 const isTransitioning = ref(true)
 const renderKey = ref(0)
-const courseName = ref('')
+const courseName = ref('错题练习')
+const examId = ref(null)
+const totalQuestions = ref(0)
+const currentPage = ref(1)
+const pageSize = ref(50)
 
 // 当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {})
@@ -289,11 +294,12 @@ const questionsByType = computed(() => {
   
   questions.value.forEach((q, index) => {
     const item = { ...q, originalIndex: index }
-    if (q.type === 'single') {
+    // 接口返回的type是数字: 1=单选, 2=多选, 3=判断
+    if (q.type === 1) {
       result.single.push(item)
-    } else if (q.type === 'multiple') {
+    } else if (q.type === 2) {
       result.multiple.push(item)
-    } else if (q.type === 'judge') {
+    } else if (q.type === 3) {
       result.judge.push(item)
     }
   })
@@ -326,26 +332,53 @@ onMounted(() => {
   }, 350)
 })
 
-// 加载错题
-const loadWrongQuestions = () => {
-  const courseId = route.query.courseId
-  const saved = localStorage.getItem('wrong_questions')
-  
-  if (saved) {
-    const allWrong = JSON.parse(saved)
+// 加载错题 - 调用新接口
+const loadWrongQuestions = async () => {
+  try {
+    // 从路由参数获取 examId（对应数据的 id 字段）
+    examId.value = route.query.examId
     
-    if (courseId) {
-      questions.value = allWrong.filter(q => q.courseId == courseId)
-      if (questions.value.length > 0) {
-        courseName.value = questions.value[0].courseName
-      }
-    } else {
-      questions.value = allWrong
-      courseName.value = '全部错题'
+    const params = {
+      examId: examId.value,
+      page: currentPage.value,
+      pageSize: pageSize.value
     }
     
-    // 初始化用户答案数组
-    userAnswers.value = new Array(questions.value.length).fill(null)
+    // 调用接口
+    const res = await getWrongPracticeQuestions(params)
+    
+    if (res && res.data) {
+      const { subjectList, total } = res.data
+      totalQuestions.value = total || 0
+      
+      // 转换接口返回的数据格式以适配前端
+      questions.value = subjectList.map(item => ({
+        id: item.id,
+        question: item.subject, // 接口字段是 subject
+        type: item.type, // 1=单选, 2=多选, 3=判断
+        difficulty: item.difficulty,
+        answer: item.answer,
+        analysis: item.analysis,
+        knowledgePoint: item.knowledgePoint,
+        options: item.options.map(opt => ({
+          text: opt.text,
+          option: opt.option,
+          isCorrect: opt.option === item.answer // 判断是否为正确答案
+        }))
+      }))
+      
+      // 初始化用户答案数组
+      userAnswers.value = new Array(questions.value.length).fill(null)
+      
+      if (questions.value.length === 0) {
+        ElMessage.warning('暂无错题')
+      }
+    } else {
+      ElMessage.error('获取错题失败')
+    }
+  } catch (error) {
+    console.error('加载错题失败:', error)
+    ElMessage.error('网络错误，请重试')
   }
 }
 
@@ -356,7 +389,8 @@ const handleSelectOption = (index) => {
   const label = getOptionLabel(index)
   const currentType = currentQuestion.value.type
   
-  if (currentType === 'multiple') {
+  // type: 1=单选, 2=多选, 3=判断
+  if (currentType === 2) { // 多选
     const idx = selectedAnswer.value.indexOf(label)
     if (idx > -1) {
       selectedAnswer.value.splice(idx, 1)
@@ -374,10 +408,11 @@ const handleSelectOption = (index) => {
 // 获取选项标签
 const getOptionLabel = (index) => {
   const question = currentQuestion.value
-  if (question.type === 'judge') {
+  if (question.type === 3) { // 判断题
     return index === 0 ? '正确' : '错误'
   }
-  return String.fromCharCode(65 + index)
+  // 返回当前选项的 option 字段值
+  return question.options[index]?.option || String.fromCharCode(65 + index)
 }
 
 // 提交答案
@@ -387,18 +422,16 @@ const handleSubmit = () => {
     return
   }
 
-  const correctAnswers = currentQuestion.value.options
-    .map((opt, idx) => opt.isCorrect ? getOptionLabel(idx) : null)
-    .filter(Boolean)
-  
+  // 获取正确答案（接口返回的 answer 字段，如 "B" 或 "AB"）
+  const correctAnswer = currentQuestion.value.answer
   const userAnswerStr = selectedAnswer.value.sort().join('')
-  const correctAnswerStr = correctAnswers.sort().join('')
+  const correctAnswerStr = correctAnswer.split('').sort().join('')
   const isCorrect = userAnswerStr === correctAnswerStr
 
   userAnswers.value[currentIndex.value] = {
     questionId: currentQuestion.value.id,
     userAnswer: userAnswerStr,
-    correctAnswer: correctAnswerStr,
+    correctAnswer: correctAnswer,
     isCorrect,
     timestamp: Date.now()
   }
@@ -453,10 +486,8 @@ const removeFromWrong = async () => {
 
 // 获取正确答案
 const getCorrectAnswer = () => {
-  const correctAnswers = currentQuestion.value.options
-    ?.map((opt, idx) => opt.isCorrect ? getOptionLabel(idx) : null)
-    .filter(Boolean)
-  return correctAnswers?.join('、') || ''
+  // 直接返回接口的 answer 字段
+  return currentQuestion.value.answer || ''
 }
 
 // 上一题
@@ -474,7 +505,8 @@ const handlePrevious = () => {
 
 // 下一题
 const handleNext = () => {
-  if (currentQuestion.value.type === 'multiple' && !showAnswer.value && selectedAnswer.value.length > 0) {
+  // type: 2=多选题
+  if (currentQuestion.value.type === 2 && !showAnswer.value && selectedAnswer.value.length > 0) {
     handleSubmit()
     return
   }
@@ -531,32 +563,32 @@ const handleBack = () => {
   router.back()
 }
 
-// 题目类型名称
+// 题目类型名称 - 适配数字类型
 const getQuestionTypeName = (type) => {
   const map = {
-    single: '单选题',
-    multiple: '多选题',
-    judge: '判断题'
+    1: '单选题',
+    2: '多选题',
+    3: '判断题'
   }
   return map[type] || '未知'
 }
 
-// 题目类型标签
+// 题目类型标签 - 适配数字类型
 const getQuestionTypeTag = (type) => {
   const map = {
-    single: 'primary',
-    multiple: 'warning',
-    judge: 'info'
+    1: 'primary',
+    2: 'warning',
+    3: 'info'
   }
   return map[type] || 'primary'
 }
 
-// 难度名称
+// 难度名称 - 适配数字类型
 const getDifficultyName = (difficulty) => {
   const map = {
-    easy: '简单',
-    medium: '中等',
-    hard: '困难'
+    1: '简单',
+    2: '中等',
+    3: '困难'
   }
   return map[difficulty] || '未知'
 }

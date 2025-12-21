@@ -133,7 +133,7 @@ export const getQuestionDetail = (questionId) => {
 
 // 单题目上传
 export const createQuestion = (data) => {
-  return request({ url: '/admin/questions/single-upload', method: 'POST', data })
+  return request({ url: '/admin/questions', method: 'POST', data })
 }
 
 // 批量上传题目

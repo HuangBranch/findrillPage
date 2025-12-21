@@ -590,15 +590,9 @@ const handleSubmit = async () => {
     submitting.value = true
     
     try {
-      // 获取选中的课程和章节名称
-      const selectedCourse = formCourseList.value.find(c => c.id === formData.curriculumId)
-      const selectedChapter = formChapterList.value.find(c => c.id === formData.chapterId)
-      
       const questionData = {
         curriculumId: formData.curriculumId,
-        curriculumName: selectedCourse?.name || '',
         chapterId: formData.chapterId,
-        chapterName: selectedChapter?.name || '',
         type: formData.type,
         subject: formData.subject,
         selectA: formData.selectA,
