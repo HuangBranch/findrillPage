@@ -86,8 +86,24 @@ export const useAuthStore = defineStore('auth', {
     // 设置邮箱验证状态
     setEmailVerified(verified) {
       if (this.userInfo) {
-        this.userInfo.emailVerified = verified
+        this.userInfo.isActiveEmail = verified
         setStorage('userInfo', this.userInfo)
+      }
+    },
+
+    // 刷新用户邮箱验证状态（从服务器获取最新状态）
+    async refreshEmailStatus() {
+      try {
+        // TODO: 调用检查邮箱状态的接口
+        // const result = await checkEmailStatus()
+        // if (result && result.data) {
+        //   this.setEmailVerified(result.data.isActiveEmail)
+        //   return result.data.isActiveEmail
+        // }
+        return this.isEmailVerified
+      } catch (error) {
+        console.error('刷新邮箱验证状态失败：', error)
+        return false
       }
     }
   }

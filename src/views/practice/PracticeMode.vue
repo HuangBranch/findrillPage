@@ -79,9 +79,11 @@
                       :class="{
                         selected: isOptionSelected(index),
                         correct: showAnswer && isOptionCorrect(index),
-                        wrong: showAnswer && isOptionSelected(index) && !isOptionCorrect(index)
+                        wrong: showAnswer && isOptionSelected(index) && !isOptionCorrect(index),
+                        disabled: isTransitioning
                       }"
                       @click="handleSelectOption(index)"
+                      :style="{ pointerEvents: isTransitioning ? 'none' : 'auto' }"
                     >
                       <div class="option-label">{{ getOptionLabel(index) }}</div>
                       <div class="option-content">{{ option.text }}</div>
@@ -453,7 +455,15 @@ const saveProgress = async (userAnswerStr, isCorrect) => {
 
 // 选择选项
 const handleSelectOption = (index) => {
-  if (showAnswer.value || isTransitioning.value) return
+  // 严格防止在过渡动画期间或已显示答案时触发选择
+  if (showAnswer.value || isTransitioning.value) {
+    return
+  }
+  
+  // 防止快速连续点击
+  if (!currentQuestion.value || !currentQuestion.value.id) {
+    return
+  }
   
   const label = getOptionLabel(index)
   const currentType = currentQuestion.value.type
@@ -528,10 +538,21 @@ const getCorrectAnswer = () => {
 // 上一题
 const handlePrevious = () => {
   if (currentIndex.value > 0) {
+    // 先开始过渡动画
     isTransitioning.value = true
+    // 立即切换题目并重置状态
     currentIndex.value--
     renderKey.value++
-    resetQuestion()
+    // 重置选择状态和答案显示
+    const saved = userAnswers.value[currentIndex.value]
+    if (saved) {
+      selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+      showAnswer.value = true
+    } else {
+      selectedAnswer.value = []
+      showAnswer.value = false
+    }
+    // 延迟结束过渡
     setTimeout(() => {
       isTransitioning.value = false
     }, 350)
@@ -549,10 +570,21 @@ const handleNext = () => {
   if (questions.value.length < total.value && currentIndex.value > questions.value.length - 6) loadQuestions('add')
   
   if (currentIndex.value < total.value - 1) {
+    // 先开始过渡动画
     isTransitioning.value = true
+    // 立即切换题目并重置状态
     currentIndex.value++
     renderKey.value++
-    resetQuestion()
+    // 重置选择状态和答案显示
+    const saved = userAnswers.value[currentIndex.value]
+    if (saved) {
+      selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+      showAnswer.value = true
+    } else {
+      selectedAnswer.value = []
+      showAnswer.value = false
+    }
+    // 延迟结束过渡
     setTimeout(() => {
       isTransitioning.value = false
     }, 350)
@@ -582,13 +614,23 @@ const handleReview = () => {
 // 跳转到指定题目
 const jumpToQuestion = (index) => {
   if (index < total.value && index >= questions.value.length - 6) loadQuestions('add')
+  // 先开始过渡动画
   isTransitioning.value = true
+  // 立即切换题目并重置状态
   currentIndex.value = index
   renderKey.value++
   showAnswerCard.value = false
-  resetQuestion()
+  // 重置选择状态和答案显示
+  const saved = userAnswers.value[currentIndex.value]
+  if (saved) {
+    selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+    showAnswer.value = true
+  } else {
+    selectedAnswer.value = []
+    showAnswer.value = false
+  }
   
-  // 滚动到顶部
+  // 滚动到顶部并延迟结束过渡
   setTimeout(() => {
     const content = document.querySelector('.page-content')
     if (content) {
@@ -903,6 +945,12 @@ const getDifficultyTag = (difficulty) => {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+}
+
+.option-item.disabled {
+  pointer-events: none;
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .option-item:active {
