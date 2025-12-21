@@ -24,7 +24,7 @@ export const sendEmailVerificationLink = (email) => {
   }
   
   return request({
-    url: '/api/email',
+    url: '/email',
     method: 'GET',
     params
   })
@@ -36,7 +36,7 @@ export const sendEmailVerificationLink = (email) => {
  */
 export const verifyEmailByToken = (token) => {
   return request({
-    url: '/api/email/verify',
+    url: '/email/verify',
     method: 'GET',
     params: { token }
   })
@@ -47,7 +47,7 @@ export const verifyEmailByToken = (token) => {
  */
 export const checkEmailStatus = () => {
   return request({
-    url: '/api/email/isverifi',
+    url: '/email/isverifi',
     method: 'GET'
   })
 }
