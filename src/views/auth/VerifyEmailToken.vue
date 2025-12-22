@@ -70,6 +70,7 @@ import {
   Loading, CircleCheck, CircleClose, 
   Clock, Check, WarningFilled 
 } from '@element-plus/icons-vue'
+import { verifyEmailByToken } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -94,53 +95,42 @@ const verifyToken = async () => {
   }
 
   try {
-    // TODO: 调用后端 API 验证 token
-    // const result = await verifyEmailToken(token)
+    // 调用后端 API 验证 token
+    const result = await verifyEmailByToken(token)
     
-    // 模拟验证过程
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    // 模拟不同的验证结果（根据 token 内容）
-    if (token === 'expired') {
-      throw { code: 'TOKEN_EXPIRED', message: '验证链接已过期' }
-    } else if (token === 'used') {
-      throw { code: 'TOKEN_USED', message: '验证链接已使用' }
-    } else if (token === 'invalid') {
-      throw { code: 'TOKEN_INVALID', message: '验证链接无效' }
-    }
-    
-    // 验证成功
-    status.value = 'success'
-    
-    // 更新本地状态
-    authStore.setEmailVerified(true)
-    
-    // 倒计时自动跳转
-    const timer = setInterval(() => {
-      countdown.value--
-      if (countdown.value <= 0) {
-        clearInterval(timer)
-        goToCourses()
-      }
-    }, 1000)
-    
-  } catch (error) {
-    status.value = 'error'
-    
-    // 根据错误码设置错误类型
-    if (error.code === 'TOKEN_EXPIRED') {
-      errorType.value = 'expired'
-      errorMessage.value = '验证链接已过期（有效期10分钟）'
-    } else if (error.code === 'TOKEN_USED') {
-      errorType.value = 'used'
-      errorMessage.value = '该验证链接已被使用'
+    if (result && result.code === 200) {
+      // 验证成功
+      status.value = 'success'
+      
+      // 更新用户邮箱验证状态
+      authStore.setEmailVerified(true)
+      
+      // 开始倒计时自动跳转
+      startCountdown()
     } else {
-      errorType.value = 'invalid'
-      errorMessage.value = error.message || '验证链接无效或已失效'
+      throw new Error(result?.msg || '验证失败')
     }
+  } catch (error) {
+    // 验证失败
+    status.value = 'error'
+    errorMessage.value = error.msg || error.message || '验证失败，请重试'
+    errorType.value = error.errorType || 'invalid'
+    
+    console.error('Token 验证失败：', error)
   } finally {
     verifying.value = false
   }
+}
+
+// 开始倒计时
+const startCountdown = () => {
+  const timer = setInterval(() => {
+    countdown.value--
+    if (countdown.value <= 0) {
+      clearInterval(timer)
+      goToCourses()
+    }
+  }, 1000)
 }
 
 // 跳转到课程页面

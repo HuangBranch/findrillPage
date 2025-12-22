@@ -35,6 +35,10 @@
           <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
             新增用户
           </el-button>
+          
+          <el-button type="success" @click="handleGenerateRandom">
+            生成随机账号
+          </el-button>
         </div>
 
         <!-- 用户表格 -->
@@ -156,6 +160,26 @@
             show-icon
             style="margin-bottom: 16px"
           />
+          
+          <!-- 随机生成信息展示 -->
+          <el-alert
+            v-if="generatedInfo.visible"
+            type="success"
+            :closable="false"
+            style="margin-bottom: 16px"
+          >
+            <template #title>
+              <div style="font-weight: bold; margin-bottom: 8px;">随机生成的账号信息：</div>
+              <div style="line-height: 1.8;">
+                <div><strong>用户ID：</strong>{{ generatedInfo.userId }}</div>
+                <div><strong>用户名：</strong>{{ generatedInfo.name }}</div>
+                <div><strong>真实姓名：</strong>{{ generatedInfo.realName }}</div>
+                <div><strong>邮箱：</strong>{{ generatedInfo.email }}</div>
+                <div><strong>角色：</strong>{{ generatedInfo.roleName }}</div>
+                <div style="color: #e6a23c;"><strong>密码：</strong>{{ generatedInfo.password }}</div>
+              </div>
+            </template>
+          </el-alert>
         </el-form>
         
         <template #footer>
@@ -198,6 +222,17 @@ const isEdit = ref(false)
 const formRef = ref()
 const submitting = ref(false)
 
+// 生成的随机信息
+const generatedInfo = reactive({
+  visible: false,
+  userId: '',
+  name: '',
+  realName: '',
+  email: '',
+  roleName: '',
+  password: ''
+})
+
 const dialogTitle = computed(() => isEdit.value ? '编辑用户' : '新增用户')
 
 // 表单数据
@@ -229,7 +264,7 @@ const formRules = {
     { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
   ],
   email: [
-    { required: true, message: '请输入邮箱', trigger: 'blur' },
+    {  message: '请输入邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
   ],
   roleId: [
@@ -309,6 +344,102 @@ const getRoleType = (roleId) => {
   return map[roleId] || ''
 }
 
+// 生成随机字符串
+const generateRandomString = (length = 8) => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+// 生成随机英文用户名
+const generateRandomEnglishName = () => {
+  const firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles',
+    'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen',
+    'Daniel', 'Matthew', 'Andrew', 'Joshua', 'Christopher', 'Emily', 'Emma', 'Olivia', 'Sophia', 'Isabella']
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
+    'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White']
+  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
+  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
+  return `${firstName} ${lastName}`
+}
+
+// 生成随机姓名
+const generateRandomName = () => {
+  const surnames = ['张', '王', '李', '赵', '陈', '刘', '杨', '黄', '周', '吴', '徐', '孙', '马', '朱', '胡', '郭', '何', '林', '罗', '高']
+  const names = ['伟', '芳', '娜', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀英', '霞', '平', '刚', '桂英', '建华', '文', '辉', '利', '萍', '燕', '鹏', '华']
+  return surnames[Math.floor(Math.random() * surnames.length)] + names[Math.floor(Math.random() * names.length)]
+}
+
+// 生成随机账号
+const handleGenerateRandom = () => {
+  ElMessageBox.confirm(
+    '确定要生成一个随机账号吗？生成后将自动创建该账号。',
+    '提示',
+    {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'info'
+    }
+  ).then(async () => {
+    // 直接创建账号，不打开对话框
+    try {
+      loading.value = true
+      
+      // 生成随机数据
+      const randomUserId = 'user' + generateRandomString(6)
+      const randomName = generateRandomEnglishName() // 使用英文名
+      const randomRealName = generateRandomName()
+      const randomEmail = ''
+      const defaultPassword = randomUserId + '123456'
+      const encryptedPassword = CryptoJS.SHA256(defaultPassword).toString()
+      const roleId = 3 // 普通角色
+      const roleName = roleList.value.find(r => r.id === roleId)?.name || '普通用户'
+      
+      const params = {
+        userId: randomUserId,
+        name: randomName,
+        realName: randomRealName,
+        email: randomEmail,
+        password: encryptedPassword,
+        roleId: roleId,
+        isActiveEmail: false,
+        isUse: true,
+        remarks: '随机生成的账号'
+      }
+      
+      await createUser(params)
+      
+      // 显示生成信息的对话框
+      ElMessageBox.alert(
+        `<div style="line-height: 1.8;">
+          <div><strong>用户ID：</strong>${randomUserId}</div>
+          <div><strong>用户名：</strong>${randomName}</div>
+          <div><strong>真实姓名：</strong>${randomRealName}</div>
+          <div><strong>邮箱：</strong>${randomEmail || '未设置'}</div>
+          <div><strong>角色：</strong>${roleName}</div>
+          <div style="color: #e6a23c;"><strong>密码：</strong>${defaultPassword}</div>
+        </div>`,
+        '随机账号创建成功',
+        {
+          confirmButtonText: '确定',
+          dangerouslyUseHTMLString: true,
+          type: 'success'
+        }
+      ).then(() => {
+        loadData()
+      })
+    } catch (error) {
+      console.error('创建随机账号失败:', error)
+      ElMessage.error('创建随机账号失败')
+    } finally {
+      loading.value = false
+    }
+  }).catch(() => {})
+}
+
 // 新增
 const handleAdd = () => {
   isEdit.value = false
@@ -324,6 +455,7 @@ const handleAdd = () => {
     isUse: true,
     remarks: ''
   })
+  generatedInfo.visible = false
   dialogVisible.value = true
 }
 
@@ -460,6 +592,7 @@ const handleSubmit = async () => {
 // 关闭对话框
 const handleDialogClose = () => {
   formRef.value?.resetFields()
+  generatedInfo.visible = false
 }
 
 // 加载角色列表

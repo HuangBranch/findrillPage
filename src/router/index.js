@@ -21,10 +21,10 @@ const router = createRouter({
       meta: { title: '邮箱验证'}
     },
     {
-      path: '/verify-email',
+      path: '/verify-email-token',
       name: 'VerifyEmailToken',
       component: () => import('@/views/auth/VerifyEmailToken.vue'),
-      meta: { title: '验证邮箱',requiresAuth: true }
+      meta: { title: '验证邮箱', requiresAuth: false }
     },
     // 课程与章节
     {

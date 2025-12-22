@@ -19,10 +19,46 @@
 
       <!-- 验证卡片 -->
       <div class="verify-card">
-        <div class="email-info">
-          <p class="info-label">验证链接将发送至</p>
-          <p class="email-address">{{ maskedEmail }}</p>
+        <!-- 绑定邮箱表单 -->
+        <div v-if="showBindForm" class="bind-email-form">
+          <div class="form-header">
+            <el-icon :size="50" color="#409eff"><Message /></el-icon>
+            <h3>绑定邮箱</h3>
+            <p>请先绑定您的邮箱地址</p>
+          </div>
+          <el-input
+            v-model="inputEmail"
+            size="large"
+            placeholder="请输入邮箱地址"
+            clearable
+            @keyup.enter="handleBindEmail"
+          >
+            <template #prefix>
+              <el-icon><Message /></el-icon>
+            </template>
+          </el-input>
+          <el-button
+            type="primary"
+            size="large"
+            :loading="binding"
+            @click="handleBindEmail"
+            class="bind-btn"
+          >
+            <el-icon><Promotion /></el-icon>
+            <span>绑定并发送验证链接</span>
+          </el-button>
+          <div class="bind-tips">
+            <p>• 验证成功后将自动完成邮箱绑定</p>
+            <p>• 邮箱用于接收通知和找回密码</p>
+          </div>
         </div>
+
+        <!-- 原有的验证流程 -->
+        <div v-else>
+          <div class="email-info">
+            <p class="info-label">验证链接将发送至</p>
+            <p class="email-address">{{ maskedEmail }}</p>
+          </div>
 
         <!-- 发送状态提示 -->
         <div v-if="emailSent" class="success-tip">
@@ -59,6 +95,20 @@
           <span>{{ countdown > 0 ? `${countdown}秒后可重新发送` : '重新发送' }}</span>
         </el-button>
 
+        <!-- 手动检查验证状态按钮 -->
+        <el-button
+          v-if="emailSent"
+          size="large"
+          plain
+          :loading="checking"
+          @click="manualCheckStatus"
+          class="check-status-btn"
+          style="margin-top: 0.5rem"
+        >
+          <el-icon><RefreshRight /></el-icon>
+          <span>{{ checking ? '检查中...' : '我已完成验证' }}</span>
+        </el-button>
+
         <!-- 提示信息 -->
         <div class="verify-tips">
           <el-divider content-position="center">
@@ -83,13 +133,14 @@
             </div>
           </div>
         </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -97,14 +148,23 @@ import {
   ArrowLeft, Message, ChatDotSquare, Clock, Link, InfoFilled,
   CircleCheck, Promotion, RefreshRight
 } from '@element-plus/icons-vue'
+import { sendEmailVerificationLink, checkEmailStatus } from '@/api/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
 
+// 邮箱绑定相关
+const showBindForm = ref(false)
+const inputEmail = ref('')
+const binding = ref(false)
+
+// 验证相关
 const emailSent = ref(false)
 const countdown = ref(0)
 const sending = ref(false)
+const checking = ref(false)
 const isDev = import.meta.env.DEV
+let pollingTimer = null
 
 // 用于防止短时间内多次请求的localStorage key
 const LAST_SEND_TIME_KEY = 'email_verify_last_send_time'
@@ -112,10 +172,16 @@ const SEND_COOLDOWN = 60 * 1000 // 60秒冷却时间
 
 // 脱敏邮箱
 const maskedEmail = computed(() => {
-  const email = authStore.userInfo?.email || 'test@example.com'
+  const email = authStore.userInfo?.email
+  if (!email) return ''
   const [name, domain] = email.split('@')
   if (name.length <= 2) return email
   return name.substring(0, 2) + '***@' + domain
+})
+
+// 是否有邮箱
+const hasEmail = computed(() => {
+  return !!authStore.userInfo?.email
 })
 
 // 检查冷却时间
@@ -146,8 +212,69 @@ const startCountdown = () => {
   }, 1000)
 }
 
+// 绑定邮箱并发送验证链接
+const handleBindEmail = async () => {
+  // 验证邮箱格式
+  const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!inputEmail.value || !emailReg.test(inputEmail.value)) {
+    ElMessage.warning('请输入正确的邮箱地址')
+    return
+  }
+
+  binding.value = true
+  
+  try {
+    // 直接调用发送验证链接接口，携带邮箱参数
+    // 后端会自动保存邮箱并发送验证链接，验证成功后自动绑定
+    await sendEmailVerificationLink(inputEmail.value)
+    
+    // 能执行到这里就是成功了
+    // 临时更新本地用户信息（验证成功后后端会正式绑定）
+    authStore.updateUserInfo({ email: inputEmail.value })
+    showBindForm.value = false
+    emailSent.value = true
+    
+    // 记录发送时间
+    localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
+    countdown.value = 60
+    startCountdown()
+    
+    // 开始轮询检查验证状态
+    startPollingEmailStatus()
+    
+    ElMessage.success({
+      message: '验证链接已发送到您的邮箱，请查收',
+      duration: 3000
+    })
+    
+    // 开发环境提示
+    if (isDev) {
+      const frontendUrl = window.location.origin
+      setTimeout(() => {
+        ElMessage.info({
+          message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email-token?token=xxxxx`,
+          duration: 5000,
+          showClose: true
+        })
+      }, 1000)
+    }
+  } catch (error) {
+    console.error('发送验证链接失败：', error)
+    ElMessage.error(error.message || '发送失败，请稍后重试')
+  } finally {
+    binding.value = false
+  }
+}
+
 // 发送验证链接
 const sendVerificationLink = async () => {
+  // 检查是否有邮箱
+  if (!hasEmail.value) {
+    ElMessage.warning('请先绑定邮箱')
+    showBindForm.value = true
+    return
+  }
+  
   // 检查冷却时间
   if (!checkCooldown()) {
     ElMessage.warning(`请等待 ${countdown.value} 秒后再发送`)
@@ -157,18 +284,19 @@ const sendVerificationLink = async () => {
   sending.value = true
   
   try {
-    // TODO: 调用后端 API 发送验证链接
-    // await sendEmailVerificationLink()
+    // 调用后端 API 发送验证链接
+    await sendEmailVerificationLink()
     
-    // 模拟发送
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    
+    // 能执行到这里就是成功了
     // 记录发送时间
     localStorage.setItem(LAST_SEND_TIME_KEY, Date.now().toString())
     
     emailSent.value = true
     countdown.value = 60
     startCountdown()
+    
+    // 开始轮询检查验证状态
+    startPollingEmailStatus()
     
     ElMessage.success({
       message: '验证链接已发送到您的邮箱，请查收',
@@ -177,19 +305,84 @@ const sendVerificationLink = async () => {
     
     // 开发环境提示
     if (isDev) {
+      const frontendUrl = window.location.origin
       setTimeout(() => {
         ElMessage.info({
-          message: '开发环境：验证链接示例 https://xxx.com/verify-email?token=xxxxx',
+          message: `开发环境提示：验证链接格式 ${frontendUrl}/verify-email?token=xxxxx`,
           duration: 5000,
           showClose: true
         })
       }, 1000)
     }
   } catch (error) {
+    console.error('发送验证链接失败：', error)
     ElMessage.error(error.message || '发送失败，请稍后重试')
   } finally {
     sending.value = false
   }
+}
+
+// 开始轮询检查邮箱验证状态
+const startPollingEmailStatus = () => {
+  // 清除之前的定时器
+  stopPollingEmailStatus()
+  
+  // 每 3 秒检查一次
+  pollingTimer = setInterval(async () => {
+    await checkVerificationStatus()
+  }, 3000)
+}
+
+// 停止轮询
+const stopPollingEmailStatus = () => {
+  if (pollingTimer) {
+    clearInterval(pollingTimer)
+    pollingTimer = null
+  }
+}
+
+// 检查验证状态
+const checkVerificationStatus = async (showLoading = false) => {
+  if (showLoading) {
+    checking.value = true
+  }
+  
+  try {
+    // TODO: 等待接口后替换
+    // const result = await checkEmailStatus()
+    // if (result && result.code === 200 && result.data?.isActiveEmail) {
+    //   stopPollingEmailStatus()
+    //   authStore.setEmailVerified(true)
+    //   ElMessage.success('邮箱验证成功！')
+    //   setTimeout(() => {
+    //     router.push('/courses')
+    //   }, 1000)
+    // }
+    
+    // 开发环境模拟
+    if (isDev && Math.random() > 0.95) { // 模拟5%概率验证成功
+      stopPollingEmailStatus()
+      authStore.setEmailVerified(true)
+      ElMessage.success('邮箱验证成功！')
+      setTimeout(() => {
+        router.push('/courses')
+      }, 1000)
+    }
+  } catch (error) {
+    console.error('检查验证状态失败：', error)
+    if (showLoading) {
+      ElMessage.error('检查失败，请重试')
+    }
+  } finally {
+    if (showLoading) {
+      checking.value = false
+    }
+  }
+}
+
+// 手动检查验证状态
+const manualCheckStatus = () => {
+  checkVerificationStatus(true)
 }
 
 
@@ -206,12 +399,26 @@ const handleBack = async () => {
       }
     )
     
+    stopPollingEmailStatus()
     authStore.logout()
     router.push('/login')
   } catch {
     // 取消操作
   }
 }
+
+// 页面初始化
+onMounted(() => {
+  // 检查是否有邮箱
+  if (!hasEmail.value) {
+    showBindForm.value = true
+  }
+})
+
+// 组件卸载时停止轮询
+onUnmounted(() => {
+  stopPollingEmailStatus()
+})
 </script>
 
 <style scoped>
@@ -367,6 +574,58 @@ const handleBack = async () => {
 
 .resend-btn:disabled {
   opacity: 0.6;
+}
+
+.bind-email-form {
+  text-align: center;
+}
+
+.form-header {
+  margin-bottom: 2rem;
+}
+
+.form-header h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: white;
+  margin: 1rem 0 0.5rem 0;
+}
+
+.form-header p {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.bind-email-form .el-input {
+  margin-bottom: 1rem;
+}
+
+.bind-btn {
+  width: 100%;
+  height: 3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.bind-btn .el-icon {
+  margin-right: 0.5rem;
+}
+
+.bind-tips {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+  text-align: left;
+}
+
+.bind-tips p {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0.5rem 0;
+  line-height: 1.6;
 }
 
 .dev-actions {

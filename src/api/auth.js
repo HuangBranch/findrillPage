@@ -13,47 +13,32 @@ export const login = (data) => {
 }
 
 /**
- * 发送邮箱验证码
+ * 发送邮箱验证链接
+ * 后端会发送包含 token 的验证链接到用户邮箱
+ * @param {string} email - 可选，如果用户没有邮箱，需要传入要绑定的邮箱地址
  */
-export const sendVerificationCode = () => {
-  // 测试模式：模拟发送验证码
-  if (import.meta.env.DEV) {
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log('📧 模拟验证码：123456')
-        resolve({ success: true, message: '验证码已发送（测试码：123456）' })
-      }, 500)
-    })
+export const sendEmailVerificationLink = (email) => {
+  const params = {}
+  if (email) {
+    params.email = email
   }
   
   return request({
-    url: '/auth/send-verification-code',
-    method: 'POST'
+    url: '/api/email',
+    method: 'GET',
+    params
   })
 }
 
 /**
- * 验证邮箱
- * @param {Object} data - { code }
+ * 通过 token 验证邮箱
+ * @param {string} token - 从邮件链接中获取的 token
  */
-export const verifyEmail = (data) => {
-  // 测试模式：模拟验证邮箱（验证码：123456）
-  if (import.meta.env.DEV) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (data.code === '123456') {
-          resolve({ success: true, message: '邮箱验证成功' })
-        } else {
-          reject({ message: '验证码错误' })
-        }
-      }, 500)
-    })
-  }
-  
+export const verifyEmailByToken = (token) => {
   return request({
-    url: '/auth/verify-email',
-    method: 'POST',
-    data
+    url: '/email/verify',
+    method: 'GET',
+    params: { token }
   })
 }
 
@@ -62,7 +47,7 @@ export const verifyEmail = (data) => {
  */
 export const checkEmailStatus = () => {
   return request({
-    url: '/auth/check-email-status',
+    url: '/email/isverifi',
     method: 'GET'
   })
 }
@@ -79,8 +64,8 @@ export const logout = () => {
 
 export default {
   login,
-  sendVerificationCode,
-  verifyEmail,
+  sendEmailVerificationLink,
+  verifyEmailByToken,
   checkEmailStatus,
   logout
 }
