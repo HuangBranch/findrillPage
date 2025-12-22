@@ -15,18 +15,15 @@ export const login = (data) => {
 /**
  * 发送邮箱验证链接
  * 后端会发送包含 token 的验证链接到用户邮箱
- * @param {string} email - 可选，如果用户没有邮箱，需要传入要绑定的邮箱地址
+ * @param {string} user - 用户名
+ * @param {string} password - 加密后的密码
+ * @param {string} email - 邮箱地址
  */
-export const sendEmailVerificationLink = (email) => {
-  const params = {}
-  if (email) {
-    params.email = email
-  }
-  
+export const sendEmailVerificationLink = (user, password, email) => {
   return request({
-    url: '/api/email',
-    method: 'GET',
-    params
+    url: '/email',
+    method: 'POST',
+    data: { user, password, email }
   })
 }
 
@@ -44,11 +41,15 @@ export const verifyEmailByToken = (token) => {
 
 /**
  * 检查邮箱验证状态
+ * @param {string} user - 用户名
+ * @param {string} password - 加密后的密码
+ * @returns {Promise<{code: number, data: boolean}>} data为true表示已认证，后端会设置sa-token cookie
  */
-export const checkEmailStatus = () => {
+export const checkEmailStatus = (user, password) => {
   return request({
     url: '/email/isverifi',
-    method: 'GET'
+    method: 'POST',
+    data: { user, password }
   })
 }
 

@@ -72,8 +72,10 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { checkEmailStatus } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Document, User, Lock, InfoFilled } from '@element-plus/icons-vue'
+import user from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -103,26 +105,37 @@ const onSubmit = async () => {
     loading.value = true
     
     try {
+      // 1. 先登录获取用户信息
       const result = await authStore.login(form)
       
       if (result.success) {
-        ElMessage.success('登录成功')
-        // 检查邮箱是否验证
-        if (!authStore.isEmailVerified) {
-          router.push('/email-verify')
-
-        } else {
-          // 跳转到原来要访问的页面或首页
+        // 2. 调用检测接口判断邮箱是否已认证
+        const encryptedPassword = authStore.digestMessage(form.password)
+        const checkResult = await checkEmailStatus(form.user, encryptedPassword)
+        
+        if (checkResult === true) {
+          // 邮箱已认证，后端已设置 sa-token cookie
+          ElMessage.success('登录成功')
           const redirect = route.query.redirect || '/courses'
           router.push(redirect)
+        } else {
+          // 邮箱未认证，需要验证邮箱
+          // 保存临时凭证用于发送邮件和轮询
+          sessionStorage.setItem('pendingAuth', JSON.stringify({
+            user: form.user,
+            password: encryptedPassword,
+            email: result.data.email
+          }))
+          
+          ElMessage.warning('请先验证邮箱')
+          router.push('/email-verify')
         }
       } else {
-        // result.error 现在是字符串（来自 catch 中的 error.message）
         ElMessage.error(result.error || '登录失败')
       }
     } catch (error) {
       console.error('登录错误：', error)
-      ElMessage.error('登录失败，请重试')
+      ElMessage.error(error.message || '登录失败，请重试')
     } finally {
       loading.value = false
     }

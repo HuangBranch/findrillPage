@@ -75,6 +75,8 @@ export const useAuthStore = defineStore('auth', {
       this.loginFlag = false
       removeStorage('isLoggedIn')
       removeStorage('userInfo')
+      // 清除邮箱验证的临时凭证
+      sessionStorage.removeItem('pendingAuth')
     },
 
     // 更新用户信息
