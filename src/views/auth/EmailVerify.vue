@@ -10,9 +10,6 @@
 
       <!-- 邮箱图标 -->
       <div class="verify-header">
-        <div class="email-icon">
-          <el-icon :size="70"><Message /></el-icon>
-        </div>
         <h1 class="verify-title">验证您的邮箱</h1>
         <p class="verify-subtitle">为了保障账号安全，请先验证邮箱</p>
       </div>
@@ -22,7 +19,9 @@
         <!-- 绑定邮箱表单 -->
         <div class="bind-email-form">
           <div class="form-header">
-            <el-icon :size="50" color="#409eff"><Message /></el-icon>
+            <div class="form-icon">
+              <el-icon :size="50"><Message /></el-icon>
+            </div>
             <h3>绑定邮箱</h3>
             <p>请先绑定您的邮箱地址</p>
           </div>
@@ -90,7 +89,6 @@
             :loading="checking"
             @click="manualCheckStatus"
             class="check-status-btn"
-            style="margin-top: 0.5rem"
           >
             <el-icon><RefreshRight /></el-icon>
             <span>{{ checking ? '检查中...' : '我已完成验证' }}</span>
@@ -366,6 +364,7 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 2rem;
   color: white;
+  margin-top: 5rem;
 }
 
 .email-icon {
@@ -447,6 +446,19 @@ onUnmounted(() => {
   margin-bottom: 2rem;
 }
 
+.form-icon {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1rem;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
 .form-header h3 {
   font-size: 1.5rem;
   font-weight: 600;
@@ -488,6 +500,14 @@ onUnmounted(() => {
 
 .check-status-btn {
   width: 100%;
+  height: 3rem;
+  font-size: 1rem;
+  font-weight: 600;
+  margin-left: auto;
+}
+
+.check-status-btn .el-icon {
+  margin-right: 0.5rem;
 }
 
 .bind-btn {
@@ -533,15 +553,36 @@ onUnmounted(() => {
 
 /* 移动端适配 */
 @media (max-width: 767px) {
+  .email-verify-page {
+    padding: 1rem 0.5rem;
+    align-items: flex-start;
+    padding-top: 2rem;
+  }
+
   .verify-container {
-    width: 95%;
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .back-btn {
+    top: 1rem;
+    left: 0.5rem;
   }
   
+  .verify-header {
+    margin-bottom: 1.5rem;
+  }
+
   .verify-card {
-    padding: 1.5rem;
+    padding: 1.5rem 1rem;
   }
   
   .email-icon {
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .form-icon {
     width: 4rem;
     height: 4rem;
   }
@@ -549,14 +590,43 @@ onUnmounted(() => {
   .verify-title {
     font-size: 1.5rem;
   }
+
+  .verify-subtitle {
+    font-size: 0.875rem;
+  }
+
+  .form-header {
+    margin-bottom: 1.5rem;
+  }
+
+  .form-header h3 {
+    font-size: 1.25rem;
+  }
+
+  .bind-btn,
+  .check-status-btn {
+    height: 2.75rem;
+    font-size: 0.9rem;
+  }
   
   .success-tip {
     flex-direction: column;
     text-align: center;
+    padding: 1rem;
   }
   
   .success-tip .el-icon {
     font-size: 2.5rem;
+  }
+
+  .bind-tips {
+    margin-top: 1rem;
+    padding: 0.875rem;
+  }
+
+  .bind-tips p {
+    font-size: 0.8rem;
+    margin: 0.375rem 0;
   }
 }
 

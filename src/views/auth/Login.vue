@@ -113,6 +113,9 @@ const onSubmit = async () => {
         const encryptedPassword = authStore.digestMessage(form.password)
         const checkResult = await checkEmailStatus(form.user, encryptedPassword)
         
+        // 更新本地邮箱验证状态（与后端保持同步）
+        authStore.setEmailVerified(checkResult === true)
+        
         if (checkResult === true) {
           // 邮箱已认证，后端已设置 sa-token cookie
           ElMessage.success('登录成功')
