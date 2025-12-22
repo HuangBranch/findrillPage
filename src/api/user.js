@@ -13,15 +13,39 @@ export const getUserInfo = () => {
 /**
  * 更新个人信息
  * @param {Object} data - 个人信息
+ * @param {Number} id
  */
-export const updateUserInfo = (data) => {
+
+export const updateUserInfo = (id,data) => {
   return request({
-    url: '/me',
+    url: `/profile/${id}`,
     method: 'PUT',
     data
   })
 }
+/**
+ * 更新头像
+ * @param {formdata} data - 头像
+ */
 
+export const upavatar = (data) => {
+  return request({
+    url: "/avatar",
+    method: 'POST',
+    data
+  })
+}
+/**
+ * 个人页面统计数据
+ *  - 头像
+ */
+
+export const count = () => {
+  return request({
+    url: "/count",
+    method: 'GET',
+  })
+}
 /**
  * 修改密码
  * @param {Object} data - { oldPassword, newPassword }
@@ -74,5 +98,7 @@ export default {
   changePassword,
   getExamRecords,
   getPracticeRecords,
-  getUserStats
+  getUserStats,
+  count,
+  upavatar,
 }

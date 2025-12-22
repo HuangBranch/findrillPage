@@ -15,12 +15,10 @@
       </div>
     </div>
     <!-- 学习统计（数据来源改为接口） -->
-    <!-- 学习统计 -->
     <div class="stats-section">
       <div class="section-title">学习统计</div>
       <div class="stats-grid">
         <div class="stat-item">
-          <!-- 加载中显示“--”+加载动画，加载完成显示真实数据 -->
           <div class="stat-value">
             <span v-if="isStatsLoading" class="loading-placeholder">--</span>
             <span v-else>{{ stats.totalCourses || 0 }}</span>
@@ -60,7 +58,6 @@
           </div>
           <el-icon class="menu-arrow"><ArrowRight /></el-icon>
         </div>
-
         <div class="menu-item" @click="goToPracticeRecords">
           <div class="menu-left">
             <el-icon class="menu-icon" :size="20"><Edit /></el-icon>
@@ -68,7 +65,6 @@
           </div>
           <el-icon class="menu-arrow"><ArrowRight /></el-icon>
         </div>
-
         <div class="menu-item" @click="goToWrongBook">
           <div class="menu-left">
             <el-icon class="menu-icon" :size="20"><Flag /></el-icon>
@@ -76,8 +72,15 @@
           </div>
           <el-icon class="menu-arrow"><ArrowRight /></el-icon>
         </div>
+        <!-- 新增：修改个人信息菜单 -->
+        <div class="menu-item" @click="goToEditProfile">
+          <div class="menu-left">
+            <el-icon class="menu-icon" :size="20"><UserFilled /></el-icon>
+            <span class="menu-text">修改个人信息</span>
+          </div>
+          <el-icon class="menu-arrow"><ArrowRight /></el-icon>
+        </div>
       </div>
-
       <div class="menu-group">
         <div class="menu-item" @click="showAboutDialog = true">
           <div class="menu-left">
@@ -86,7 +89,6 @@
           </div>
           <el-icon class="menu-arrow"><ArrowRight /></el-icon>
         </div>
-
         <div class="menu-item" @click="handleLogout">
           <div class="menu-left">
             <el-icon class="menu-icon" :size="20" color="#f56c6c"><SwitchButton /></el-icon>
@@ -96,10 +98,8 @@
         </div>
       </div>
     </div>
-
     <!-- 底部导航 -->
     <BottomNav />
-
     <!-- 关于对话框 -->
     <el-dialog
         v-model="showAboutDialog"
@@ -141,15 +141,14 @@ import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import axios from 'axios'
 import {
-  User, Document, Edit, InfoFilled,
-  SwitchButton, ArrowRight
+  User, Document, Edit, InfoFilled, SwitchButton, ArrowRight, UserFilled // 新增UserFilled图标
 } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
-import {getPracticeList} from "@/api/practice.js";
-import {getExamRecords} from "@/api/user.js";
-import {getExamList} from "@/api/exam.js";
-import {getWrongList} from "@/api/wrong.js";
-import {getCourseList} from "@/api/course.js";
+import { getPracticeList } from "@/api/practice.js";
+import {count, getExamRecords} from "@/api/user.js";
+import { getExamList } from "@/api/exam.js";
+import { getWrongList } from "@/api/wrong.js";
+import { getCourseList } from "@/api/course.js";
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -161,7 +160,9 @@ const isStatsLoading = ref(true);
 const userInfo = computed(() => ({
   username: authStore.userInfo.name || '未登录',
   email: authStore.userInfo.email || '',
-  avatar: authStore.userInfo.avatar || ''
+  avatar: authStore.userInfo.avatar || '',
+  id: authStore.userInfo.id || 0, // 新增：获取用户ID
+  realName: authStore.userInfo.realName || '' // 新增：获取真实姓名
 }))
 
 // 学习统计（初始值为空，从接口加载）
@@ -174,54 +175,46 @@ const stats = ref({
 
 /**
  * 加载统计数据：从接口获取
- * 1. 课程数量：从courseStore获取（不变）
- * 2. 练习次数：调用GET /api/practice/list → 取列表长度
- * 3. 考试次数：调用GET /api/exam/list → 取列表长度
- * 4. 错题数量：调用GET /api/wrong-questions/count（新增接口，需后端支持）
  */
 const loadStats = async () => {
   isStatsLoading.value = true;
   try {
-    // 1. 课程数量（不变）
-    const courses = await getCourseList()
-    const totalCourses = Array.isArray(courses) ? courses.length : 0;
-
-    // 2. 练习次数（调用练习记录接口）
-    const practiceRes = await getPracticeList()
-    const totalPractice = Array.isArray(practiceRes) ? practiceRes.length : 0;
-
-    // 3. 考试次数（调用考试记录接口）
-    const examRes = await getExamList()
-    const totalExams = Array.isArray(examRes) ? examRes.length : 0;
-
-    // 4. 错题数量（调用错题统计接口）
-    const wrongRes = await getWrongList()
-    const wrongCount = Array.isArray(wrongRes) ? wrongRes.length : 0;
-
+    // // 1. 课程数量
+    // const courses = await getCourseList()
+    // const totalCourses = Array.isArray(courses) ? courses.length : 0;
+    // // 2. 练习次数
+    // const practiceRes = await getPracticeList()
+    // const totalPractice = Array.isArray(practiceRes) ? practiceRes.length : 0;
+    // // 3. 考试次数
+    // const examRes = await getExamList()
+    // const totalExams = Array.isArray(examRes) ? examRes.length : 0;
+    // // 4. 错题数量
+    // const wrongRes = await getWrongList()
+    // const wrongCount = Array.isArray(wrongRes) ? wrongRes.length : 0;
+    const data=await count()
+    console.log(data)
     // 更新统计数据
     stats.value = {
-      totalCourses,
-      totalPractice,
-      totalExams,
-      wrongCount
+      totalCourses:data.courseCount,
+      totalPractice:data.practiceCount,
+      totalExams:data.examCount,
+      wrongCount:data.wrongCount
     }
   } catch (error) {
     ElMessage.error('加载学习统计失败：' + (error.message || '服务器异常'))
     console.error('统计数据接口请求错误：', error)
-    // 失败时置默认值
     stats.value = {
       totalCourses: 0,
       totalPractice: 0,
       totalExams: 0,
       wrongCount: 0
     }
-  }finally {
-    // 无论成功/失败，都结束加载状态（隐藏占位符）
+  } finally {
     isStatsLoading.value = false;
   }
 }
 
-// 跳转功能（不变）
+// 跳转功能（新增修改个人信息跳转）
 const goToExamRecords = () => {
   router.push('/profile/exam-records')
 }
@@ -231,9 +224,22 @@ const goToPracticeRecords = () => {
 const goToWrongBook = () => {
   router.push('/wrong')
 }
-
-// 移除：生成测试数据（不再需要，因为数据来自接口）
-// const generateTestData = () => { ... }
+// 新增：跳转到修改个人信息页面（携带用户ID参数）
+const goToEditProfile = () => {
+  if (!userInfo.value.id) {
+    ElMessage.warning('用户ID不存在，无法修改信息')
+    return
+  }
+  router.push({
+    path: `/profile/edit/${userInfo.value.id}`,
+    query: {
+      name: userInfo.value.username,
+      realName: userInfo.value.realName,
+      email: userInfo.value.email,
+      avatar: userInfo.value.avatar
+    }
+  })
+}
 
 // 退出登录（不变）
 const handleLogout = async () => {
@@ -253,12 +259,9 @@ const handleLogout = async () => {
 
 // 页面挂载时加载统计数据
 onMounted(async () => {
-  // 生成测试数据（已废弃，注释或删除）
-  // generateTestData()
   await loadStats()
 })
 </script>
-
 <style scoped>
 .profile-page {
   position: fixed;
@@ -271,36 +274,30 @@ onMounted(async () => {
   overflow-x: hidden;
   padding-bottom: 80px;
 }
-
 /* 头部用户信息 */
 .profile-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   padding: 2rem 1.5rem;
   color: white;
 }
-
 .user-info {
   display: flex;
   align-items: center;
   gap: 1.5rem;
 }
-
 .avatar-wrapper {
   flex-shrink: 0;
 }
-
 .user-details {
   flex: 1;
   min-width: 0;
 }
-
 .username {
   font-size: 1.5rem;
   font-weight: 600;
   margin: 0 0 0.5rem 0;
   color: white;
 }
-
 .user-email {
   font-size: 0.9rem;
   opacity: 0.9;
@@ -309,7 +306,6 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 /* 学习统计 */
 .stats-section {
   margin: 1.5rem;
@@ -318,41 +314,34 @@ onMounted(async () => {
   padding: 1.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-
 .section-title {
   font-size: 1rem;
   font-weight: 600;
   color: #303133;
   margin-bottom: 1.5rem;
 }
-
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
 }
-
 .stat-item {
   text-align: center;
 }
-
 .stat-value {
   font-size: 1.75rem;
   font-weight: 700;
   color: #409eff;
   margin-bottom: 0.5rem;
 }
-
 .stat-label {
   font-size: 0.85rem;
   color: #909399;
 }
-
 /* 功能菜单 */
 .menu-section {
   margin: 0 1.5rem 1.5rem;
 }
-
 .menu-group {
   background: white;
   border-radius: 12px;
@@ -360,7 +349,6 @@ onMounted(async () => {
   margin-bottom: 1rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
-
 .menu-item {
   display: flex;
   align-items: center;
@@ -370,62 +358,50 @@ onMounted(async () => {
   transition: background-color 0.2s;
   border-bottom: 1px solid #f5f7fa;
 }
-
 .menu-item:last-child {
   border-bottom: none;
 }
-
 .menu-item:hover {
   background-color: #f5f7fa;
 }
-
 .menu-item:active {
   background-color: #ecf0f5;
 }
-
 .menu-left {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
-
 .menu-icon {
   color: #606266;
 }
-
 .menu-text {
   font-size: 0.95rem;
   color: #303133;
 }
-
 .menu-arrow {
   color: #c0c4cc;
   font-size: 14px;
 }
-
 /* 关于对话框 */
 .about-content {
   text-align: center;
   padding: 1rem 0;
 }
-
 .app-logo {
   margin-bottom: 1.5rem;
 }
-
 .about-content h3 {
   font-size: 1.5rem;
   font-weight: 600;
   color: #303133;
   margin: 0 0 0.5rem 0;
 }
-
 .version {
   font-size: 0.9rem;
   color: #909399;
   margin: 0 0 1.5rem 0;
 }
-
 .description {
   font-size: 0.95rem;
   color: #606266;
@@ -433,13 +409,11 @@ onMounted(async () => {
   margin: 0 0 2rem 0;
   padding: 0 1rem;
 }
-
 .app-info {
   background: #f5f7fa;
   border-radius: 8px;
   padding: 1rem;
 }
-
 .info-item {
   display: flex;
   justify-content: space-between;
@@ -447,43 +421,35 @@ onMounted(async () => {
   padding: 0.75rem 0;
   border-bottom: 1px solid #e4e7ed;
 }
-
 .info-item:last-child {
   border-bottom: none;
 }
-
 .info-label {
   font-size: 0.9rem;
   color: #909399;
 }
-
 .info-value {
   font-size: 0.9rem;
   color: #303133;
   font-weight: 500;
 }
-
 /* 响应式设计 */
 @media (max-width: 768px) {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
     gap: 1.5rem;
   }
-
   .stat-item {
     padding: 0.5rem;
   }
 }
-
 @media (max-width: 480px) {
   .profile-header {
     padding: 1.5rem 1rem;
   }
-
   .username {
     font-size: 1.25rem;
   }
-
   .stats-section,
   .menu-section {
     margin: 1rem;
@@ -495,10 +461,8 @@ onMounted(async () => {
   width: 2rem;
   height: 2rem;
   position: relative;
-  color: #c0c4cc; /* 浅灰色，和未加载状态区分 */
+  color: #c0c4cc;
 }
-
-/* 简单的闪烁动画（模拟加载中） */
 .loading-placeholder::after {
   content: "";
   position: absolute;
@@ -509,8 +473,6 @@ onMounted(async () => {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
   animation: loadingFlash 1.5s infinite;
 }
-
-/* 动画关键帧 */
 @keyframes loadingFlash {
   0% { background-position: -2rem 0; }
   100% { background-position: 2rem 0; }

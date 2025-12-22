@@ -91,6 +91,12 @@ const router = createRouter({
       component: () => import('@/views/profile/PracticeRecords.vue'),
       meta: { title: '练习记录', requiresAuth: true, requiresEmailVerified: true }
     },
+    {
+      path: '/profile/edit/:id',
+      name: 'EditProfile',
+      component: () => import('@/views/profile/EditProfile.vue'),
+      meta: { title: '个人信息修改', requiresAuth: true, requiresEmailVerified: true }
+    },
     // 后台管理
     {
       path: '/admin',
