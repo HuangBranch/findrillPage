@@ -17,12 +17,9 @@
             <el-icon :size="80" color="#67c23a"><CircleCheck /></el-icon>
           </div>
           <h2>验证成功！</h2>
-          <p>您的邮箱已验证完成</p>
-          <div class="countdown-text">
-            {{ countdown }} 秒后自动跳转...
-          </div>
-          <el-button type="primary" size="large" @click="goToCourses">
-            立即进入系统
+          <p>您的邮箱已验证完成，可以关闭此页面</p>
+          <el-button type="primary" size="large" @click="closePage">
+            关闭页面
           </el-button>
         </div>
 
@@ -104,9 +101,6 @@ const verifyToken = async () => {
       
       // 更新用户邮箱验证状态
       authStore.setEmailVerified(true)
-      
-      // 开始倒计时自动跳转
-      startCountdown()
     } else {
       throw new Error('验证失败')
     }
@@ -122,20 +116,14 @@ const verifyToken = async () => {
   }
 }
 
-// 开始倒计时
-const startCountdown = () => {
-  const timer = setInterval(() => {
-    countdown.value--
-    if (countdown.value <= 0) {
-      clearInterval(timer)
-      goToCourses()
-    }
-  }, 1000)
-}
-
-// 跳转到课程页面
-const goToCourses = () => {
-  router.push('/courses')
+// 关闭页面
+const closePage = () => {
+  // 尝试关闭窗口
+  window.close()
+  // 如果无法关闭（不是通过脚本打开的窗口），则跳转到登录页
+  setTimeout(() => {
+    router.push('/login')
+  }, 100)
 }
 
 // 跳转到登录页

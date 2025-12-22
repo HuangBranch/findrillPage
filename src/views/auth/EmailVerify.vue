@@ -272,6 +272,11 @@ const checkVerificationStatus = async (showLoading = false) => {
       setTimeout(() => {
         router.push('/courses')
       }, 1000)
+    } else {
+      // 验证未完成
+      if (showLoading) {
+        ElMessage.warning('邮箱尚未验证，请先点击邮件中的验证链接')
+      }
     }
   } catch (error) {
     console.error('检查验证状态失败：', error)
@@ -679,6 +684,7 @@ onUnmounted(() => {
   .success-tip {
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     text-align: center;
     padding: 1rem;
     gap: 0.5rem;
@@ -686,7 +692,8 @@ onUnmounted(() => {
   
   .success-tip .el-icon {
     font-size: 2rem;
-    margin-bottom: 0.25rem;
+    margin: 0 auto 0.25rem;
+    display: block;
   }
 
   .tip-content {
