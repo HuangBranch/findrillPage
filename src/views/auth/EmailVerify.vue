@@ -104,6 +104,12 @@
         </div>
       </div>
     </div>
+
+    <!-- 退出登录loading遮罩 -->
+    <div v-if="loggingOut" class="logout-loading">
+      <el-icon class="loading-icon" :size="60"><Loading /></el-icon>
+      <p class="loading-text">退出登录中...</p>
+    </div>
   </div>
 </template>
 
@@ -114,7 +120,7 @@ import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   ArrowLeft, Message, ChatDotSquare, Clock, Link, InfoFilled,
-  CircleCheck, Promotion, RefreshRight
+  CircleCheck, Promotion, RefreshRight, Loading
 } from '@element-plus/icons-vue'
 import { sendEmailVerificationLink, checkEmailStatus } from '@/api/auth'
 import { setStorage } from '@/utils/storage'
@@ -128,6 +134,7 @@ const binding = ref(false)
 const emailSent = ref(false)
 const countdown = ref(0)
 const checking = ref(false)
+const loggingOut = ref(false)
 const isDev = import.meta.env.DEV
 
 // 用于防止短时间内多次请求的localStorage key
@@ -297,10 +304,20 @@ const handleBack = async () => {
       }
     )
     
-    authStore.logout()
+    loggingOut.value = true
+    
+    // 确保有足够的时间显示loading动画
+    await Promise.all([
+      authStore.logout(),
+      new Promise(resolve => setTimeout(resolve, 500))
+    ])
+    
     router.push('/login')
-  } catch {
-    // 取消操作
+  } catch (error) {
+    // 取消操作或出错
+    console.log('取消退出或出错：', error)
+  } finally {
+    loggingOut.value = false
   }
 }
 
@@ -331,22 +348,27 @@ onUnmounted(() => {
   height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
-  padding: 1rem;
+  padding: 0 1rem;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .verify-container {
   width: 90%;
   max-width: 500px;
   position: relative;
+  padding-top: 80px;
+  padding-bottom: 2rem;
+  min-height: calc(100vh - 80px);
 }
 
 .back-btn {
-  position: absolute;
-  top: -60px;
-  left: 0;
+  position: fixed;
+  top: 1.5rem;
+  left: 1.5rem;
+  z-index: 100;
 }
 
 .back-btn :deep(.el-button) {
@@ -364,7 +386,9 @@ onUnmounted(() => {
   text-align: center;
   margin-bottom: 2rem;
   color: white;
-  margin-top: 5rem;
+  position: relative;
+  z-index: 1;
+  padding: 0 1rem;
 }
 
 .email-icon {
@@ -383,13 +407,18 @@ onUnmounted(() => {
 .verify-title {
   font-size: 2rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin: 0 0 0.5rem 0;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  color: white;
+  line-height: 1.2;
 }
 
 .verify-subtitle {
   font-size: 1rem;
   opacity: 0.95;
+  margin: 0;
+  color: white;
+  line-height: 1.5;
 }
 
 .verify-card {
@@ -537,6 +566,43 @@ onUnmounted(() => {
   line-height: 1.6;
 }
 
+/* 退出登录loading遮罩 */
+.logout-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-icon {
+  color: white;
+  animation: rotate 1.5s linear infinite;
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loading-text {
+  color: white;
+  font-size: 1.125rem;
+  margin-top: 1.5rem;
+  font-weight: 500;
+}
+
 .dev-actions {
   margin-top: 1.5rem;
   padding-top: 1rem;
@@ -554,14 +620,15 @@ onUnmounted(() => {
 /* 移动端适配 */
 @media (max-width: 767px) {
   .email-verify-page {
-    padding: 1rem 0.5rem;
+    padding: 0 0.5rem;
     align-items: flex-start;
-    padding-top: 2rem;
   }
 
   .verify-container {
     width: 100%;
     max-width: 100%;
+    padding-top: 80px;
+    padding-bottom: 2rem;
   }
 
   .back-btn {
@@ -611,12 +678,27 @@ onUnmounted(() => {
   
   .success-tip {
     flex-direction: column;
+    align-items: center;
     text-align: center;
     padding: 1rem;
+    gap: 0.5rem;
   }
   
   .success-tip .el-icon {
-    font-size: 2.5rem;
+    font-size: 2rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .tip-content {
+    width: 100%;
+  }
+
+  .tip-title {
+    font-size: 0.9rem;
+  }
+
+  .tip-desc {
+    font-size: 0.8rem;
   }
 
   .bind-tips {
@@ -632,14 +714,69 @@ onUnmounted(() => {
 
 /* PC端适配 */
 @media (min-width: 768px) {
+  .email-verify-page {
+    padding: 0 2rem;
+  }
+
+  .verify-container {
+    max-width: 550px;
+    padding-top: 100px;
+    padding-bottom: 2rem;
+  }
+
+  .back-btn {
+    top: 2rem;
+    left: 2rem;
+  }
+
+  .verify-header {
+    margin-bottom: 2.5rem;
+  }
+
+  .verify-title {
+    font-size: 2.25rem;
+  }
+
+  .verify-subtitle {
+    font-size: 1.1rem;
+  }
+
+  .verify-card {
+    padding: 3rem 2.5rem;
+  }
+
   .verify-card:hover {
     box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
     transform: translateY(-4px);
   }
   
-  .email-icon {
-    width: 6rem;
-    height: 6rem;
+  .form-icon {
+    width: 5.5rem;
+    height: 5.5rem;
+  }
+
+  .form-header h3 {
+    font-size: 1.75rem;
+  }
+
+  .form-header p {
+    font-size: 1rem;
+  }
+
+  .bind-btn,
+  .check-status-btn {
+    height: 3.25rem;
+    font-size: 1.05rem;
+  }
+
+  .bind-tips {
+    padding: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  .bind-tips p {
+    font-size: 0.9rem;
+    margin: 0.625rem 0;
   }
 }
 </style>

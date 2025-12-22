@@ -98,7 +98,7 @@ const verifyToken = async () => {
     // 调用后端 API 验证 token
     const result = await verifyEmailByToken(token)
     
-    if (result && result.code === 200) {
+    if (result === true) {
       // 验证成功
       status.value = 'success'
       
@@ -108,13 +108,13 @@ const verifyToken = async () => {
       // 开始倒计时自动跳转
       startCountdown()
     } else {
-      throw new Error(result?.msg || '验证失败')
+      throw new Error('验证失败')
     }
   } catch (error) {
     // 验证失败
     status.value = 'error'
-    errorMessage.value = error.msg || error.message || '验证失败，请重试'
-    errorType.value = error.errorType || 'invalid'
+    errorMessage.value = error.message || '验证失败，请重试'
+    errorType.value = 'invalid'
     
     console.error('Token 验证失败：', error)
   } finally {
