@@ -14,9 +14,9 @@
       <el-select v-model="filterType" placeholder="全部课程" clearable @change="onFilterChange">
         <el-option
             v-for="course in courseList"
-            :key="course.cId"
-            :label="course.cName"
-            :value="course.cId"
+            :key="course.curriculumId"
+            :label="course.curriculumName"
+            :value="course.curriculumId"
         />
       </el-select>
 
@@ -80,14 +80,14 @@
               </div>
               <div class="info-item">
                 <el-icon><Clock /></el-icon>
-                <span>用时 {{ formatDuration(record.useTime) }}</span>
+                <span>用时 {{ record.useTime }}</span>
               </div>
             </div>
 
             <div class="info-row">
               <div class="info-item">
                 <el-icon><Calendar /></el-icon>
-                <span>{{ formatDate(record.startTime) }}</span>
+                <span>{{ new Date(record.startTime).toLocaleString('zh-CN') }}</span>
               </div>
               <div class="info-item">
                 <el-tag :type="getModeType(record.mode)" size="small">
@@ -161,10 +161,10 @@ const filteredRecords = computed(() => {
   }
   switch (sortType.value) {
     case 'latest':
-      result.sort((a, b) => b.timestamp - a.timestamp)
+      result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
       break
     case 'earliest':
-      result.sort((a, b) => a.timestamp - b.timestamp)
+      result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
       break
     case 'highAccuracy':
       result.sort((a, b) => b.accuracy - a.accuracy)
@@ -182,6 +182,7 @@ const filteredRecords = computed(() => {
 const loadRecords = async () => {
   try {
     const res = await getPracticeList()
+    console.log(res)
     records.value = res || [] // 假设接口返回格式与原数据一致
   } catch (error) {
     ElMessage.error('加载练习记录失败：' + (error.message || '服务器异常'))

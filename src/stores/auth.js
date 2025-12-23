@@ -19,11 +19,11 @@ export const useAuthStore = defineStore('auth', {
     // 用户角色
     userRole: (state) => state.userInfo?.roleName || '',
     
-    // 是否是管理员
-    isAdmin: (state) => {
-      const roleId = state.userInfo?.roleId
-      return roleId === 1 || roleId === 2 // 1: 超级管理员, 2: 管理员
-    }
+    // // 是否是管理员
+    // isAdmin: (state) => {
+    //   const roleId = state.userInfo?.roleId
+    //   return roleId === 1 || roleId === 2 // 1: 超级管理员, 2: 管理员
+    // }
   },
 
   actions: {

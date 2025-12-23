@@ -44,12 +44,12 @@ export const setupRouterGuards = (router) => {
         return
       }
 
-      // 管理员权限检查
-      if (to.meta.requiresAdmin && !authStore.isAdmin) {
-        ElMessage.error('无权访问')
-        next('/courses')
-        return
-      }
+      // // 管理员权限检查
+      // if (to.meta.requiresAdmin && !authStore.isAdmin) {
+      //   ElMessage.error('无权访问')
+      //   next('/courses')
+      //   return
+      // }
     }
 
     next()
