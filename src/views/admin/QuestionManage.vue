@@ -4,11 +4,11 @@
       <el-card>
         <!-- 搜索栏 -->
         <div class="search-bar">
-          <el-select v-model="searchCourseId" placeholder="选择课程" style="width: 160px" clearable @change="handleCourseChange">
+          <el-select v-model="searchCourseId" placeholder="选择课程" style="width: 160px" clearable @change="handleCourseChange" :loading="courseLoading">
             <el-option v-for="course in courseList" :key="course.id" :label="course.name" :value="course.id" />
           </el-select>
           
-          <el-select v-model="searchChapterId" placeholder="选择章节" style="width: 160px; margin-left: 12px" clearable @change="handleSearch" :disabled="!searchCourseId">
+          <el-select v-model="searchChapterId" placeholder="选择章节" style="width: 160px; margin-left: 12px" clearable @change="handleSearch" :disabled="!searchCourseId" :loading="chapterLoading">
             <el-option v-for="chapter in filteredChapters" :key="chapter.id" :label="chapter.name" :value="chapter.id" />
           </el-select>
           
@@ -22,11 +22,16 @@
             <template #prefix><el-icon><Search /></el-icon></template>
           </el-input>
           
-          <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">新增题目</el-button>
+          <el-button type="danger" plain @click="handleBatchDelete" :disabled="selectedIds.length === 0" style="margin-left: auto">
+            <el-icon><Delete /></el-icon>
+            批量删除 {{ selectedIds.length > 0 ? `(${selectedIds.length})` : '' }}
+          </el-button>
+          <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: 12px">新增题目</el-button>
         </div>
 
         <!-- 题目表格 -->
-        <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading">
+        <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading" @selection-change="handleSelectionChange">
+          <el-table-column type="selection" width="55" />
           <el-table-column prop="id" label="ID" width="80" />
           <el-table-column prop="courseName" label="课程" width="120" />
           <el-table-column prop="chapterName" label="章节" width="150" />
@@ -215,12 +220,14 @@
 <script setup>
 import { ref, computed, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
+import { Search, Plus, Delete } from '@element-plus/icons-vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getQuestionList, getQuestionDetail, createQuestion, updateQuestion, getCourseDict, getChapterDict } from '@/api/admin'
+import { getQuestionList, getQuestionDetail, createQuestion, updateQuestion, deleteQuestion, getCourseDict, getChapterDict } from '@/api/admin'
 
 const courseList = ref([])
 const chapterList = ref([])
+const courseLoading = ref(false)
+const chapterLoading = ref(false)
 
 const searchCourseId = ref('')
 const searchChapterId = ref('')
@@ -229,11 +236,12 @@ const searchKeyword = ref('')
 
 const filteredChapters = computed(() => {
   if (!searchCourseId.value) return []
-  return chapterList.value.filter(c => c.courseId === searchCourseId.value)
+  return chapterList.value
 })
 
 const loading = ref(false)
 const tableData = ref([])
+const selectedIds = ref([])
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
@@ -250,8 +258,6 @@ const dialogTitle = computed(() => isEdit.value ? '编辑题目' : '新增题目
 // 表单相关数据
 const formCourseList = ref([])
 const formChapterList = ref([])
-const courseLoading = ref(false)
-const chapterLoading = ref(false)
 
 const formData = reactive({
   id: null,
@@ -317,9 +323,6 @@ const loadData = async () => {
         createTime: q.createTime
       }))
       
-      // 从题目数据中提取课程和章节列表用于筛选
-      updateCourseAndChapterLists(data.list)
-      
       total.value = data.total || 0
     } else {
       tableData.value = []
@@ -335,27 +338,20 @@ const loadData = async () => {
   }
 }
 
-// 从题目数据中提取课程和章节列表
-const updateCourseAndChapterLists = (questions) => {
-  // 提取唯一的课程
-  const courseMap = new Map()
-  const chapterMap = new Map()
-  
-  questions.forEach(q => {
-    if (q.curriculumId && q.curriculumName) {
-      courseMap.set(q.curriculumId, { id: q.curriculumId, name: q.curriculumName })
+// 加载课程列表（用于搜索筛选）
+const loadCourseList = async () => {
+  courseLoading.value = true
+  try {
+    const data = await getCourseDict()
+    if (data && Array.isArray(data)) {
+      courseList.value = data
     }
-    if (q.chapterId && q.chapterName) {
-      chapterMap.set(q.chapterId, { 
-        id: q.chapterId, 
-        name: q.chapterName,
-        courseId: q.curriculumId 
-      })
-    }
-  })
-  
-  courseList.value = Array.from(courseMap.values())
-  chapterList.value = Array.from(chapterMap.values())
+  } catch (error) {
+    console.error('获取课程列表失败:', error)
+    ElMessage.error('获取课程列表失败')
+  } finally {
+    courseLoading.value = false
+  }
 }
 
 // 加载表单用的课程列表
@@ -395,8 +391,25 @@ const handleFormCourseChange = async () => {
   }
 }
 
-const handleCourseChange = () => {
+const handleCourseChange = async () => {
   searchChapterId.value = ''
+  chapterList.value = []
+  
+  if (searchCourseId.value) {
+    chapterLoading.value = true
+    try {
+      const data = await getChapterDict(searchCourseId.value)
+      if (data && Array.isArray(data)) {
+        chapterList.value = data
+      }
+    } catch (error) {
+      console.error('获取章节列表失败:', error)
+      ElMessage.error('获取章节列表失败')
+    } finally {
+      chapterLoading.value = false
+    }
+  }
+  
   handleSearch()
 }
 
@@ -637,19 +650,71 @@ const handleDialogClose = () => {
   optionCount.value = 2 // 重置为2个选项
 }
 
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+  selectedIds.value = selection.map(item => item.id)
+}
+
+// 批量删除
+const handleBatchDelete = () => {
+  if (selectedIds.value.length === 0) {
+    ElMessage.warning('请先选择要删除的题目')
+    return
+  }
+  
+  ElMessageBox.confirm(`确定要删除选中的 ${selectedIds.value.length} 道题目吗？`, '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '批量删除中...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+    
+    try {
+      await deleteQuestion(selectedIds.value)
+      ElMessage.success(`成功删除 ${selectedIds.value.length} 道题目`)
+      selectedIds.value = []
+      await loadData()
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    } finally {
+      loadingInstance.close()
+    }
+  }).catch(() => {})
+}
+
+// 单个删除
 const handleDelete = (row) => {
   ElMessageBox.confirm('确定要删除该题目吗？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    // TODO: 调用删除接口
-    loadData()
-    ElMessage.success('删除成功')
+  }).then(async () => {
+    const loadingInstance = ElLoading.service({
+      lock: true,
+      text: '删除中...',
+      background: 'rgba(0, 0, 0, 0.7)'
+    })
+    
+    try {
+      await deleteQuestion([row.id])
+      ElMessage.success('删除成功')
+      await loadData()
+    } catch (error) {
+      console.error('删除失败:', error)
+      ElMessage.error('删除失败')
+    } finally {
+      loadingInstance.close()
+    }
   }).catch(() => {})
 }
 
 onMounted(() => {
+  loadCourseList()
   loadData()
 })
 </script>

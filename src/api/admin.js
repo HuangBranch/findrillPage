@@ -146,9 +146,9 @@ export const updateQuestion = (questionId, data) => {
   return request({ url: `/admin/questions/${questionId}`, method: 'PUT', data })
 }
 
-// 删除题目
-export const deleteQuestion = (questionId) => {
-  return request({ url: `/admin/questions/${questionId}`, method: 'DELETE' })
+// 删除题目（批量）
+export const deleteQuestion = (ids) => {
+  return request({ url: '/admin/questions/delete', method: 'POST', data: ids })
 }
 
 // Excel 批量上传
