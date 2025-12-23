@@ -33,24 +33,10 @@ export const sendEmailVerificationLink = (user, password, email) => {
  * @returns {Promise<boolean>} 返回 true 表示验证成功，false 表示验证失败
  */
 export const verifyEmailByToken = (token) => {
-  // 直接使用 axios 而不是封装的 request，避免拦截器处理 code: 0
   return request({
     url: '/update/email/verify',
     method: 'GET',
-    params: { token },
-    // 添加特殊标记，让拦截器跳过标准处理
-    validateStatus: () => true
-  }).then(response => {
-    // 手动处理响应
-    const { code, data } = response.data || response
-    // code: 0 且 data: true 表示验证成功
-    if (code === 0 && data === true) {
-      return true
-    }
-    return false
-  }).catch(err => {
-    console.error('邮箱验证失败：', err)
-    return false
+    params: { token }
   })
 }
 
