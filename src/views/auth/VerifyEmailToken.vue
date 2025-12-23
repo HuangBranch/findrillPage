@@ -17,9 +17,10 @@
             <el-icon :size="80" color="#67c23a"><CircleCheck /></el-icon>
           </div>
           <h2>验证成功！</h2>
-          <p>您的邮箱已验证完成，可以关闭此页面</p>
-          <el-button type="primary" size="large" @click="closePage">
-            关闭页面
+          <p v-if="isUpdate">您的新邮箱已验证完成，请返回个人设置页面完成邮箱修改</p>
+          <p v-else>您的邮箱已验证完成，现在可以正常使用系统了</p>
+          <el-button type="primary" size="large" @click="handleSuccess">
+            {{ isUpdate ? '返回个人设置' : '关闭页面' }}
           </el-button>
         </div>
 
@@ -62,7 +63,6 @@
 import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
 import { 
   Loading, CircleCheck, CircleClose, 
   Clock, Check, WarningFilled 
@@ -79,9 +79,16 @@ const errorMessage = ref('')
 const errorType = ref('') // 'expired' | 'used' | 'invalid'
 const countdown = ref(3)
 
+// 判断是否为修改邮箱验证
+const isUpdate = ref(false)
+
 // 验证 token
 const verifyToken = async () => {
   const token = route.query.token
+  const isUpdateParam = route.query.isupdate
+  
+  // 设置是否为修改邮箱验证
+  isUpdate.value = isUpdateParam === '1'
 
   if (!token) {
     status.value = 'error'
@@ -116,6 +123,26 @@ const verifyToken = async () => {
   }
 }
 
+// 处理验证成功
+const handleSuccess = () => {
+  if (isUpdate.value) {
+    // 修改邮箱验证成功，关闭页面或跳转到个人设置
+    window.close()
+    // 如果无法关闭，尝试跳转
+    setTimeout(() => {
+      // 如果已登录，跳转到个人设置，否则跳转到登录页
+      if (authStore.isAuthenticated) {
+        router.push('/profile/edit/' + authStore.userInfo?.id)
+      } else {
+        router.push('/login')
+      }
+    }, 100)
+  } else {
+    // 首次验证成功，关闭页面
+    closePage()
+  }
+}
+
 // 关闭页面
 const closePage = () => {
   // 尝试关闭窗口
@@ -126,15 +153,6 @@ const closePage = () => {
   }, 100)
 }
 
-// 跳转到登录页
-const goToLogin = () => {
-  router.push('/login')
-}
-
-// 跳转到邮箱验证页
-const goToEmailVerify = () => {
-  router.push('/email-verify')
-}
 
 onMounted(() => {
   verifyToken()

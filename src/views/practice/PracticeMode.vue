@@ -1,4 +1,5 @@
 <template>
+  <div class="practice-page" v-loading.fullscreen.lock="submitLoading" element-loading-text="提交中..."></div>
   <div class="practice-page">
     <!-- 顶部导航 -->
     <div class="page-header">
@@ -268,20 +269,20 @@
       <div class="summary-content">
         <div class="summary-stats">
           <div class="stat-item">
-            <div class="stat-value">{{ questions.length }}</div>
+            <div class="stat-value">{{ practiceResult?.totalQuestion || 0 }}</div>
             <div class="stat-label">总题数</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value correct">{{ correctCount }}</div>
+            <div class="stat-value correct">{{ practiceResult?.rightCount || 0 }}</div>
             <div class="stat-label">正确</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value wrong">{{ wrongCount }}</div>
+            <div class="stat-value wrong">{{ practiceResult?.wrongCount || 0 }}</div>
             <div class="stat-label">错误</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">{{ accuracy }}%</div>
-            <div class="stat-label">正确率</div>
+            <div class="stat-value">{{ practiceResult?.score || 0 }}</div>
+            <div class="stat-label">得分</div>
           </div>
         </div>
       </div>
@@ -296,15 +297,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, CircleCheck, CircleClose, Document } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import practiceApi from '@/api/practice'
 
 const router = useRouter()
 const route = useRoute()
-const courseStore = useCourseStore()
-
+const practiceResult = ref({})
 
 // 题目数据
 const questions = ref([])
@@ -318,6 +317,7 @@ const isTransitioning = ref(true) // 初始为true，防止首次渲染时误显
 const renderKey = ref(0) // 强制重新渲染
 const examId = ref(null)
 const loading = ref(null)
+const submitLoading = ref(false)
 const total = ref(0)
 
 // 当前题目
@@ -370,14 +370,6 @@ const isOptionCorrect = (index) => {
   // 兼容单选 "A" 和 多选 "A,B" 或 "AB"
   return q.answer.includes(label)
 }
-
-// 统计数据
-const correctCount = computed(() => userAnswers.value.filter(a => a.isCorrect).length)
-const wrongCount = computed(() => userAnswers.value.filter(a => !a.isCorrect).length)
-const accuracy = computed(() => {
-  if (userAnswers.value.length === 0) return 0
-  return Math.round((correctCount.value / userAnswers.value.length) * 100)
-})
 
 // 初始化
 onMounted(() => {
@@ -640,58 +632,15 @@ const jumpToQuestion = (index) => {
   }, 350)
 }
 
-// 保存练习记录
-const savePracticeRecord = () => {
-  // 计算统计数据
-  let correctCount = 0
-  const typeStats = {
-    1: { correct: 0, total: 0 },
-    2: { correct: 0, total: 0 },
-    3: { correct: 0, total: 0 }
-  }
-
-  questions.value.forEach((question, index) => {
-    const answer = userAnswers.value[index]
-    if (answer && answer.isCorrect) {
-      correctCount++
-      typeStats[question.type].correct++
-    }
-    typeStats[question.type].total++
-  })
-
-  // 移除没有题目的题型
-  Object.keys(typeStats).forEach(type => {
-    if (typeStats[type].total === 0) {
-      delete typeStats[type]
-    }
-  })
-
-  const accuracy = questions.value.length > 0
-    ? Math.round((correctCount / questions.value.length) * 100)
-    : 0
-
-  const practiceRecord = {
-    courseId: courseStore.currentCourse?.cId,
-    courseName: courseStore.currentCourse?.cName,
-    chapterId: courseStore.currentChapter?.chapterId,
-    chapterName: courseStore.currentChapter?.chapterName,
-    mode: 'sequence', // 练习模式：sequence/random/wrong
-    correctCount,
-    totalCount: questions.value.length,
-    accuracy,
-    duration: 0, // 可以后续添加计时功能
-    typeStats,
-    timestamp: Date.now()
-  }
-
-  // TODO: 可以在这里调用 API 保存练习记录到服务器
-  console.log('练习记录:', practiceRecord)
-}
-
 // 完成练习（提交试卷）
-const handleFinishPractice = () => {
+const handleFinishPractice = async () => {
+  submitLoading.value = true
+  const data = await practiceApi.getPracticeResult(examId.value);
+  practiceResult.value = data
+  submitLoading.value = false
   showAnswerCard.value = false
   showSummary.value = true
+
   // savePracticeRecord()
 }
 

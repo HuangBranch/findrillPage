@@ -1,20 +1,63 @@
 <template>
+  <div class="practice-page" v-loading.fullscreen.lock="submitLoading" element-loading-text="提交中..."></div>
   <div class="practice-page">
     <!-- 顶部导航 -->
     <div class="page-header">
       <div class="header-content">
         <el-button :icon="ArrowLeft" circle @click="handleBack" />
         <div class="header-info">
-          <h1 class="page-title">错题练习</h1>
+          <div class="header-main">
+            <h1 class="page-title">错题练习</h1>
+            <el-tag size="small" type="danger" effect="plain">错题模式</el-tag>
+          </div>
           <p class="course-name">{{ courseName }}</p>
         </div>
-        <div class="progress-badge" @click="showAnswerCard = true">{{ currentIndex + 1 }}/{{ questions.length }}</div>
+        <div v-if="!loading" class="progress-badge" @click="showAnswerCard = true">{{ currentIndex + 1 }}/{{ questions.length }}</div>
+        <el-skeleton v-else animated style="width: 60px;">
+          <template #template>
+            <el-skeleton-item variant="text" style="width: 100%;" />
+          </template>
+        </el-skeleton>
       </div>
     </div>
 
-    <!-- 内容区域 -->
-    <div class="page-content">
-      <div v-if="questions.length > 0">
+    <div class="practice-container">
+      <el-skeleton :loading="loading" animated>
+    
+        <template #template>
+          <div class="page-content">
+            <div class="question-card">
+              <div class="question-header">
+                <el-skeleton-item variant="button" style="width: 60px; height: 24px;" />
+                <el-skeleton-item variant="text" style="width: 40px;" />
+              </div>
+              <div class="question-content">
+                <el-skeleton-item variant="h3" style="width: 80%; margin-bottom: 8px;" />
+                <el-skeleton-item variant="h3" style="width: 40%;" />
+              </div>
+              <div class="options-list">
+                <div 
+                  v-for="i in 4" 
+                  :key="i" 
+                  class="option-item"
+                  style="pointer-events: none;" 
+                >
+                  <div class="option-label" style="background: transparent;">
+                    <el-skeleton-item variant="circle" style="width: 24px; height: 24px;" />
+                  </div>
+                  <div class="option-content">
+                    <el-skeleton-item variant="text" style="width: 60%;" />
+                  </div>
+                </div>
+              </div>
+
+            </div>            
+          </div>
+        </template>
+        <template #default>
+          <!-- 内容区域 -->
+          <div class="page-content">
+            <div v-if="questions.length > 0">
         <transition name="slide-fade" mode="out-in">
           <div :key="`q-${currentQuestion.id}`" class="question-container">
             <!-- 题目卡片 -->
@@ -23,9 +66,9 @@
                 <el-tag :type="getQuestionTypeTag(currentQuestion.type)">
                   {{ getQuestionTypeName(currentQuestion.type) }}
                 </el-tag>
-                <span class="question-difficulty" :class="'difficulty-' + currentQuestion.difficulty">
+                <el-tag :type="getDifficultyTag(currentQuestion.difficulty)" effect="plain">
                   {{ getDifficultyName(currentQuestion.difficulty) }}
-                </span>
+                </el-tag>
               </div>
               
               <div class="question-content">
@@ -66,7 +109,14 @@
                     <p class="correct-answer">
                       <strong>正确答案：</strong>{{ getCorrectAnswer() }}
                     </p>
-                    <p class="analysis-text">{{ currentQuestion.analysis || '暂无解析' }}</p>
+                    <p class="correct-answer">
+                      <strong>知识点：</strong>
+                      {{ currentQuestion.knowledgePoint || '暂无知识点' }}
+                    </p>
+                    <p class="correct-answer">
+                      <strong>解析：</strong>
+                      {{ currentQuestion.analysis || '暂无解析' }}
+                    </p>
                     
                     <!-- 掌握情况 -->
                     <div v-if="userAnswers[currentIndex]?.isCorrect" class="mastery-section">
@@ -82,20 +132,23 @@
         </transition>
       </div>
 
-      <el-empty v-else description="暂无错题" />
+            <el-empty v-else description="暂无错题" />
+          </div>
+        </template>
+      </el-skeleton>
     </div>
 
     <!-- 底部操作栏 -->
-    <div class="page-footer">
+    <div class="page-footer" v-if="!loading">
       <el-button
-        :disabled="currentIndex === 0"
+        v-if="currentIndex > 0"
         @click="handlePrevious"
       >
         上一题
       </el-button>
       
       <el-button
-        :disabled="currentIndex >= questions.length - 1"
+        v-if="currentIndex < questions.length - 1"
         @click="handleNext"
       >
         下一题
@@ -108,6 +161,15 @@
       >
         提交答案
       </el-button>
+      
+      <el-button
+        v-else
+        type="primary"
+        :disabled="questions.length <= 0"
+        @click="handleFinishPractice"
+      >
+        完成练习
+      </el-button>
     </div>
 
     <!-- 答题卡抽屉 -->
@@ -117,8 +179,8 @@
       size="80%"
       :style="{ maxWidth: '400px' }"
     >
-      <div class="answer-card">
-        <div class="card-stats">
+      <div class="answer-sheet">
+        <div class="sheet-stats">
           <div class="stat-item">
             <span class="stat-label">已答</span>
             <span class="stat-value">{{ answeredCount }}</span>
@@ -128,25 +190,22 @@
             <span class="stat-value">{{ unansweredCount }}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">答对</span>
+            <span class="stat-label">正确</span>
             <span class="stat-value correct">{{ correctAnsweredCount }}</span>
           </div>
         </div>
         
         <el-divider />
         
-        <div class="card-content">
-          <!-- 按题目类型分类显示 -->
-          <div v-if="questionsByType.single.length > 0" class="card-type-section">
-            <div class="type-header">
-              <span class="type-title">单选题</span>
-              <span class="type-count">{{ questionsByType.single.length }} 题</span>
-            </div>
-            <div class="card-grid">
+        <div class="sheet-content">
+          <!-- 单选题 -->
+          <div v-if="questionsByType.single.length > 0" class="question-group">
+            <div class="group-title">单选题 ({{ questionsByType.single.length }})</div>
+            <div class="sheet-grid">
               <div
                 v-for="item in questionsByType.single"
                 :key="item.originalIndex"
-                class="card-item"
+                class="sheet-item"
                 :class="{
                   answered: userAnswers[item.originalIndex],
                   correct: userAnswers[item.originalIndex]?.isCorrect,
@@ -160,16 +219,14 @@
             </div>
           </div>
 
-          <div v-if="questionsByType.multiple.length > 0" class="card-type-section">
-            <div class="type-header">
-              <span class="type-title">多选题</span>
-              <span class="type-count">{{ questionsByType.multiple.length }} 题</span>
-            </div>
-            <div class="card-grid">
+          <!-- 多选题 -->
+          <div v-if="questionsByType.multiple.length > 0" class="question-group">
+            <div class="group-title">多选题 ({{ questionsByType.multiple.length }})</div>
+            <div class="sheet-grid">
               <div
                 v-for="item in questionsByType.multiple"
                 :key="item.originalIndex"
-                class="card-item"
+                class="sheet-item"
                 :class="{
                   answered: userAnswers[item.originalIndex],
                   correct: userAnswers[item.originalIndex]?.isCorrect,
@@ -183,16 +240,14 @@
             </div>
           </div>
 
-          <div v-if="questionsByType.judge.length > 0" class="card-type-section">
-            <div class="type-header">
-              <span class="type-title">判断题</span>
-              <span class="type-count">{{ questionsByType.judge.length }} 题</span>
-            </div>
-            <div class="card-grid">
+          <!-- 判断题 -->
+          <div v-if="questionsByType.judge.length > 0" class="question-group">
+            <div class="group-title">判断题 ({{ questionsByType.judge.length }})</div>
+            <div class="sheet-grid">
               <div
                 v-for="item in questionsByType.judge"
                 :key="item.originalIndex"
-                class="card-item"
+                class="sheet-item"
                 :class="{
                   answered: userAnswers[item.originalIndex],
                   correct: userAnswers[item.originalIndex]?.isCorrect,
@@ -205,6 +260,12 @@
               </div>
             </div>
           </div>
+        </div>
+        
+        <div class="sheet-footer">
+          <el-button type="primary" size="large" @click="showSummary = true" style="width: 100%">
+            完成练习
+          </el-button>
         </div>
       </div>
     </el-drawer>
@@ -219,20 +280,20 @@
       <div class="summary-content">
         <div class="summary-stats">
           <div class="stat-item">
-            <div class="stat-value">{{ questions.length }}</div>
+            <div class="stat-value">{{ practiceResult?.totalQuestion || questions.length }}</div>
             <div class="stat-label">总题数</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value correct">{{ correctCount }}</div>
+            <div class="stat-value correct">{{ practiceResult?.rightCount || correctCount }}</div>
             <div class="stat-label">正确</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value wrong">{{ wrongCount }}</div>
+            <div class="stat-value wrong">{{ practiceResult?.wrongCount || wrongCount }}</div>
             <div class="stat-label">错误</div>
           </div>
           <div class="stat-item">
-            <div class="stat-value">{{ accuracy }}%</div>
-            <div class="stat-label">正确率</div>
+            <div class="stat-value">{{ practiceResult?.score !== undefined ? practiceResult.score : accuracy + '%' }}</div>
+            <div class="stat-label">{{ practiceResult?.score !== undefined ? '得分' : '正确率' }}</div>
           </div>
         </div>
       </div>
@@ -248,7 +309,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, CircleCheck, CircleClose, Document } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getWrongPracticeQuestions } from '@/api/wrong.js'
+import { getWrongPracticeQuestions, submitWrongAnswer, getWrongPracticeResult, removeWrongQuestion } from '@/api/wrong.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -268,6 +329,9 @@ const examId = ref(null)
 const totalQuestions = ref(0)
 const currentPage = ref(1)
 const pageSize = ref(50)
+const loading = ref(true)
+const submitLoading = ref(false)
+const practiceResult = ref({})
 
 // 当前题目
 const currentQuestion = computed(() => questions.value[currentIndex.value] || {})
@@ -325,17 +389,33 @@ const accuracy = computed(() => {
 })
 
 // 初始化
-onMounted(() => {
-  loadWrongQuestions()
+onMounted(async () => {
+  await loadWrongQuestions()
   setTimeout(() => {
     isTransitioning.value = false
   }, 350)
 })
 
+// 提交答案到后端
+const saveProgress = async (userAnswerStr, isCorrect) => {
+  try {
+    await submitWrongAnswer({
+      answer: userAnswerStr,
+      examId: examId.value,
+      subjectId: currentQuestion.value.id,
+      isCorrect: isCorrect,
+      sort: currentIndex.value + 1 // 题号从1开始
+    })
+    console.log('提交答案成功')
+  } catch (error) {
+    console.error('提交答案失败:', error)
+  }
+}
+
 // 加载错题 - 调用新接口
 const loadWrongQuestions = async () => {
   try {
-    console.log(route.params)
+    loading.value = true
     // 从路由参数获取 examId（对应数据的 id 字段）
     const params = {
       curriculumId: route.params.curriculumId,
@@ -347,7 +427,8 @@ const loadWrongQuestions = async () => {
     const res = await getWrongPracticeQuestions(params)
     
     if (res ) {
-      const { subjectList, total } = res
+      const { subjectList, total, examId: resExamId } = res
+      examId.value = resExamId || null
       totalQuestions.value = total || 0
       
       // 转换接口返回的数据格式以适配前端
@@ -378,6 +459,8 @@ const loadWrongQuestions = async () => {
   } catch (error) {
     console.error('加载错题失败:', error)
     ElMessage.error('网络错误，请重试')
+  } finally {
+    loading.value = false
   }
 }
 
@@ -408,7 +491,7 @@ const handleSelectOption = (index) => {
 const getOptionLabel = (index) => {
   const question = currentQuestion.value
   if (question.type === 3) { // 判断题
-    return index === 0 ? '正确' : '错误'
+    return index === 0 ? 'A' : 'B'
   }
   // 返回当前选项的 option 字段值
   return question.options[index]?.option || String.fromCharCode(65 + index)
@@ -436,6 +519,7 @@ const handleSubmit = () => {
   }
 
   showAnswer.value = true
+  saveProgress(userAnswerStr, isCorrect)
 
   ElMessage({
     type: isCorrect ? 'success' : 'error',
@@ -453,33 +537,33 @@ const removeFromWrong = async () => {
       type: 'warning'
     })
     
-    const saved = localStorage.getItem('wrong_questions')
-    if (saved) {
-      const allWrong = JSON.parse(saved)
-      const newWrong = allWrong.filter(q => q.timestamp !== currentQuestion.value.timestamp)
-      localStorage.setItem('wrong_questions', JSON.stringify(newWrong))
-      
-      // 从当前列表中移除
-      questions.value.splice(currentIndex.value, 1)
-      userAnswers.value.splice(currentIndex.value, 1)
-      
-      // 调整当前索引
-      if (currentIndex.value >= questions.value.length) {
-        currentIndex.value = Math.max(0, questions.value.length - 1)
-      }
-      
-      // 重置当前题目状态
-      resetQuestion()
-      
-      ElMessage.success('已从错题本移除')
-      
-      // 如果没有题目了，返回错题列表
-      if (questions.value.length === 0) {
-        router.push('/wrong')
-      }
+    // 调用后端接口移除错题
+    await removeWrongQuestion(currentQuestion.value.id)
+    
+    // 从当前列表中移除
+    questions.value.splice(currentIndex.value, 1)
+    userAnswers.value.splice(currentIndex.value, 1)
+    
+    // 调整当前索引
+    if (currentIndex.value >= questions.value.length) {
+      currentIndex.value = Math.max(0, questions.value.length - 1)
     }
-  } catch {
-    // 用户取消
+    
+    // 重置当前题目状态
+    resetQuestion()
+    
+    ElMessage.success('已从错题本移除')
+    
+    // 如果没有题目了，返回错题列表
+    if (questions.value.length === 0) {
+      router.push('/wrong')
+    }
+  } catch (error) {
+    // 用户取消或接口错误
+    if (error !== 'cancel') {
+      console.error('移除错题失败:', error)
+      ElMessage.error('移除失败，请重试')
+    }
   }
 }
 
@@ -552,6 +636,27 @@ const jumpToQuestion = (index) => {
   }, 350)
 }
 
+// 完成练习（提交试卷）
+const handleFinishPractice = async () => {
+  if (!examId.value) {
+    ElMessage.error('考试ID不存在')
+    return
+  }
+  
+  submitLoading.value = true
+  try {
+    const data = await getWrongPracticeResult(examId.value)
+    practiceResult.value = data
+    showAnswerCard.value = false
+    showSummary.value = true
+  } catch (error) {
+    console.error('获取练习结果失败:', error)
+    ElMessage.error('获取练习结果失败')
+  } finally {
+    submitLoading.value = false
+  }
+}
+
 // 完成练习
 const handleFinish = () => {
   router.push('/wrong')
@@ -591,6 +696,16 @@ const getDifficultyName = (difficulty) => {
   }
   return map[difficulty] || '未知'
 }
+
+// 难度标签类型
+const getDifficultyTag = (difficulty) => {
+  const map = {
+    1: 'success',  // 简单 - 绿色
+    2: 'warning',  // 中等 - 橙色
+    3: 'danger'    // 困难 - 红色
+  }
+  return map[difficulty] || 'info'
+}
 </script>
 
 <style scoped>
@@ -608,10 +723,11 @@ const getDifficultyName = (difficulty) => {
 }
 
 .page-header {
-  padding: 1rem 1.5rem;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   flex-shrink: 0;
+  background: white;
+  border-bottom: 1px solid #e4e7ed;
+  padding: 1rem 1.5rem;
+  z-index: 10;
 }
 
 .header-content {
@@ -625,8 +741,15 @@ const getDifficultyName = (difficulty) => {
   min-width: 0;
 }
 
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
 .page-title {
-  font-size: 1.125rem;
+  font-size: 0.9rem;
   font-weight: 600;
   color: #303133;
   margin: 0;
@@ -636,34 +759,63 @@ const getDifficultyName = (difficulty) => {
 }
 
 .course-name {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: #909399;
-  margin: 0.25rem 0 0 0;
+  margin: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
 .progress-badge {
+  background: #409eff;
+  color: white;
   padding: 0.375rem 0.75rem;
-  background: #ecf5ff;
-  color: #409eff;
-  border-radius: 12px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  white-space: nowrap;
+  border-radius: 16px;
+  font-weight: 600;
+  font-size: 0.75rem;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  min-width: 48px;
+  text-align: center;
+}
+
+.progress-badge:active {
+  transform: scale(0.95);
+  background: #3a8ee6;
+}
+
+.practice-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  position: relative;
 }
 
 .page-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1rem;
+  padding: 1.5rem;
+  min-height: 100%;
+}
+
+.practice-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.practice-container::-webkit-scrollbar-track {
+  background: #f5f7fa;
+}
+
+.practice-container::-webkit-scrollbar-thumb {
+  background: #dcdfe6;
+  border-radius: 3px;
 }
 
 .question-container {
-  max-width: 800px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
@@ -671,36 +823,15 @@ const getDifficultyName = (difficulty) => {
   background: white;
   border-radius: 12px;
   padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e4e7ed;
 }
 
 .question-header {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.question-difficulty {
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.difficulty-easy {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.difficulty-medium {
-  background: #fdf6ec;
-  color: #e6a23c;
-}
-
-.difficulty-hard {
-  background: #fef0f0;
-  color: #f56c6c;
+  margin-bottom: 1.5rem;
 }
 
 .question-content {
@@ -715,6 +846,7 @@ const getDifficultyName = (difficulty) => {
 }
 
 .question-hint {
+  font-size: 0.875rem;
   color: #e6a23c;
   margin: 0.5rem 0 0 0;
   font-weight: 500;
@@ -834,11 +966,6 @@ const getDifficultyName = (difficulty) => {
 
 .correct-answer {
   margin: 0 0 0.75rem 0;
-  color: #67c23a;
-}
-
-.analysis-text {
-  margin: 0;
 }
 
 .mastery-section {
@@ -848,12 +975,14 @@ const getDifficultyName = (difficulty) => {
 }
 
 .page-footer {
-  padding: 1rem 1.5rem;
+  flex-shrink: 0;
   background: white;
   border-top: 1px solid #e4e7ed;
   display: flex;
+  justify-content: space-between;
   gap: 1rem;
-  flex-shrink: 0;
+  padding: 1rem 1.5rem;
+  z-index: 10;
 }
 
 .page-footer .el-button {
@@ -861,81 +990,70 @@ const getDifficultyName = (difficulty) => {
 }
 
 /* 答题卡样式 */
-.answer-card {
-  padding: 0;
+.answer-sheet {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
-.card-stats {
+.sheet-stats {
   display: flex;
   justify-content: space-around;
   padding: 1rem 0;
 }
 
-.stat-item {
-  text-align: center;
+.sheet-stats .stat-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.stat-label {
-  display: block;
-  font-size: 0.75rem;
+.sheet-stats .stat-label {
+  font-size: 0.875rem;
   color: #909399;
-  margin-bottom: 0.25rem;
 }
 
-.stat-value {
-  display: block;
+.sheet-stats .stat-value {
   font-size: 1.5rem;
   font-weight: 600;
   color: #409eff;
 }
 
-.stat-value.correct {
+.sheet-stats .stat-value.correct {
   color: #67c23a;
 }
 
-.stat-value.wrong {
-  color: #f56c6c;
+.sheet-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 1rem;
 }
 
-.card-content {
-  padding: 0 1rem 1rem;
+.question-group {
+  margin-bottom: 1rem;
 }
 
-.card-type-section {
-  margin-bottom: 1.5rem;
-}
-
-.card-type-section:last-child {
+.question-group:last-child {
   margin-bottom: 0;
 }
 
-.type-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 2px solid #e4e7ed;
-}
-
-.type-title {
+.group-title {
   font-size: 0.875rem;
   font-weight: 600;
-  color: #303133;
+  color: #606266;
+  margin-bottom: 0.5rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid #e4e7ed;
 }
 
-.type-count {
-  font-size: 0.75rem;
-  color: #909399;
-}
-
-.card-grid {
+.sheet-grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
-.card-item {
+.sheet-item {
   aspect-ratio: 1;
   background: #f5f7fa;
   border: 2px solid #e4e7ed;
@@ -947,36 +1065,42 @@ const getDifficultyName = (difficulty) => {
   font-size: 0.875rem;
   color: #606266;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.15s;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-.card-item:hover {
-  border-color: #409eff;
-  color: #409eff;
+.sheet-item:active {
+  transform: scale(0.95);
 }
 
-.card-item.answered {
+.sheet-item.answered {
   background: #ecf5ff;
   border-color: #409eff;
   color: #409eff;
 }
 
-.card-item.correct {
+.sheet-item.correct {
   background: #f0f9ff;
   border-color: #67c23a;
   color: #67c23a;
 }
 
-.card-item.wrong {
+.sheet-item.wrong {
   background: #fef0f0;
   border-color: #f56c6c;
   color: #f56c6c;
 }
 
-.card-item.active {
+.sheet-item.active {
   background: #409eff;
   border-color: #409eff;
   color: white;
+}
+
+.sheet-footer {
+  padding-top: 1rem;
+  border-top: 1px solid #e4e7ed;
 }
 
 /* 总结对话框 */
@@ -985,8 +1109,9 @@ const getDifficultyName = (difficulty) => {
 }
 
 .summary-stats {
-  display: flex;
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
 }
 
 .summary-stats .stat-item {
@@ -994,7 +1119,6 @@ const getDifficultyName = (difficulty) => {
 }
 
 .summary-stats .stat-value {
-  display: block;
   font-size: 2rem;
   font-weight: 600;
   color: #409eff;
@@ -1010,7 +1134,6 @@ const getDifficultyName = (difficulty) => {
 }
 
 .summary-stats .stat-label {
-  display: block;
   font-size: 0.875rem;
   color: #909399;
 }
@@ -1043,15 +1166,67 @@ const getDifficultyName = (difficulty) => {
 }
 
 /* 移动端适配 */
-@media (max-width: 768px) {
-  .card-grid {
-    grid-template-columns: repeat(7, 1fr);
-    gap: 0.25rem;
+@media (max-width: 767px) {
+  .page-header {
+    padding: 1rem;
   }
-  
-  .card-item {
-    height: 34px;
+
+  .page-title {
+    font-size: 0.875rem;
+  }
+
+  .course-name {
     font-size: 0.75rem;
+  }
+
+  .progress-badge {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  .page-content {
+    padding: 1rem;
+  }
+
+  .question-card {
+    padding: 1rem;
+  }
+
+  .summary-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .summary-stats .stat-value {
+    font-size: 1.5rem;
+  }
+
+  .sheet-grid {
+    gap: 0.25rem;
+    grid-template-columns: repeat(7, 1fr);
+    padding: 0 0.25rem;
+  }
+
+  .sheet-item {
+    aspect-ratio: auto;
+    height: 34px;
+    font-size: 0.7rem;
+    border-width: 1px;
+    border-radius: 4px;
+  }
+
+  .answer-sheet {
+    overflow-x: hidden;
+  }
+}
+
+/* PC端适配 */
+@media (min-width: 1024px) {
+  .page-footer {
+    padding: 1rem 3rem;
+  }
+
+  .page-footer .el-button {
+    max-width: 200px;
   }
 }
 </style>

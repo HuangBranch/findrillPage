@@ -59,16 +59,16 @@
       <div v-else class="records-list">
         <div
             v-for="record in filteredRecords"
-            :key="record.timestamp"
+            :key="record.id"
             class="record-card"
         >
           <div class="card-header">
             <div class="course-info">
-              <h3 class="course-name">{{ record.id }}</h3>
+              <h3 class="course-name">{{ record.curriculumName }}</h3>
               <p class="chapter-name">{{ record.chapterName }}</p>
             </div>
-            <div class="accuracy-badge" :class="getAccuracyClass(record.rightCount%record.wrongCount)">
-              {{ record.rightCount%record.wrongCount }}%
+            <div class="accuracy-badge" :class="getAccuracyClass(getAccuracy(record))">
+              {{ getAccuracyText(record) }}
             </div>
           </div>
 
@@ -76,11 +76,11 @@
             <div class="info-row">
               <div class="info-item">
                 <el-icon><Document /></el-icon>
-                <span>答对 {{ record.rightCount }}/{{ record.totalQuestion }} 题</span>
+                <span>{{ getAnswerText(record) }}</span>
               </div>
               <div class="info-item">
                 <el-icon><Clock /></el-icon>
-                <span>用时 {{ record.useTime }}</span>
+                <span>{{ getTimeText(record) }}</span>
               </div>
             </div>
 
@@ -145,32 +145,36 @@ const totalQuestions = computed(() => {
   return records.value.reduce((sum, r) => sum + r.totalQuestion, 0)
 })
 const correctQuestions = computed(() => {
-  return records.value.reduce((sum, r) => sum + r.rightCount, 0)
+  return records.value.reduce((sum, r) => sum + (r.rightCount || 0), 0)
 })
 const averageAccuracy = computed(() => {
-  if (records.value.length === 0) return 0
-  const total = records.value.reduce((sum, r) => sum + r.rightCount%r.totalQuestion, 0)
-  return Math.round(total / records.value.length)
+  const completedRecords = records.value.filter(r => r.rightCount !== null && r.totalQuestion > 0)
+  if (completedRecords.length === 0) return 0
+  const total = completedRecords.reduce((sum, r) => {
+    const accuracy = (r.rightCount / r.totalQuestion) * 100
+    return sum + accuracy
+  }, 0)
+  return Math.round(total / completedRecords.length)
 })
 
 // 筛选排序（预留位置，需要改动）
 const filteredRecords = computed(() => {
   let result = [...records.value]
   if (filterType.value) {
-    result = result.filter(r => r.courseId === filterType.value)
+    result = result.filter(r => r.curriculumId === filterType.value)
   }
   switch (sortType.value) {
     case 'latest':
-      result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      result.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
       break
     case 'earliest':
-      result.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      result.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       break
     case 'highAccuracy':
-      result.sort((a, b) => b.accuracy - a.accuracy)
+      result.sort((a, b) => getAccuracy(b) - getAccuracy(a))
       break
     case 'lowAccuracy':
-      result.sort((a, b) => a.accuracy - b.accuracy)
+      result.sort((a, b) => getAccuracy(a) - getAccuracy(b))
       break
   }
   return result
@@ -189,6 +193,36 @@ const loadRecords = async () => {
     console.error('练习记录接口请求错误：', error)
     records.value = []
   }
+}
+
+// 计算正确率
+const getAccuracy = (record) => {
+  if (record.rightCount === null || record.totalQuestion === 0) return 0
+  return Math.round((record.rightCount / record.totalQuestion) * 100)
+}
+
+// 获取正确率显示文本
+const getAccuracyText = (record) => {
+  if (record.rightCount === null) return '未作答'
+  return `${getAccuracy(record)}%`
+}
+
+// 获取答题情况文本
+const getAnswerText = (record) => {
+  if (record.rightCount === null) {
+    return `共 ${record.totalQuestion} 题（未作答）`
+  }
+  return `答对 ${record.rightCount}/${record.totalQuestion} 题`
+}
+
+// 获取用时文本
+const getTimeText = (record) => {
+  if (!record.useTime || record.useTime === 0) {
+    return '用时 0分0秒'
+  }
+  const minutes = Math.floor(record.useTime / 60)
+  const seconds = record.useTime % 60
+  return `用时 ${minutes}分${seconds}秒`
 }
 
 // 原有工具函数（getAccuracyClass、getModeType等，不变）

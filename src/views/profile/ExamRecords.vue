@@ -13,9 +13,9 @@
       <el-select v-model="filterType" placeholder="全部课程" clearable @change="onFilterChange">
         <el-option
             v-for="course in courseList"
-            :key="course.cId"
-            :label="course.cName"
-            :value="course.cId"
+            :key="course.curriculumId"
+            :label="course.curriculumName"
+            :value="course.curriculumId"
         />
       </el-select>
 
@@ -61,22 +61,22 @@
         >
         <div class="card-header">
           <div class="course-info">
-            <h3 class="course-name">{{ record.id }}</h3>
+            <h3 class="course-name">{{ record.curriculumName }}</h3>
             <p class="chapter-name">{{ record.chapterName }}</p>
           </div>
           <div class="score-badge" :class="getScoreClass(record.score)">
-            {{ record.score }}分
+            {{ getScoreText(record) }}
           </div>
         </div>
         <div class="card-body">
           <div class="info-row">
             <div class="info-item">
               <el-icon><Clock /></el-icon>
-              <span>用时 {{ formatDuration(record.useTime) }}</span>
+              <span>{{ getTimeText(record) }}</span>
             </div>
             <div class="info-item">
               <el-icon><Document /></el-icon>
-              <span>{{ record.wrongCount }}/{{ record.totalQuestion }} 题</span>
+              <span>{{ getAnswerText(record) }}</span>
             </div>
           </div>
 
@@ -128,18 +128,21 @@ const courseList = computed(() => courseStore.courses || [])
 // 统计数据（逻辑不变，基于接口返回的records计算）
 const totalExams = computed(() => records.value.length)
 const averageScore = computed(() => {
-  if (records.value.length === 0) return 0
-  const total = records.value.reduce((sum, r) => sum + r.score, 0)
-  return Math.round(total / records.value.length)
+  const completedRecords = records.value.filter(r => r.rightCount !== null)
+  if (completedRecords.length === 0) return 0
+  const total = completedRecords.reduce((sum, r) => sum + (r.score || 0), 0)
+  return Math.round(total / completedRecords.length)
 })
 const maxScore = computed(() => {
-  if (records.value.length === 0) return 0
-  return Math.max(...records.value.map(r => r.score))
+  const completedRecords = records.value.filter(r => r.rightCount !== null)
+  if (completedRecords.length === 0) return 0
+  return Math.max(...completedRecords.map(r => r.score || 0))
 })
 const passRate = computed(() => {
-  if (records.value.length === 0) return 0
-  const passCount = records.value.filter(r => r.score >= 60).length
-  return Math.round((passCount / records.value.length) * 100)
+  const completedRecords = records.value.filter(r => r.rightCount !== null)
+  if (completedRecords.length === 0) return 0
+  const passCount = completedRecords.filter(r => r.score >= 60).length
+  return Math.round((passCount / completedRecords.length) * 100)
 })
 
 // 筛选排序（逻辑不变，基于接口数据计算）
@@ -147,21 +150,21 @@ const filteredRecords = computed(() => {
   let result = [...records.value]
   // 按课程筛选
   if (filterType.value) {
-    result = result.filter(r => r.courseId === filterType.value)
+    result = result.filter(r => r.curriculumId === filterType.value)
   }
   // 排序
   switch (sortType.value) {
     case 'latest':
-      result.sort((a, b) => b.timestamp - a.timestamp)
+      result.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
       break
     case 'earliest':
-      result.sort((a, b) => a.timestamp - b.timestamp)
+      result.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
       break
     case 'highScore':
-      result.sort((a, b) => b.score - a.score)
+      result.sort((a, b) => (b.score || 0) - (a.score || 0))
       break
     case 'lowScore':
-      result.sort((a, b) => a.score - b.score)
+      result.sort((a, b) => (a.score || 0) - (b.score || 0))
       break
   }
   return result
@@ -184,6 +187,30 @@ const loadRecords = async () => {
   }
 }
 
+// 获取分数显示文本
+const getScoreText = (record) => {
+  if (record.rightCount === null) return '未作答'
+  return `${record.score}分`
+}
+
+// 获取答题情况文本
+const getAnswerText = (record) => {
+  if (record.rightCount === null) {
+    return `共 ${record.totalQuestion} 题（未作答）`
+  }
+  return `答对 ${record.rightCount}/${record.totalQuestion} 题`
+}
+
+// 获取用时文本
+const getTimeText = (record) => {
+  if (!record.useTime || record.useTime === 0) {
+    return '用时 0分0秒'
+  }
+  const minutes = Math.floor(record.useTime / 60)
+  const seconds = record.useTime % 60
+  return `用时 ${minutes}分${seconds}秒`
+}
+
 // 原有工具函数（不变）
 const getScoreClass = (score) => {
   if (score >= 90) return 'excellent'
@@ -192,6 +219,7 @@ const getScoreClass = (score) => {
   return 'fail'
 }
 const formatDuration = (seconds) => {
+  if (!seconds || seconds === 0) return '0分0秒'
   const minutes = Math.floor(seconds / 60)
   const secs = seconds % 60
   return `${minutes}分${secs}秒`
@@ -222,18 +250,9 @@ const viewDetail = async (record) => {
       ElMessage.warning('考试记录ID无效，无法查看详情')
       return
     }
-    // 暂存，先不删除
-    // console.log(record)
-    // const data =await getExamResult(record.id)
-    // console.log(data)
     router.push({
       path: `/exam/result/${record.id}`,
-      // 暂存，先不删除
-      // state: {
-      //   record: JSON.parse(JSON.stringify(data))
-      // }
     })
-    // router.push(`/exam/result/${record.id}`) // 改为用接口返回的id
   }catch (error) {
     ElMessage(error)
   }

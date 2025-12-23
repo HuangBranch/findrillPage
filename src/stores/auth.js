@@ -17,13 +17,7 @@ export const useAuthStore = defineStore('auth', {
     isEmailVerified: (state) => state.userInfo?.isActiveEmail || false,
     
     // 用户角色
-    userRole: (state) => state.userInfo?.roleName || '',
-    
-    // // 是否是管理员
-    // isAdmin: (state) => {
-    //   const roleId = state.userInfo?.roleId
-    //   return roleId === 1 || roleId === 2 // 1: 超级管理员, 2: 管理员
-    // }
+    userRole: (state) => state.userInfo?.roleName || ''
   },
 
   actions: {
@@ -40,13 +34,6 @@ export const useAuthStore = defineStore('auth', {
           password: await this.digestMessage(loginForm.password)
         }
         const data = await loginApi(encryptedForm)
-        // // 如果有token和用户信息，保存到store和localStorage
-        // if (data && data.token) {
-        //   this.token = data.token
-        //   this.userInfo = data.user || data.userInfo
-        //   setStorage('token', data.token)
-        //   setStorage('userInfo', this.userInfo)
-        // }
         this.userInfo = data
         this.loginFlag = true
         setStorage('isLoggedIn', true)

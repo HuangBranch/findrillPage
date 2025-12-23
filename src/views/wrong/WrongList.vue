@@ -197,11 +197,17 @@ const chapters = ref({}) // 格式：{ curriculumId: { chapterId: "章节名称"
 
 // 错题数据
 const wrongQuestions = ref([])
+
+// 课程和章节加载状态
+const coursesLoading = ref(true)
 const totalWrong = ref(0)
 
 // 折叠状态管理
 const expandedCourses = ref(new Set())
 const expandedChapters = ref(new Set())
+
+// 课程和章节加载状态
+const chaptersLoading = ref(true)
 
 // 按课程和章节分组（使用接口获取的真实名称）
 const groupedWrongQuestions = computed(() => {
@@ -213,7 +219,7 @@ const groupedWrongQuestions = computed(() => {
     if (!groups[courseId]) {
       groups[courseId] = {
         courseId: courseId,
-        courseName: courses.value[courseId] || `课程${courseId}`, // 接口获取的课程名
+        courseName: coursesLoading.value ? '加载中...' : (courses.value[courseId] || `课程${courseId}`),
         questions: [],
         chapters: {}
       }
@@ -223,7 +229,7 @@ const groupedWrongQuestions = computed(() => {
 
     // 初始化章节分组
     if (!groups[courseId].chapters[q.chapterId]) {
-      const chapterName = chapters.value[courseId]?.[q.chapterId] || `章节${q.chapterId}` // 接口获取的章节名
+      const chapterName = chaptersLoading.value ? '加载中...' : (chapters.value[courseId]?.[q.chapterId] || `章节${q.chapterId}`)
       groups[courseId].chapters[q.chapterId] = {
         chapterId: q.chapterId,
         chapterName: chapterName,
@@ -243,6 +249,7 @@ const groupedWrongQuestions = computed(() => {
 
 // 1. 请求课程列表（/api/courses）
 const fetchCourses = async () => {
+  coursesLoading.value = true
   try {
     const res = await getCourseList()
     if (res) {
@@ -256,6 +263,8 @@ const fetchCourses = async () => {
   } catch (error) {
     console.error('课程列表请求失败:', error)
     ElMessage.error('网络错误，请重试')
+  } finally {
+    coursesLoading.value = false
   }
 }
 
@@ -336,10 +345,10 @@ const handleDelete = async (row) => {
         }
     );
     // 等待删除接口执行完成（关键：确保删除操作先完成）
-    const res=await removeWrongQuestion(row.id);
+    const res = await removeWrongQuestion(row.id);
 
     // 等待数据重新加载完成（确保加载的是删除后的最新数据）
-    await loadData();
+    await fetchWrongQuestions();
     // 只有上面两步都完成，才提示删除成功
     ElMessage.success('删除成功');
   } catch (error) {
@@ -448,10 +457,12 @@ onMounted(async () => {
   chapterId.value = route.query.chapterId || ''
   await fetchWrongQuestions() // 再获取错题
   // 最后获取错题对应的章节名称
+  chaptersLoading.value = true
   const uniqueCourseIds = [...new Set(wrongQuestions.value.map(q => q.curriculumId))]
   for (const cid of uniqueCourseIds) {
     await fetchChaptersByCurriculumId(cid)
   }
+  chaptersLoading.value = false
 
   // 默认展开第一个课程和章节
   nextTick(() => {

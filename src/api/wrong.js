@@ -36,11 +36,11 @@ export const getWrongPracticeQuestions = (params) => {
 
 /**
  * 错题作答判题（更新错题统计）
- * @param {Object} data - { questionId, isCorrect }
+ * @param {Object} data - { answer, examId, isCorrect, sort, subjectId }
  */
 export const submitWrongAnswer = (data) => {
   return request({
-    url: '/wrong-questions/answer',
+    url: '/wrong/check',
     method: 'POST',
     data
   })
@@ -52,7 +52,7 @@ export const submitWrongAnswer = (data) => {
  */
 export const removeWrongQuestion = (id) => {
   return request({
-    url: `/wrong/{id}/remove`,
+    url: `/wrong/${id}/remove`,
     method: 'PATCH'
   })
 }
@@ -69,11 +69,23 @@ export const batchRemoveWrong = (data) => {
   })
 }
 
+/**
+ * 获取错题练习结果
+ * @param {Number} examId - 考试ID
+ */
+export const getWrongPracticeResult = (examId) => {
+  return request({
+    url: `/practice/result/${examId}`,
+    method: 'GET'
+  })
+}
+
 export default {
   getWrongSummary,
   getWrongList,
   getWrongPracticeQuestions,
   submitWrongAnswer,
   removeWrongQuestion,
-  batchRemoveWrong
+  batchRemoveWrong,
+  getWrongPracticeResult
 }

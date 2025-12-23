@@ -8,102 +8,124 @@
         <div style="width: 40px;"></div>
       </div>
     </div>
-
-    <!-- 内容区域 -->
-    <div class="page-content">
-      <div v-if="record" class="result-container">
-        <!-- 成绩卡片 -->
-        <div class="score-card">
-          <div class="score-icon" :class="isPassed ? 'passed' : 'failed'">
-            <el-icon v-if="isPassed"><CircleCheck /></el-icon>
-            <el-icon v-else><CircleClose /></el-icon>
+    <div class="page-content" v-loading="resultLoading" element-loading-text="加载中...">
+      <!-- 内容区域 -->
+      <div class="page-content">
+        <div v-if="record" class="result-container">
+          <!-- 成绩卡片 -->
+          <div class="score-card">
+            <div class="score-icon" :class="isPassed ? 'passed' : 'failed'">
+              <el-icon v-if="isPassed">
+                <CircleCheck />
+              </el-icon>
+              <el-icon v-else>
+                <CircleClose />
+              </el-icon>
+            </div>
+            <div class="score-value">{{ record.score }}</div>
+            <div class="score-label">{{ isPassed ? '考试通过' : '考试未通过' }}</div>
           </div>
-          <div class="score-value">{{ record.score }}</div>
-          <div class="score-label">{{ isPassed ? '考试通过' : '考试未通过' }}</div>
+
+          <!-- 统计信息 -->
+          <div class="stats-card">
+            <div class="stat-item">
+              <div class="stat-icon"><el-icon>
+                  <DocumentChecked />
+                </el-icon></div>
+              <div class="stat-info">
+                <div class="stat-label">答对题数</div>
+                <div class="stat-value">{{ record.rightCount }}/{{ record.totalQuestion }}</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon"><el-icon>
+                  <Clock />
+                </el-icon></div>
+              <div class="stat-info">
+                <div class="stat-label">用时</div>
+                <div class="stat-value">{{ formatDuration() }}</div>
+              </div>
+            </div>
+            <div class="stat-item">
+              <div class="stat-icon"><el-icon>
+                  <TrendCharts />
+                </el-icon></div>
+              <div class="stat-info">
+                <div class="stat-label">正确率</div>
+                <div class="stat-value">{{ accuracy }}%</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 考试信息 -->
+          <div class="info-card">
+            <h3>考试信息</h3>
+            <div class="info-list">
+              <div class="info-item">
+                <span class="info-label">课程名称</span>
+                <span class="info-value">{{ record.curriculumName || '未知课程' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">章节名称</span>
+                <span class="info-value">{{ record.chapterName || '未知章节' }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">考试时间</span>
+                <span class="info-value">{{ formatTime(record.submitTime) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">考试状态</span>
+                <span class="info-value">{{ getStatusText(record.status) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 答题详情 -->
+          <div class="detail-card">
+            <h3>答题详情</h3>
+            <div class="detail-stats">
+              <div class="detail-item correct">
+                <el-icon>
+                  <CircleCheck />
+                </el-icon>
+                <span>正确: {{ record.rightCount }}</span>
+              </div>
+              <div class="detail-item wrong">
+                <el-icon>
+                  <CircleClose />
+                </el-icon>
+                <span>错误: {{ record.wrongCount }}</span>
+              </div>
+              <div class="detail-item unanswered">
+                <el-icon>
+                  <Remove />
+                </el-icon>
+                <span>未答: {{ unansweredCount }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 操作按钮 -->
+          <div class="action-buttons">
+            <el-button size="large" @click="viewWrongQuestions" v-if="record.wrongCount > 0">
+              <el-icon>
+                <View />
+              </el-icon>
+              查看错题
+            </el-button>
+            <el-button type="primary" size="large" @click="backToCourses">
+              <el-icon>
+                <House />
+              </el-icon>
+              返回课程
+            </el-button>
+          </div>
         </div>
 
-        <!-- 统计信息 -->
-        <div class="stats-card">
-          <div class="stat-item">
-            <div class="stat-icon"><el-icon><DocumentChecked /></el-icon></div>
-            <div class="stat-info">
-              <div class="stat-label">答对题数</div>
-              <div class="stat-value">{{ record.rightCount }}/{{ record.totalQuestion }}</div>
-            </div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-icon"><el-icon><Clock /></el-icon></div>
-            <div class="stat-info">
-              <div class="stat-label">用时</div>
-              <div class="stat-value">{{ formatDuration() }}</div>
-            </div>
-          </div>
-          <div class="stat-item">
-            <div class="stat-icon"><el-icon><TrendCharts /></el-icon></div>
-            <div class="stat-info">
-              <div class="stat-label">正确率</div>
-              <div class="stat-value">{{ accuracy }}%</div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 考试信息 -->
-        <div class="info-card">
-          <h3>考试信息</h3>
-          <div class="info-list">
-            <div class="info-item">
-              <span class="info-label">课程名称</span>
-              <span class="info-value">{{ record.curriculumName || '未知课程' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">章节名称</span>
-              <span class="info-value">{{ record.chapterName || '未知章节' }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">考试时间</span>
-              <span class="info-value">{{ formatTime(record.submitTime) }}</span>
-            </div>
-            <div class="info-item">
-              <span class="info-label">考试状态</span>
-              <span class="info-value">{{ getStatusText(record.status) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 答题详情 -->
-        <div class="detail-card">
-          <h3>答题详情</h3>
-          <div class="detail-stats">
-            <div class="detail-item correct">
-              <el-icon><CircleCheck /></el-icon>
-              <span>正确: {{ record.rightCount }}</span>
-            </div>
-            <div class="detail-item wrong">
-              <el-icon><CircleClose /></el-icon>
-              <span>错误: {{ record.wrongCount }}</span>
-            </div>
-            <div class="detail-item unanswered">
-              <el-icon><Remove /></el-icon>
-              <span>未答: {{ unansweredCount }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 操作按钮 -->
-        <div class="action-buttons">
-          <el-button size="large" @click="viewWrongQuestions" v-if="record.wrongCount > 0">
-            <el-icon><View /></el-icon>
-            查看错题
-          </el-button>
-          <el-button type="primary" size="large" @click="backToCourses">
-            <el-icon><House /></el-icon>
-            返回课程
-          </el-button>
-        </div>
+        <el-empty v-else description="未找到考试记录" />
       </div>
-
-      <el-empty v-else description="未找到考试记录" />
     </div>
+
   </div>
 </template>
 
@@ -112,12 +134,14 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, CircleCheck, CircleClose, DocumentChecked, Clock, TrendCharts, View, House, Remove } from '@element-plus/icons-vue'
 import dayjs from 'dayjs'
-import {getExamResult} from "@/api/exam.js";
+import { getExamResult } from "@/api/exam.js";
+import { ElMessage } from 'element-plus';
 
 const router = useRouter()
 const route = useRoute()
 
 const record = ref(null)
+const resultLoading = ref(false)
 
 // 根据接口数据判断是否通过
 const isPassed = computed(() => (record.value?.score || 0) >= 60)
@@ -143,16 +167,16 @@ const examId = route.params.id
 // 加载考试记录
 const loadRecord = async () => {
   try {
+    resultLoading.value = true
     // 从路由 state 中获取传递的数据
-    const data =await getExamResult(examId)
-    console.log(data)
+    const data = await getExamResult(examId)
     if (data) {
       // 将传入的数据映射到组件期望的字段
       record.value = {
         score: data.score || 0,
-        rightCount: data.correctCount || 0,
+        rightCount: data.rightCount || 0,
         wrongCount: data.wrongCount || 0,
-        totalQuestion: data.totalCount || 0,
+        totalQuestion: data.totalQuestion || 0,
         curriculumName: data.curriculumName || '未知课程',
         chapterName: data.chapterName || '未知章节',
         submitTime: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
@@ -161,12 +185,14 @@ const loadRecord = async () => {
         duration: data.duration || 0,
         autoSubmit: data.autoSubmit || false
       }
-      console.log('加载考试记录:', record.value)
+      resultLoading.value = false
     } else {
-      console.warn('未找到考试记录数据')
+      ElMessage.error('未找到考试记录数据')
     }
   } catch (error) {
-    console.error('加载考试记录失败:', error)
+    ElMessage.error('加载考试记录失败: ' + (error.message || '服务器异常'))
+  } finally {
+    resultLoading.value = false
   }
 }
 

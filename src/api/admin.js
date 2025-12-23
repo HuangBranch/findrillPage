@@ -59,6 +59,11 @@ export const getPermissionList = () => {
   return request({ url: '/admin/permissions', method: 'GET' })
 }
 
+// 获取菜单列表（动态菜单）
+export const getMenuList = () => {
+  return request({ url: '/menu', method: 'GET' })
+}
+
 /**
  * ========== 课程管理 ==========
  */

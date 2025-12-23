@@ -4,7 +4,7 @@
       <!-- Logo 区域 -->
       <div class="login-header">
         <div class="logo-circle">
-          <el-icon :size="60"><Document /></el-icon>
+          <el-icon :size="45"><Document /></el-icon>
         </div>
         <h1 class="system-title">学生在线学习系统</h1>
         <p class="system-subtitle">专注于高效学习</p>
@@ -59,12 +59,81 @@
           </el-form-item>
         </el-form>
 
-        <div class="login-tips">
-          <el-icon><InfoFilled /></el-icon>
-          <span>首次登录需验证邮箱</span>
+        <div class="login-footer">
+          <div class="login-tips">
+            <el-icon><InfoFilled /></el-icon>
+            <span>首次登录需验证邮箱</span>
+          </div>
+          <div class="forgot-password">
+            <el-link 
+              type="primary" 
+              @click="resetDialogVisible = true"
+              class="forgot-link"
+            >
+              忘记密码？
+            </el-link>
+          </div>
         </div>
       </div>
     </div>
+
+    <!-- 忘记密码对话框 -->
+    <el-dialog
+      v-model="resetDialogVisible"
+      title="重置密码"
+      width="90%"
+      :style="{ maxWidth: '450px' }"
+      @close="resetFormRef?.resetFields()"
+    >
+      <el-form 
+        ref="resetFormRef" 
+        :model="resetForm" 
+        :rules="resetRules"
+        label-width="80px"
+      >
+        <el-form-item label="用户名" prop="user">
+          <el-input
+            v-model="resetForm.user"
+            placeholder="请输入用户名"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><User /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-form-item label="邮箱" prop="email">
+          <el-input
+            v-model="resetForm.email"
+            placeholder="请输入邮箱地址"
+            clearable
+          >
+            <template #prefix>
+              <el-icon><Message /></el-icon>
+            </template>
+          </el-input>
+        </el-form-item>
+
+        <el-alert
+          title="系统将把重置后的密码发送到您的邮箱"
+          type="info"
+          :closable="false"
+          show-icon
+        />
+      </el-form>
+
+      <template #footer>
+        <el-button @click="resetDialogVisible = false">取消</el-button>
+        <el-button 
+          type="primary" 
+          :loading="resetLoading"
+          @click="handleResetPassword"
+        >
+          重置密码
+        </el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -72,10 +141,9 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { checkEmailStatus } from '@/api/auth'
+import { checkEmailStatus, resetPassword } from '@/api/auth'
 import { ElMessage } from 'element-plus'
-import { Document, User, Lock, InfoFilled } from '@element-plus/icons-vue'
-import user from '@/api/user'
+import { Document, User, Lock, InfoFilled, Message } from '@element-plus/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -97,6 +165,45 @@ const rules = {
 }
 
 const loading = ref(false)
+const resetDialogVisible = ref(false)
+const resetLoading = ref(false)
+const resetFormRef = ref()
+const resetForm = reactive({
+  email: '',
+  user: ''
+})
+
+const resetRules = {
+  email: [
+    { required: true, message: '请输入邮箱地址', trigger: 'blur' },
+    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  user: [
+    { required: true, message: '请输入用户名', trigger: 'blur' }
+  ]
+}
+
+const handleResetPassword = async () => {
+  await resetFormRef.value.validate(async (valid) => {
+    if (!valid) return
+    
+    resetLoading.value = true
+    
+    try {
+      await resetPassword(resetForm.email, resetForm.user)
+      ElMessage.success('密码重置成功，新密码已发送到您的邮箱')
+      resetDialogVisible.value = false
+      // 清空表单
+      resetForm.email = ''
+      resetForm.user = ''
+    } catch (error) {
+      console.error('密码重置错误：', error)
+      ElMessage.error(error.message || '密码重置失败，请检查邮箱和用户名是否正确')
+    } finally {
+      resetLoading.value = false
+    }
+  })
+}
 
 const onSubmit = async () => {
   await formRef.value.validate(async (valid) => {
@@ -167,14 +274,14 @@ const onSubmit = async () => {
 
 .login-header {
   text-align: center;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
   color: white;
 }
 
 .logo-circle {
-  width: 5rem;
-  height: 5rem;
-  margin: 0 auto 1.5rem;
+  width: 4rem;
+  height: 4rem;
+  margin: 0 auto 1rem;
   background: rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   display: flex;
@@ -185,15 +292,15 @@ const onSubmit = async () => {
 }
 
 .system-title {
-  font-size: 2rem;
+  font-size: 1.5rem;
   font-weight: 700;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   letter-spacing: 0.1em;
 }
 
 .system-subtitle {
-  font-size: 1rem;
+  font-size: 0.875rem;
   opacity: 0.95;
   letter-spacing: 0.05em;
 }
@@ -203,7 +310,7 @@ const onSubmit = async () => {
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-radius: 1.5rem;
-  padding: 2.5rem;
+  padding: 2rem 2rem 1.5rem;
   box-shadow: 
     0 8px 32px rgba(102, 126, 234, 0.4),
     0 4px 16px rgba(118, 75, 162, 0.3),
@@ -212,32 +319,51 @@ const onSubmit = async () => {
 }
 
 .form-title {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 600;
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
   color: #fff;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .login-button {
   width: 100%;
-  height: 3rem;
+  height: 2.5rem;
   font-size: 1rem;
   font-weight: 600;
   letter-spacing: 0.1em;
 }
 
+.login-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 .login-tips {
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.3);
   color: rgba(255, 255, 255, 0.9);
   font-size: 0.875rem;
+}
+
+.forgot-password {
+  flex-shrink: 0;
+}
+
+.forgot-link {
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 0.875rem;
+  text-decoration: none;
+}
+
+.forgot-link:hover {
+  color: #fff !important;
 }
 
 /* Element Plus 输入框样式优化 */
@@ -269,48 +395,49 @@ const onSubmit = async () => {
   }
   
   .logo-circle {
-    width: 4rem;
-    height: 4rem;
+    width: 3.5rem;
+    height: 3.5rem;
   }
   
   .system-title {
-    font-size: 1.75rem;
+    font-size: 1.35rem;
   }
   
   .system-subtitle {
-    font-size: 0.875rem;
+    font-size: 0.8rem;
   }
   
   .login-form-card {
-    padding: 2rem 1.5rem;
+    padding: 1.5rem 1.25rem 1.25rem;
   }
   
   .form-title {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
+    margin-bottom: 1.25rem;
   }
   
   .login-button {
-    height: 2.75rem;
+    height: 2.5rem;
   }
 }
 
 /* 平板和PC端 >= 768px */
 @media (min-width: 768px) {
   .login-container {
-    max-width: 480px;
+    max-width: 420px;
   }
   
   .logo-circle {
-    width: 6rem;
-    height: 6rem;
+    width: 4.5rem;
+    height: 4.5rem;
   }
   
   .system-title {
-    font-size: 2.5rem;
+    font-size: 1.75rem;
   }
   
   .login-form-card {
-    padding: 3rem;
+    padding: 2rem;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
@@ -323,28 +450,28 @@ const onSubmit = async () => {
 /* 大屏 PC >= 1440px */
 @media (min-width: 1440px) {
   .login-container {
-    max-width: 520px;
+    max-width: 450px;
   }
   
   .logo-circle {
-    width: 7rem;
-    height: 7rem;
+    width: 5rem;
+    height: 5rem;
   }
   
   .system-title {
-    font-size: 3rem;
+    font-size: 2rem;
   }
   
   .system-subtitle {
-    font-size: 1.125rem;
+    font-size: 1rem;
   }
   
   .login-form-card {
-    padding: 3.5rem;
+    padding: 2.5rem;
   }
   
   .form-title {
-    font-size: 1.75rem;
+    font-size: 1.5rem;
   }
 }
 </style>

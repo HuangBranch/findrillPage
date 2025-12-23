@@ -48,46 +48,24 @@
           :collapse="isCollapsed"
           :collapse-transition="false"
           @select="handleMenuSelect"
+          v-loading="menuStore.loading"
         >
-          <el-menu-item index="/admin/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <template #title>数据统计</template>
+          <!-- 动态菜单 -->
+          <el-menu-item 
+            v-for="menu in menuStore.menus" 
+            :key="menu.id" 
+            :index="menu.path"
+          >
+            <el-icon>
+              <component :is="iconMap[menu.meta.icon]" />
+            </el-icon>
+            <template #title>{{ menu.meta.title }}</template>
           </el-menu-item>
           
-          <el-menu-item index="/admin/users">
-            <el-icon><User /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/roles">
-            <el-icon><Avatar /></el-icon>
-            <template #title>角色管理</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/courses">
-            <el-icon><Reading /></el-icon>
-            <template #title>课程管理</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/chapters">
-            <el-icon><Notebook /></el-icon>
-            <template #title>章节管理</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/questions">
-            <el-icon><Document /></el-icon>
-            <template #title>题目管理</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/upload">
-            <el-icon><Upload /></el-icon>
-            <template #title>题目上传</template>
-          </el-menu-item>
-          
-          <el-menu-item index="/admin/traces">
-            <el-icon><Tickets /></el-icon>
-            <template #title>记录管理</template>
-          </el-menu-item>
+          <!-- 无菜单提示 -->
+          <div v-if="!menuStore.loading && !menuStore.hasMenus" class="no-menu-tip">
+            <el-empty description="暂无可用菜单" :image-size="80" />
+          </div>
         </el-menu>
       </div>
 
@@ -102,9 +80,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useMenuStore } from '@/stores/menu'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import {
   User,
@@ -124,6 +103,19 @@ import {
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
+const menuStore = useMenuStore()
+
+// 图标映射表
+const iconMap = {
+  DataAnalysis,
+  User,
+  Avatar,
+  Reading,
+  Notebook,
+  Document,
+  Upload,
+  Tickets
+}
 
 // 移动端默认收起侧边栏
 const isCollapsed = ref(window.innerWidth <= 768)
@@ -155,12 +147,24 @@ const handleLogout = async () => {
     })
     
     await authStore.logout()
+    // 清空菜单数据
+    menuStore.clearMenus()
     ElMessage.success('已退出登录')
     router.push('/login')
   } catch (error) {
     // 用户取消
   }
 }
+
+// 加载菜单数据
+onMounted(async () => {
+  try {
+    await menuStore.loadMenus()
+  } catch (error) {
+    console.error('加载菜单失败:', error)
+    ElMessage.error('加载菜单失败，请刷新重试')
+  }
+})
 </script>
 
 <style scoped>
@@ -367,5 +371,11 @@ const handleLogout = async () => {
   .main-content {
     padding: 12px 8px;
   }
+}
+
+/* 无菜单提示样式 */
+.no-menu-tip {
+  padding: 40px 20px;
+  text-align: center;
 }
 </style>

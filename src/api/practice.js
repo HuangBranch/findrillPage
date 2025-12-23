@@ -34,8 +34,20 @@ export const submitPracticeRecord = (data) => {
   })
 }
 
+/**
+ * 获取练习结果
+ * @param {Number} examId - 练习记录ID
+ */
+ export const getPracticeResult = (examId) => {
+  return request({
+    url: `/practice/result/${examId}`,
+    method: 'GET',
+  })
+}
+
 export default {
   getPracticeQuestions,
   submitPracticeRecord,
-  getPracticeList
+  getPracticeList,
+  getPracticeResult
 }

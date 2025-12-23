@@ -1,13 +1,15 @@
 import { useAuthStore } from '@/stores/auth'
-import { ElMessage } from 'element-plus'
+import { useMenuStore } from '@/stores/menu'
+import { ElMessage, ElLoading } from 'element-plus'
 
 /**
  * 设置路由守卫
  * @param {Router} router - Vue Router 实例
  */
 export const setupRouterGuards = (router) => {
-  router.beforeEach((to, from, next) => {
+  router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
+    const menuStore = useMenuStore()
 
     // 设置页面标题
     document.title = to.meta.title ? `${to.meta.title} - 学生在线学习系统` : '学生在线学习系统'
@@ -43,13 +45,58 @@ export const setupRouterGuards = (router) => {
         next('/email-verify')
         return
       }
+    }
 
-      // // 管理员权限检查
-      // if (to.meta.requiresAdmin && !authStore.isAdmin) {
-      //   ElMessage.error('无权访问')
-      //   next('/courses')
-      //   return
-      // }
+    // 管理员路由访问检查（所有 /admin/ 开头的路径）
+    if (to.path.startsWith('/admin/')) {
+      // 先检查是否登录
+      if (!authStore.isLoggedIn) {
+        ElMessage.warning('请先登录')
+        next({
+          path: '/login',
+          query: { redirect: to.fullPath }
+        })
+        return
+      }
+
+      // 确保菜单已加载（动态路由已注册）
+      if (!menuStore.loaded) {
+        // 显示加载动画
+        const loading = ElLoading.service({
+          lock: true,
+          text: '正在加载权限信息...',
+          background: 'rgba(255, 255, 255, 0.9)'
+        })
+        
+        try {
+          await menuStore.loadMenus()
+          loading.close()
+          // 重新导航到目标路由，因为动态路由可能刚刚注册
+          next({ ...to, replace: true })
+          return
+        } catch (error) {
+          loading.close()
+          console.error('加载菜单失败:', error)
+          ElMessage.error('加载菜单失败，请重新登录')
+          next('/courses')
+          return
+        }
+      }
+
+      // 检查动态路由是否存在（权限验证）
+      const routes = router.getRoutes()
+      const routeExists = routes.some(route => route.path === to.path)
+      
+      if (!routeExists) {
+        ElMessage.error('您没有访问该页面的权限')
+        // 跳转到第一个有权限的菜单页面
+        if (menuStore.menus.length > 0) {
+          next(menuStore.menus[0].path)
+        } else {
+          next('/courses')
+        }
+        return
+      }
     }
 
     next()
@@ -59,6 +106,12 @@ export const setupRouterGuards = (router) => {
   router.afterEach(() => {
     // 滚动到顶部
     window.scrollTo(0, 0)
+  })
+
+  // 路由错误处理
+  router.onError((error) => {
+    console.error('路由错误:', error)
+    ElMessage.error('页面加载失败')
   })
 }
 
