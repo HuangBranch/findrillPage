@@ -150,37 +150,6 @@ const formRules = {
   ]
 }
 
-// 初始化模拟数据
-// const initMockData = () => {
-//   const courses = [
-//     { name: 'Java 基础', remarks: 'Java 编程语言基础知识学习' },
-//     { name: 'Python 入门', remarks: 'Python 编程语言入门课程' },
-//     { name: 'JavaScript 高级', remarks: 'JavaScript 高级特性与应用' },
-//     { name: 'Vue 3 实战', remarks: 'Vue 3 框架实战开发' },
-//     { name: 'React 开发', remarks: 'React 前端框架开发' },
-//     { name: 'Node.js 后端', remarks: 'Node.js 后端开发技术' },
-//     { name: '数据库设计', remarks: 'MySQL 数据库设计与优化' },
-//     { name: '算法与数据结构', remarks: '常用算法与数据结构' },
-//     { name: '设计模式', remarks: '23 种设计模式详解' },
-//     { name: 'Git 版本控制', remarks: 'Git 版本控制系统使用' },
-//     { name: 'Docker 容器', remarks: 'Docker 容器化技术' },
-//     { name: 'Linux 运维', remarks: 'Linux 系统运维基础' }
-//   ]
-//
-//   return courses.map((course, index) => ({
-//     id: index + 1,
-//     name: course.name,
-//     remarks: course.remarks,
-//     chapterCount: Math.floor(Math.random() * 10) + 3,
-//     questionCount: Math.floor(Math.random() * 500) + 100,
-//     createTime: `2025-${String(Math.floor(Math.random() * 12) + 1).padStart(2, '0')}-${String(Math.floor(Math.random() * 28) + 1).padStart(2, '0')} ${String(Math.floor(Math.random() * 24)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}:${String(Math.floor(Math.random() * 60)).padStart(2, '0')}`
-//   }))
-// }
-//接口加载数据
-
-
-// const allCourses = ref(initMockData())
-
 // 加载数据
 const loadData = async () => {
   loading.value = true

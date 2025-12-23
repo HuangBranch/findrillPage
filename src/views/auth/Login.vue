@@ -6,7 +6,7 @@
         <div class="logo-circle">
           <el-icon :size="60"><Document /></el-icon>
         </div>
-        <h1 class="system-title">刷题系统</h1>
+        <h1 class="system-title">学生在线学习系统</h1>
         <p class="system-subtitle">专注于高效学习</p>
       </div>
 

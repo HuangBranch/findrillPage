@@ -916,6 +916,7 @@ const getDifficultyTag = (difficulty) => {
   color: #303133;
   line-height: 1.8;
   margin: 0;
+  white-space: pre-wrap;
 }
 
 .question-hint {

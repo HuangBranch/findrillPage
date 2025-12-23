@@ -10,7 +10,7 @@ export const setupRouterGuards = (router) => {
     const authStore = useAuthStore()
 
     // 设置页面标题
-    document.title = to.meta.title ? `${to.meta.title} - 刷题系统` : '刷题系统'
+    document.title = to.meta.title ? `${to.meta.title} - 学生在线学习系统` : '学生在线学习系统'
 
     // 如果是登录页，已登录则跳转到首页
     if (to.path === '/login') {
