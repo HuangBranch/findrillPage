@@ -12,7 +12,7 @@
       <div class="header-right">
         <el-dropdown>
           <div class="user-info">
-            <el-avatar :size="32">
+            <el-avatar :size="32" :src="authStore.userInfo.avatar">
               <el-icon><User /></el-icon>
             </el-avatar>
             <span class="username">{{ authStore.userInfo?.userName || '管理员' }}</span>

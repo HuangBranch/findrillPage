@@ -337,10 +337,8 @@ const loadWrongQuestions = async () => {
   try {
     console.log(route.params)
     // 从路由参数获取 examId（对应数据的 id 字段）
-    examId.value = route.query.examId
-    
     const params = {
-      examId: examId.value,
+      curriculumId: route.params.curriculumId,
       page: currentPage.value,
       pageSize: pageSize.value
     }

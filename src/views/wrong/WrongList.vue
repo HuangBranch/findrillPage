@@ -245,7 +245,6 @@ const groupedWrongQuestions = computed(() => {
 const fetchCourses = async () => {
   try {
     const res = await getCourseList()
-    console.log(res)
     if (res) {
       // 假设接口返回格式：[{ curriculumId: 21, name: "计算机网络" }, ...]
       res.forEach(course => {
@@ -266,7 +265,6 @@ const fetchChaptersByCurriculumId = async (cid) => {
   try {
     const params = new URLSearchParams({ curriculumId: cid })
     const res = await getChapterList(params)
-    console.log(res)
     if (res) {
       // 假设接口返回格式：[{ chapterId: 3, name: "计算机网络基础" }, ...]
       const chapterMap = {}
@@ -298,7 +296,6 @@ const fetchWrongQuestions = async () => {
 
     // 发送请求（替换为实际接口地址）
     const res = await getWrongList(params)
-    console.log(res)
     if (res) {
       // 接口返回的data直接是错题数组
       wrongQuestions.value = res.map(item => ({
@@ -338,7 +335,6 @@ const handleDelete = async (row) => {
           type: 'warning'
         }
     );
-    console.log(row.id)
     // 等待删除接口执行完成（关键：确保删除操作先完成）
     const res=await removeWrongQuestion(row.id);
 

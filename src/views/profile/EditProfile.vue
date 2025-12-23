@@ -19,7 +19,7 @@
             :http-request="handleAvatarUpload"
             :before-upload="beforeAvatarUpload"
             :file-list="avatarFileList"
-            :auto-upload="false"
+            :auto-upload="true"
             list-type="picture-card"
         >
           <img v-if="form.avatar" :src="form.avatar" class="avatar-img" />
@@ -195,20 +195,18 @@ const beforeAvatarUpload = (file) => {
 /**
  * 自定义头像上传逻辑（如果需要单独上传头像接口）
  */
-const handleAvatarUpload = async (uploadFile) => {
+const handleAvatarUpload = async (param) => {
+
   if (!form.avatarFile) return
   avatarUploadLoading.value = true
   try {
     const formData = new FormData()
-    formData.append('avatar', form.avatarFile)
+    formData.append('file', form.avatarFile)
 
     // 假设单独上传头像接口（如果不需要单独上传，可删除此逻辑，在提交时一起上传）
     const response = await upavatar(formData)
-    //     axios.post('/api/upload/avatar', formData, {
-    //   headers: { 'Content-Type': 'multipart/form-data' }
-    // })
 
-    if (response === 0) {
+    if (response) {
       form.avatar = response.avatar // 保存上传后的头像URL
       avatarFileList.value = [
         { url: form.avatar, name: 'avatar', status: 'success' }
@@ -244,7 +242,6 @@ const handleSubmit = async () => {
       name: form.name,
       realName: form.realName,
     }
-
 
     // 如果有新头像文件，一起上传（如果接口支持）
     if (form.avatarFile) {
