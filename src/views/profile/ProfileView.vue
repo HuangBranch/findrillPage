@@ -137,22 +137,15 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios'
 import {
   User, Document, Edit, InfoFilled, SwitchButton, ArrowRight, UserFilled // 新增UserFilled图标
 } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
-import { getPracticeList } from "@/api/practice.js";
-import {count, getExamRecords} from "@/api/user.js";
-import { getExamList } from "@/api/exam.js";
-import { getWrongList } from "@/api/wrong.js";
-import { getCourseList } from "@/api/course.js";
+import {count} from "@/api/user.js";
 
 const router = useRouter()
 const authStore = useAuthStore()
-const courseStore = useCourseStore()
 const showAboutDialog = ref(false)
 const isStatsLoading = ref(true);
 
@@ -179,20 +172,7 @@ const stats = ref({
 const loadStats = async () => {
   isStatsLoading.value = true;
   try {
-    // // 1. 课程数量
-    // const courses = await getCourseList()
-    // const totalCourses = Array.isArray(courses) ? courses.length : 0;
-    // // 2. 练习次数
-    // const practiceRes = await getPracticeList()
-    // const totalPractice = Array.isArray(practiceRes) ? practiceRes.length : 0;
-    // // 3. 考试次数
-    // const examRes = await getExamList()
-    // const totalExams = Array.isArray(examRes) ? examRes.length : 0;
-    // // 4. 错题数量
-    // const wrongRes = await getWrongList()
-    // const wrongCount = Array.isArray(wrongRes) ? wrongRes.length : 0;
     const data=await count()
-    console.log(data)
     // 更新统计数据
     stats.value = {
       totalCourses:data.courseCount,
@@ -202,7 +182,6 @@ const loadStats = async () => {
     }
   } catch (error) {
     ElMessage.error('加载学习统计失败：' + (error.message || '服务器异常'))
-    console.error('统计数据接口请求错误：', error)
     stats.value = {
       totalCourses: 0,
       totalPractice: 0,

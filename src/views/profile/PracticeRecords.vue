@@ -106,8 +106,8 @@
           </div>
 
           <div class="card-footer">
-            <el-button text type="primary" @click="continueChapter(record)">
-              继续练习
+            <el-button text type="primary" @click="viewDetail(record)">
+              查看详情
               <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
             <el-button text type="danger" @click="deleteRecord(record)">
@@ -115,15 +115,80 @@
             </el-button>
           </div>
         </div>
+
+        <!-- 分页 -->
+        <div class="pagination" v-if="total > 0">
+          <el-pagination
+            v-model:current-page="currentPage"
+            v-model:page-size="pageSize"
+            :page-sizes="[10, 20, 30, 50]"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="total"
+            @size-change="handlePageChange"
+            @current-change="handlePageChange"
+          />
+        </div>
       </div>
     </div>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog v-model="detailDialogVisible" title="练习详情" width="90%" :style="{ maxWidth: '800px' }">
+      <div v-if="currentDetail" class="practice-detail">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="课程">{{ currentDetail.curriculumName }}</el-descriptions-item>
+          <el-descriptions-item label="章节">{{ currentDetail.chapterName }}</el-descriptions-item>
+          <el-descriptions-item label="总题数">{{ currentDetail.totalQuestion }}</el-descriptions-item>
+          <el-descriptions-item label="答对题数">{{ currentDetail.rightCount || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="错题数">{{ currentDetail.wrongCount || 0 }}</el-descriptions-item>
+          <el-descriptions-item label="得分">{{ currentDetail.score }}</el-descriptions-item>
+          <el-descriptions-item label="用时">{{ getTimeText(currentDetail) }}</el-descriptions-item>
+          <el-descriptions-item label="开始时间">
+            {{ new Date(currentDetail.startTime).toLocaleString('zh-CN') }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 题目列表 -->
+        <div class="subject-list" v-if="currentDetail.subjectList && currentDetail.subjectList.length > 0">
+          <h3 style="margin: 20px 0 10px 0; font-size: 16px;">题目详情</h3>
+          <div v-for="(item, index) in paginatedSubjects" :key="item.id" class="subject-item">
+            <div class="subject-header">
+              <span class="subject-number">第 {{ (subjectPage - 1) * subjectPageSize + index + 1 }} 题</span>
+              <el-tag :type="item.isCorrect ? 'success' : (item.userAnswer ? 'danger' : 'info')" size="small">
+                {{ item.isCorrect ? '正确' : (item.userAnswer ? '错误' : '未作答') }}
+              </el-tag>
+            </div>
+            <div class="subject-content">{{ item.subject }}</div>
+            <div class="subject-answer">
+              <span class="answer-label">正确答案：</span>
+              <el-tag type="success" size="small">{{ item.answer }}</el-tag>
+              <span class="answer-label" style="margin-left: 20px;">你的答案：</span>
+              <el-tag :type="item.userAnswer ? (item.isCorrect ? 'success' : 'danger') : 'info'" size="small">
+                {{ item.userAnswer || '未作答' }}
+              </el-tag>
+            </div>
+          </div>
+          
+          <!-- 题目分页 -->
+          <div class="subject-pagination" v-if="subjectTotal > subjectPageSize">
+            <el-pagination
+              v-model:current-page="subjectPage"
+              v-model:page-size="subjectPageSize"
+              :page-sizes="[5, 10, 20, 30]"
+              layout="total, sizes, prev, pager, next"
+              :total="subjectTotal"
+              small
+            />
+          </div>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
 import axios from 'axios'
 import {
   ArrowLeft, Clock, Document, Calendar, ArrowRight, Delete
@@ -135,9 +200,29 @@ const courseStore = useCourseStore()
 const records = ref([]) // 存储接口返回的练习记录
 const filterType = ref('')
 const sortType = ref('latest')
+const detailDialogVisible = ref(false)
+const currentDetail = ref(null)
+
+// 题目分页相关
+const subjectPage = ref(1)
+const subjectPageSize = ref(5)
+const subjectTotal = computed(() => currentDetail.value?.subjectList?.length || 0)
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 // 课程列表（不变）
 const courseList = computed(() => courseStore.courses || [])
+
+// 题目列表分页
+const paginatedSubjects = computed(() => {
+  if (!currentDetail.value?.subjectList) return []
+  const start = (subjectPage.value - 1) * subjectPageSize.value
+  const end = start + subjectPageSize.value
+  return currentDetail.value.subjectList.slice(start, end)
+})
 
 // 统计数据（逻辑不变，基于接口数据计算）
 const totalPractices = computed(() => records.value.length)
@@ -160,9 +245,13 @@ const averageAccuracy = computed(() => {
 // 筛选排序（预留位置，需要改动）
 const filteredRecords = computed(() => {
   let result = [...records.value]
+  
+  // 筛选
   if (filterType.value) {
     result = result.filter(r => r.curriculumId === filterType.value)
   }
+  
+  // 排序
   switch (sortType.value) {
     case 'latest':
       result.sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
@@ -177,7 +266,14 @@ const filteredRecords = computed(() => {
       result.sort((a, b) => getAccuracy(a) - getAccuracy(b))
       break
   }
-  return result
+  
+  // 更新总数
+  total.value = result.length
+  
+  // 分页
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return result.slice(start, end)
 })
 
 /**
@@ -244,21 +340,45 @@ const getTypeLabel = (type) => {
   const labels = { 'single': '单选', 'multiple': '多选', 'judge': '判断' }
   return labels[type] || type
 }
-const formatDuration = (seconds) => { /* 不变 */ }
-const formatDate = (timestamp) => { /* 不变 */ }
 
 // 筛选/排序触发（不变）
-const onFilterChange = () => {}
-const onSortChange = () => {}
+const onFilterChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
+const onSortChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
 
-// 继续练习（不变）
-const continueChapter = (record) => {
-  const course = courseList.value.find(c => c.cId === record.courseId)
-  if (course) {
-    courseStore.setCurrentCourse(course)
-    router.push(`/courses/${record.courseId}/chapters`)
-  } else {
-    ElMessage.warning('课程不存在')
+// 分页变化
+const handlePageChange = () => {
+  // 分页变化时，filteredRecords 会自动重新计算
+}
+
+// 查看详情
+const viewDetail = async (record) => {
+  // 显示加载动画
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '加载练习详情中...',
+    background: 'rgba(0, 0, 0, 0.7)'
+  })
+  
+  try {
+    // 调用接口获取练习详情
+    const response = await axios.get(`/api/exam/${record.id}`)
+    
+    if (response.data && response.data.code === 200) {
+      currentDetail.value = response.data.data
+      subjectPage.value = 1 // 重置题目分页
+      detailDialogVisible.value = true
+    } else {
+      ElMessage.error(response.data?.msg || '获取练习详情失败')
+    }
+  } catch (error) {
+    console.error('获取练习详情失败:', error)
+    ElMessage.error('获取练习详情失败')
+  } finally {
+    loadingInstance.close()
   }
 }
 
@@ -523,6 +643,71 @@ onMounted(async () => {
   border-top: 1px solid #f5f7fa;
 }
 
+/* 练习详情 */
+.practice-detail {
+  padding: 8px 0;
+}
+
+.subject-list {
+  margin-top: 20px;
+}
+
+.subject-item {
+  padding: 16px;
+  background: #f5f7fa;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.subject-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.subject-number {
+  font-weight: 600;
+  color: #303133;
+  font-size: 14px;
+}
+
+.subject-content {
+  color: #606266;
+  line-height: 1.6;
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.subject-answer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.answer-label {
+  color: #909399;
+  font-size: 14px;
+}
+
+/* 题目分页 */
+.subject-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  padding-top: 16px;
+  border-top: 1px solid #ebeef5;
+}
+
+/* 分页 */
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+}
+
 /* 响应式设计 */
 @media (max-width: 768px) {
   .stats-card {
@@ -541,6 +726,11 @@ onMounted(async () => {
 
   .type-stats {
     flex-wrap: wrap;
+  }
+  
+  .subject-answer {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 </style>

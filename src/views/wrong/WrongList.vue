@@ -825,6 +825,8 @@ onMounted(async () => {
 .pagination-container {
   margin-top: 1.5rem;
   text-align: center;
+  display: flex;
+  justify-content: center;
 }
 
 /* 底部导航样式 */

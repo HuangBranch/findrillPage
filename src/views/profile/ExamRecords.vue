@@ -100,6 +100,19 @@
           </el-button>
         </div>
       </div>
+
+      <!-- 分页 -->
+      <div class="pagination" v-if="total > 0">
+        <el-pagination
+          v-model:current-page="currentPage"
+          v-model:page-size="pageSize"
+          :page-sizes="[10, 20, 30, 50]"
+          layout="total, sizes, prev, pager, next, jumper"
+          :total="total"
+          @size-change="handlePageChange"
+          @current-change="handlePageChange"
+        />
+      </div>
     </div>
   </div>
   </div>
@@ -121,6 +134,11 @@ const courseStore = useCourseStore()
 const records = ref([]) // 存储接口返回的考试记录
 const filterType = ref('')
 const sortType = ref('latest')
+
+// 分页相关
+const currentPage = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
 
 // 课程列表（从courseStore获取，不变）
 const courseList = computed(() => courseStore.courses || [])
@@ -148,10 +166,12 @@ const passRate = computed(() => {
 // 筛选排序（逻辑不变，基于接口数据计算）
 const filteredRecords = computed(() => {
   let result = [...records.value]
+  
   // 按课程筛选
   if (filterType.value) {
     result = result.filter(r => r.curriculumId === filterType.value)
   }
+  
   // 排序
   switch (sortType.value) {
     case 'latest':
@@ -167,7 +187,14 @@ const filteredRecords = computed(() => {
       result.sort((a, b) => (a.score || 0) - (b.score || 0))
       break
   }
-  return result
+  
+  // 更新总数
+  total.value = result.length
+  
+  // 分页
+  const start = (currentPage.value - 1) * pageSize.value
+  const end = start + pageSize.value
+  return result.slice(start, end)
 })
 
 /**
@@ -239,8 +266,17 @@ const formatDate = (timestamp) => {
 }
 
 // 筛选/排序触发（逻辑不变）
-const onFilterChange = () => {}
-const onSortChange = () => {}
+const onFilterChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
+const onSortChange = () => {
+  currentPage.value = 1 // 重置到第一页
+}
+
+// 分页变化
+const handlePageChange = () => {
+  // 分页变化时，filteredRecords 会自动重新计算
+}
 
 // 查看详情（不变）
 const viewDetail = async (record) => {
@@ -500,6 +536,13 @@ onMounted(async () => {
   align-items: center;
   padding-top: 1rem;
   border-top: 1px solid #f5f7fa;
+}
+
+/* 分页 */
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 
 /* 响应式设计 */
