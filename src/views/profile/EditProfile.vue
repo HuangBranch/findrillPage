@@ -191,6 +191,7 @@
                       {{ oldEmailCountdown > 0 ? `${oldEmailCountdown}秒后重试` : oldEmailVerified ? '已验证' : '发送验证邮件' }}
                     </el-button>
                     <el-button
+                        class="transmit-code-btn"
                         v-if="oldEmailSent && !oldEmailVerified"
                         type="success"
                         @click="checkOldEmailVerification"
@@ -229,6 +230,7 @@
                       {{ newEmailCountdown > 0 ? `${newEmailCountdown}秒后重试` : newEmailVerified ? '已验证' : '发送验证邮件' }}
                     </el-button>
                     <el-button
+                        class="transmit-code-btn"
                         v-if="newEmailSent && !newEmailVerified"
                         type="success"
                         @click="checkNewEmailVerification"
@@ -743,7 +745,7 @@ const handleEmailSubmit = async () => {
 
   emailSubmitting.value = true
   try {
-    const response = await getUserInfo()
+    await getUserInfo()
     
     // 更新当前邮箱显示
     currentEmail.value = emailForm.newEmail
@@ -768,14 +770,6 @@ const handleEmailSubmit = async () => {
     
     // 重置验证
     emailFormRef.value.resetFields()
-    
-    // 提示用户
-    ElMessage.info('请使用新邮箱重新登录')
-    
-    // 延迟跳转
-    setTimeout(() => {
-      handleBack()
-    }, 2000)
   } catch (error) {
     ElMessage.error('修改邮箱失败：' + (error.message || '网络错误'))
     console.error('修改邮箱错误：', error)
@@ -784,14 +778,6 @@ const handleEmailSubmit = async () => {
   }
 }
 
-// ========== 通用方法 ==========
-
-/**
- * 返回上一页（个人中心）
- */
-const handleBack = () => {
-  router.push('/profile')
-}
 </script>
 <style scoped>
 .edit-profile-page {
@@ -961,6 +947,10 @@ const handleBack = () => {
 .submit-button-group {
   margin-top: 2rem;
   text-align: center;
+}
+
+.transmit-code-btn {
+  margin-left: auto;
 }
 
 .submit-btn {
