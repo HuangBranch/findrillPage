@@ -17,10 +17,10 @@
             <el-icon :size="80" color="#67c23a"><CircleCheck /></el-icon>
           </div>
           <h2>验证成功！</h2>
-          <p v-if="isUpdate">您的新邮箱已验证完成，请返回个人设置页面完成邮箱修改</p>
+          <p v-if="isUpdate">您的新旧邮箱已验证完成，请返回个人设置页面完成邮箱修改</p>
           <p v-else>您的邮箱已验证完成，现在可以正常使用系统了</p>
-          <el-button type="primary" size="large" @click="handleSuccess">
-            {{ isUpdate ? '返回个人设置' : '关闭页面' }}
+          <el-button type="primary" size="large" @click="closePage">
+            关闭页面
           </el-button>
         </div>
 
@@ -46,11 +46,8 @@
             </div>
           </div>
           <div class="error-actions">
-            <el-button type="primary" @click="goToLogin">
-              返回登录
-            </el-button>
-            <el-button @click="goToEmailVerify" v-if="errorType === 'expired'">
-              重新发送验证链接
+            <el-button type="primary" @click="closePage">
+              关闭页面
             </el-button>
           </div>
         </div>
@@ -127,26 +124,6 @@ const verifyToken = async () => {
     console.error('Token 验证失败：', error)
   } finally {
     verifying.value = false
-  }
-}
-
-// 处理验证成功
-const handleSuccess = () => {
-  if (isUpdate.value) {
-    // 修改邮箱验证成功，关闭页面或跳转到个人设置
-    window.close()
-    // 如果无法关闭，尝试跳转
-    setTimeout(() => {
-      // 如果已登录，跳转到个人设置，否则跳转到登录页
-      if (authStore.isAuthenticated) {
-        router.push('/profile/edit/' + authStore.userInfo?.id)
-      } else {
-        router.push('/login')
-      }
-    }, 100)
-  } else {
-    // 首次验证成功，关闭页面
-    closePage()
   }
 }
 

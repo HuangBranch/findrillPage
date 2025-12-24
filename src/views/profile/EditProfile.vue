@@ -25,9 +25,16 @@
                   :show-file-list="false"
                   :on-change="handleAvatarChange"
               >
-                <img v-if="avatarPreview" :src="avatarPreview" class="avatar-img" />
-                <div v-else class="avatar-uploader-icon">
-                  <el-icon><Plus /></el-icon>
+                <div class="avatar-wrapper">
+                  <img v-if="avatarPreview" :src="avatarPreview" class="avatar-img" />
+                  <div v-else class="avatar-uploader-icon">
+                    <el-icon><Plus /></el-icon>
+                  </div>
+                  <!-- 鼠标悬停遮罩 -->
+                  <div v-if="avatarPreview" class="avatar-overlay">
+                    <el-icon class="overlay-icon"><Plus /></el-icon>
+                    <span class="overlay-text">更换头像</span>
+                  </div>
                 </div>
               </el-upload>
               <p class="avatar-tip">支持JPG、PNG格式，大小不超过2MB</p>
@@ -858,12 +865,51 @@ const handleEmailSubmit = async () => {
   border-color: #409eff;
 }
 
+.avatar-wrapper {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
 .avatar-img {
   width: 150px;
   height: 150px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
+}
+
+.avatar-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  color: white;
+}
+
+.avatar-wrapper:hover .avatar-overlay {
+  opacity: 1;
+}
+
+.overlay-icon {
+  font-size: 40px;
+  margin-bottom: 0.5rem;
+}
+
+.overlay-text {
+  font-size: 14px;
+  font-weight: 500;
 }
 
 .avatar-uploader-icon {
