@@ -28,15 +28,38 @@ export const sendEmailVerificationLink = (user, password, email) => {
 }
 
 /**
- * 通过 token 验证邮箱（首次验证或修改邮箱验证）
+ * 通过 token 验证邮箱（首次注册验证）
  * @param {string} token - 从邮件链接中获取的 token
  * @returns {Promise<boolean>} 返回 true 表示验证成功，false 表示验证失败
  */
 export const verifyEmailByToken = (token) => {
   return request({
+    url: '/email/verify',
+    method: 'GET',
+    params: { token }
+  }).then(result => {
+    return result === true
+  }).catch(err => {
+    console.error('首次邮箱验证失败：', err)
+    return false
+  })
+}
+
+/**
+ * 通过 token 验证邮箱（修改邮箱验证）
+ * @param {string} token - 从邮件链接中获取的 token
+ * @returns {Promise<boolean>} 返回 true 表示验证成功，false 表示验证失败
+ */
+export const verifyUpdateEmailByToken = (token) => {
+  return request({
     url: '/update/email/verify',
     method: 'GET',
     params: { token }
+  }).then(result => {
+    return result === true
+  }).catch(err => {
+    console.error('修改邮箱验证失败：', err)
+    return false
   })
 }
 
@@ -83,6 +106,7 @@ export default {
   login,
   sendEmailVerificationLink,
   verifyEmailByToken,
+  verifyUpdateEmailByToken,
   checkEmailStatus,
   resetPassword,
   logout

@@ -67,7 +67,7 @@ import {
   Loading, CircleCheck, CircleClose, 
   Clock, Check, WarningFilled 
 } from '@element-plus/icons-vue'
-import { verifyEmailByToken } from '@/api/auth'
+import { verifyEmailByToken, verifyUpdateEmailByToken } from '@/api/auth'
 
 const router = useRouter()
 const route = useRoute()
@@ -99,8 +99,15 @@ const verifyToken = async () => {
   }
 
   try {
-    // 调用后端 API 验证 token
-    const result = await verifyEmailByToken(token)
+    // 根据 isupdate 参数调用不同的验证接口
+    let result
+    if (isUpdate.value) {
+      // 修改邮箱验证
+      result = await verifyUpdateEmailByToken(token)
+    } else {
+      // 首次邮箱验证
+      result = await verifyEmailByToken(token)
+    }
     
     if (result === true) {
       // 验证成功
