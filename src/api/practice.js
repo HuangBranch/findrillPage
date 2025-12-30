@@ -51,7 +51,7 @@ export const submitPracticeRecord = (data) => {
  */
  export const getPracticeDetailedResult = (examId) => {
   return request({
-    url: `/api/exam/${examId}`,
+    url: `/exam/${examId}`,
     method: 'GET',
   })
 }

@@ -51,7 +51,7 @@
                   <el-icon><Upload /></el-icon>
                   开始上传
                 </el-button>
-                <el-button @click="handleDownloadTemplate">
+                <el-button class="ty" @click="handleDownloadTemplate">
                   <el-icon><Download /></el-icon>
                   下载模板
                 </el-button>
