@@ -362,7 +362,7 @@ const viewDetail = async (record) => {
   
   try {
     // 调用接口获取练习详情
-    const data = await getPracticeDetailedResult(`/api/exam/${record.id}`)
+    const data = await getPracticeDetailedResult(record.id)
     
     if (data) {
       currentDetail.value = response.data.data
