@@ -372,12 +372,20 @@ const isOptionCorrect = (index) => {
 }
 
 // 初始化
-onMounted(() => {
-  loadQuestions()
+onMounted(async () => {
+  // 先加载题目
+  await loadQuestions()
+  
+  // 确保 selectedAnswer 为空
+  selectedAnswer.value = []
+  
+  // 强制重新渲染，清除任何意外的选中状态
+  renderKey.value++
+  
   // 延迟解锁，确保页面完全渲染后再显示选项状态
   setTimeout(() => {
     isTransitioning.value = false
-  }, 350)
+  }, 500)
 })
 
 // 加载题目
@@ -400,21 +408,27 @@ const loadQuestions = async (type = 'first') => {
       questions.value = questions.value.concat(sortedQuestions)
       return
     }
+    // 加载时锁定，防止误操作
+    isTransitioning.value = true
     loading.value = true
-    const res = await practiceApi.getPracticeQuestions({
-      chapterId: route.query.chapterId,
-      chapterName: route.query.chapterName,
-      curriculumId: route.query.courseId,
-      curriculumName: route.query.curriculumName,
-      page:1,
-      pageSize: 50
-    });
-    examId.value = res?.examId || null
-    const loadedQuestions = res?.subjectList || []
-    // 按题型排序：1-单选题，2-多选题，3-判断题
-    questions.value = sortQuestionsByType(loadedQuestions)
-    total.value = Number(res?.total) || questions.value.length
-    loading.value = false
+    try {
+      const res = await practiceApi.getPracticeQuestions({
+        chapterId: route.query.chapterId,
+        chapterName: route.query.chapterName,
+        curriculumId: route.query.courseId,
+        curriculumName: route.query.curriculumName,
+        page:1,
+        pageSize: 50
+      });
+      examId.value = res?.examId || null
+      const loadedQuestions = res?.subjectList || []
+      // 按题型排序：1-单选题，2-多选题，3-判断题
+      questions.value = sortQuestionsByType(loadedQuestions)
+      total.value = Number(res?.total) || questions.value.length
+    } finally {
+      loading.value = false
+    }
+    // 加载完成后不立即解锁，由调用方处理
 }
 
 // 按题型排序题目
@@ -530,30 +544,34 @@ const getCorrectAnswer = () => {
 // 上一题
 const handlePrevious = () => {
   if (currentIndex.value > 0) {
-    // 先开始过渡动画
+    // 立即开始过渡并清除当前选中状态
     isTransitioning.value = true
-    // 立即切换题目并重置状态
-    currentIndex.value--
-    renderKey.value++
-    // 重置选择状态和答案显示
-    const saved = userAnswers.value[currentIndex.value]
-    if (saved) {
-      selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
-      showAnswer.value = true
-    } else {
-      selectedAnswer.value = []
-      showAnswer.value = false
-    }
-    // 延迟结束过渡
-    setTimeout(() => {
-      isTransitioning.value = false
-    }, 350)
+    selectedAnswer.value = []
+    showAnswer.value = false
+    
+    // 使用 requestAnimationFrame 确保状态清除后再切换
+    requestAnimationFrame(() => {
+      currentIndex.value--
+      renderKey.value++
+      
+      // 加载上一题的答案状态
+      const saved = userAnswers.value[currentIndex.value]
+      if (saved) {
+        selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+        showAnswer.value = true
+      }
+      
+      // 延迟结束过渡
+      setTimeout(() => {
+        isTransitioning.value = false
+      }, 350)
+    })
   }
 }
 
 // 下一题
 const handleNext = () => {
-  // 如果当前题是多选题且还没有显社答案，先提交
+  // 如果当前题是多选题且还没有显示答案，先提交
   if (currentQuestion.value.type === 2 && !showAnswer.value && selectedAnswer.value.length > 0) {
     handleSubmit()
     return
@@ -562,24 +580,28 @@ const handleNext = () => {
   if (questions.value.length < total.value && currentIndex.value > questions.value.length - 6) loadQuestions('add')
   
   if (currentIndex.value < total.value - 1) {
-    // 先开始过渡动画
+    // 立即开始过渡并清除当前选中状态
     isTransitioning.value = true
-    // 立即切换题目并重置状态
-    currentIndex.value++
-    renderKey.value++
-    // 重置选择状态和答案显示
-    const saved = userAnswers.value[currentIndex.value]
-    if (saved) {
-      selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
-      showAnswer.value = true
-    } else {
-      selectedAnswer.value = []
-      showAnswer.value = false
-    }
-    // 延迟结束过渡
-    setTimeout(() => {
-      isTransitioning.value = false
-    }, 350)
+    selectedAnswer.value = []
+    showAnswer.value = false
+    
+    // 使用 requestAnimationFrame 确保状态清除后再切换
+    requestAnimationFrame(() => {
+      currentIndex.value++
+      renderKey.value++
+      
+      // 加载下一题的答案状态
+      const saved = userAnswers.value[currentIndex.value]
+      if (saved) {
+        selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+        showAnswer.value = true
+      }
+      
+      // 延迟结束过渡
+      setTimeout(() => {
+        isTransitioning.value = false
+      }, 350)
+    })
   } else {
     showSummary.value = true
   }
@@ -606,30 +628,34 @@ const handleReview = () => {
 // 跳转到指定题目
 const jumpToQuestion = (index) => {
   if (index < total.value && index >= questions.value.length - 6) loadQuestions('add')
-  // 先开始过渡动画
-  isTransitioning.value = true
-  // 立即切换题目并重置状态
-  currentIndex.value = index
-  renderKey.value++
-  showAnswerCard.value = false
-  // 重置选择状态和答案显示
-  const saved = userAnswers.value[currentIndex.value]
-  if (saved) {
-    selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
-    showAnswer.value = true
-  } else {
-    selectedAnswer.value = []
-    showAnswer.value = false
-  }
   
-  // 滚动到顶部并延迟结束过渡
-  setTimeout(() => {
-    const content = document.querySelector('.page-content')
-    if (content) {
-      content.scrollTop = 0
+  // 立即开始过渡并清除当前选中状态
+  isTransitioning.value = true
+  selectedAnswer.value = []
+  showAnswer.value = false
+  showAnswerCard.value = false
+  
+  // 使用 requestAnimationFrame 确保状态清除后再切换
+  requestAnimationFrame(() => {
+    currentIndex.value = index
+    renderKey.value++
+    
+    // 加载目标题的答案状态
+    const saved = userAnswers.value[currentIndex.value]
+    if (saved) {
+      selectedAnswer.value = saved.userAnswer ? saved.userAnswer.split('') : []
+      showAnswer.value = true
     }
-    isTransitioning.value = false
-  }, 350)
+    
+    // 滚动到顶部并延迟结束过渡
+    setTimeout(() => {
+      const content = document.querySelector('.page-content')
+      if (content) {
+        content.scrollTop = 0
+      }
+      isTransitioning.value = false
+    }, 350)
+  })
 }
 
 // 完成练习（提交试卷）
@@ -1012,6 +1038,8 @@ const getDifficultyTag = (difficulty) => {
   gap: 1rem;
   padding: 1rem 1.5rem;
   z-index: 10; /* 确保浮在最上层 */
+  position: relative;
+  min-height: 68px;
 }
 
 .page-footer .el-button {
@@ -1178,6 +1206,20 @@ const getDifficultyTag = (difficulty) => {
 
 /* 移动端适配 */
 @media (max-width: 767px) {
+  .practice-page {
+    /* iOS Safari 100vh修复 */
+    height: 100vh;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+
+  .practice-container {
+    /* 确保容器能正确滚动 */
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
   .page-header {
     padding: 1rem;
   }
@@ -1201,6 +1243,21 @@ const getDifficultyTag = (difficulty) => {
 
   .question-card {
     padding: 1rem;
+  }
+
+  .page-footer {
+    /* 移动端底部固定 */
+    padding: 1rem;
+    gap: 0.75rem;
+    flex-shrink: 0;
+    position: relative;
+    /* 确保显示在最上层 */
+    z-index: 100;
+  }
+
+  .page-footer .el-button {
+    font-size: 0.875rem;
+    height: 40px;
   }
 
   .summary-stats {

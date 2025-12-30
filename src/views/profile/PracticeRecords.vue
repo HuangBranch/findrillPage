@@ -131,7 +131,7 @@
     <!-- 查看详情对话框 -->
     <el-dialog v-model="detailDialogVisible" title="练习详情" width="90%" :style="{ maxWidth: '800px' }">
       <div v-if="currentDetail" class="practice-detail">
-        <el-descriptions :column="2" border>
+        <el-descriptions :column="descriptionColumn" border>
           <el-descriptions-item label="课程">{{ currentDetail.curriculumName }}</el-descriptions-item>
           <el-descriptions-item label="章节">{{ currentDetail.chapterName }}</el-descriptions-item>
           <el-descriptions-item label="总题数">{{ currentDetail.totalQuestion }}</el-descriptions-item>
@@ -156,12 +156,16 @@
             </div>
             <div class="subject-content">{{ item.subject }}</div>
             <div class="subject-answer">
-              <span class="answer-label">正确答案：</span>
-              <el-tag type="success" size="small">{{ item.answer }}</el-tag>
-              <span class="answer-label" style="margin-left: 20px;">你的答案：</span>
-              <el-tag :type="item.userAnswer ? (item.isCorrect ? 'success' : 'danger') : 'info'" size="small">
-                {{ item.userAnswer || '未作答' }}
-              </el-tag>
+              <div class="answer-row">
+                <span class="answer-label">正确答案：</span>
+                <el-tag type="success" size="small">{{ item.answer }}</el-tag>
+              </div>
+              <div class="answer-row">
+                <span class="answer-label">你的答案：</span>
+                <el-tag :type="item.userAnswer ? (item.isCorrect ? 'success' : 'danger') : 'info'" size="small">
+                  {{ item.userAnswer || '未作答' }}
+                </el-tag>
+              </div>
             </div>
           </div>
           
@@ -171,7 +175,7 @@
               v-model:current-page="subjectPage"
               v-model:page-size="subjectPageSize"
               :page-sizes="[5, 10, 20, 30]"
-              layout="total, sizes, prev, pager, next"
+              :layout="paginationLayout"
               :total="subjectTotal"
               small
             />
@@ -199,6 +203,11 @@ const filterType = ref('')
 const sortType = ref('latest')
 const detailDialogVisible = ref(false)
 const currentDetail = ref(null)
+
+// 响应式布局配置
+const isMobile = computed(() => window.innerWidth <= 768)
+const descriptionColumn = computed(() => isMobile.value ? 1 : 2)
+const paginationLayout = computed(() => isMobile.value ? 'prev, pager, next' : 'total, sizes, prev, pager, next')
 
 // 题目分页相关
 const subjectPage = ref(1)
@@ -399,6 +408,13 @@ onMounted(async () => {
   background: #f5f7fa;
   overflow-y: auto;
   overflow-x: hidden;
+  /* 隐藏滚动条但保持滚动功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.practice-records-page::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 /* 头部 */
@@ -658,14 +674,20 @@ onMounted(async () => {
 
 .subject-answer {
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.answer-row {
+  display: flex;
   align-items: center;
-  flex-wrap: wrap;
   gap: 8px;
 }
 
 .answer-label {
   color: #909399;
   font-size: 14px;
+  min-width: 70px;
 }
 
 /* 题目分页 */
@@ -703,10 +725,130 @@ onMounted(async () => {
   .type-stats {
     flex-wrap: wrap;
   }
-  
+
+  /* 详情对话框移动端适配 */
+  .practice-detail {
+    padding: 0;
+  }
+
+  /* 描述列表移动端优化 */
+  .practice-detail :deep(.el-descriptions__body) {
+    background-color: transparent;
+  }
+
+  .practice-detail :deep(.el-descriptions__label) {
+    width: 70px !important;
+    font-size: 13px;
+    padding: 8px 12px !important;
+    background-color: #f5f7fa;
+  }
+
+  .practice-detail :deep(.el-descriptions__content) {
+    font-size: 13px;
+    padding: 8px 12px !important;
+    word-break: break-all;
+  }
+
+  /* 题目列表移动端优化 */
+  .subject-list h3 {
+    font-size: 15px !important;
+    margin: 16px 0 8px 0 !important;
+  }
+
+  .subject-item {
+    padding: 12px;
+    margin-bottom: 10px;
+  }
+
+  .subject-header {
+    margin-bottom: 10px;
+  }
+
+  .subject-number {
+    font-size: 13px;
+  }
+
+  .subject-content {
+    font-size: 14px;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+
   .subject-answer {
+    font-size: 13px;
+    gap: 10px;
+  }
+
+  .answer-row {
+    gap: 6px;
+  }
+
+  .answer-label {
+    font-size: 13px;
+    min-width: 65px;
+  }
+
+  .subject-answer .el-tag {
+    font-size: 12px;
+  }
+
+  /* 题目分页移动端简化 */
+  .subject-pagination {
+    margin-top: 16px;
+    padding-top: 12px;
+  }
+
+  .subject-pagination :deep(.el-pagination) {
+    justify-content: center;
+  }
+
+  .subject-pagination :deep(.el-pagination .btn-prev),
+  .subject-pagination :deep(.el-pagination .btn-next),
+  .subject-pagination :deep(.el-pagination .el-pager li) {
+    min-width: 32px;
+    height: 32px;
+    line-height: 32px;
+    font-size: 13px;
+  }
+
+  /* 对话框标题优化 */
+  :deep(.el-dialog__header) {
+    padding: 16px;
+  }
+
+  :deep(.el-dialog__title) {
+    font-size: 16px;
+  }
+
+  :deep(.el-dialog__body) {
+    padding: 16px;
+    max-height: 70vh;
+    overflow-y: auto;
+    /* 隐藏对话框内部滚动条 */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+
+  :deep(.el-dialog__body)::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
+
+  :deep(.el-dialog__close) {
+    font-size: 18px;
+  }
+
+  /* 确保对话框在移动端居中 */
+  :deep(.el-dialog) {
+    margin: 5vh auto !important;
+    display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    max-height: 90vh;
+  }
+
+  :deep(.el-overlay) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
 </style>

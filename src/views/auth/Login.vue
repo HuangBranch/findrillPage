@@ -258,13 +258,19 @@ const onSubmit = async () => {
   position: fixed;
   top: 0;
   left: 0;
+  right: 0;
+  bottom: 0;
   width: 100vw;
   height: 100vh;
+  min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   overflow: hidden;
+  /* 确保背景铺满 */
+  margin: 0;
+  padding: 0;
 }
 
 .login-container {
@@ -389,18 +395,48 @@ const onSubmit = async () => {
 
 /* 移动端 < 768px */
 @media (max-width: 767px) {
+  .login-page {
+    /* iOS Safari 100vh修复 */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 100vh;
+    height: -webkit-fill-available;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    /* 确保flex居中 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* 确保背景铺满，去除padding */
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
   .login-container {
-    width: 90%;
+    width: 88%;
     max-width: 380px;
+    margin: 0;
+    /* 防止内容溢出 */
+    flex-shrink: 0;
+  }
+  
+  .login-header {
+    margin-bottom: 1rem;
   }
   
   .logo-circle {
     width: 3.5rem;
     height: 3.5rem;
+    margin-bottom: 0.75rem;
   }
   
   .system-title {
-    font-size: 1.35rem;
+    font-size: 1.25rem;
+    margin-bottom: 0.25rem;
   }
   
   .system-subtitle {
