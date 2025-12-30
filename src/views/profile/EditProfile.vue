@@ -410,6 +410,9 @@ const initFormData = () => {
   }
 }
 
+const handleBack = () => {
+  router.back()
+}
 // ========== 头像相关方法 ==========
 
 /**
