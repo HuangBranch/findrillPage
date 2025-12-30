@@ -365,7 +365,7 @@ const viewDetail = async (record) => {
     const data = await getPracticeDetailedResult(record.id)
     
     if (data) {
-      currentDetail.value = response.data.data
+      currentDetail.value = data
       subjectPage.value = 1 // 重置题目分页
       detailDialogVisible.value = true
     } else {
