@@ -871,7 +871,7 @@ const handleEmailSubmit = async () => {
 .avatar-wrapper {
   position: relative;
   width: 150px;
-  height: 150px;
+  /* height: 150px; */
   border-radius: 50%;
   overflow: hidden;
 }

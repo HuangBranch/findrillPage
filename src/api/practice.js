@@ -45,6 +45,17 @@ export const submitPracticeRecord = (data) => {
   })
 }
 
+/**
+ * 获取练习详细结果
+ * @param {Number} examId - 练习记录ID
+ */
+ export const getPracticeDetailedResult = (examId) => {
+  return request({
+    url: `/api/exam/${examId}`,
+    method: 'GET',
+  })
+}
+
 export default {
   getPracticeQuestions,
   submitPracticeRecord,

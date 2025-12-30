@@ -95,9 +95,6 @@
             查看详情
             <el-icon class="el-icon--right"><ArrowRight /></el-icon>
           </el-button>
-          <el-button text type="danger" @click.stop="deleteRecord(record)">
-            <el-icon><Delete /></el-icon>
-          </el-button>
         </div>
       </div>
 
@@ -122,11 +119,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import axios from 'axios' // 引入axios用于接口请求
 import {
   ArrowLeft, Clock, Document, Calendar, ArrowRight, Delete
 } from '@element-plus/icons-vue'
-import {getExamRecords} from "@/api/user.js";
 import {getExamList, getExamResult} from "@/api/exam.js";
 
 const router = useRouter()
@@ -245,12 +240,6 @@ const getScoreClass = (score) => {
   if (score >= 60) return 'pass'
   return 'fail'
 }
-const formatDuration = (seconds) => {
-  if (!seconds || seconds === 0) return '0分0秒'
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}分${secs}秒`
-}
 const formatDate = (timestamp) => {
   const date = new Date(timestamp)
   const now = new Date()
@@ -294,32 +283,6 @@ const viewDetail = async (record) => {
   }
 
 }
-
-/**
- * 删除考试记录：替换LocalStorage为接口请求
- * 接口：DELETE /api/exam/{id}（按RESTful规范设计，需与后端对齐）
- */
-const deleteRecord = async (record) => {
-  try {
-    await ElMessageBox.confirm(
-        '确定要删除这条考试记录吗？',
-        '确认删除',
-        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    )
-    // 调用删除接口（传入记录id）
-    await axios.delete(`/api/exam/${record.id}`)
-    ElMessage.success('删除成功')
-    // 重新加载数据，确保页面与后端同步
-    await loadRecords()
-  } catch (error) {
-    // 排除用户取消的情况，只提示真实错误
-    if (error !== 'cancel' && !error.message.includes('cancel')) {
-      ElMessage.error('删除考试记录失败：' + (error.message || '服务器异常'))
-      console.error('删除考试记录错误：', error)
-    }
-  }
-}
-
 // 返回（不变）
 const handleBack = () => {
   router.back()

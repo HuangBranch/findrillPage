@@ -111,19 +111,19 @@
         <div class="app-logo">
           <el-icon :size="60" color="#409eff"><Reading /></el-icon>
         </div>
-        <h3>FindRill 刷题系统</h3>
-        <p class="version">版本 1.0.0</p>
+        <h3>学生在线学习系统</h3>
+        <p class="version">版本 2.2.0</p>
         <p class="description">
-          一款专业的在线学习刷题平台，支持课程学习、在线练习、模拟考试、错题管理等功能。
+          一款专业的在线学习平台，支持课程学习、在线练习、模拟考试、错题管理等功能。
         </p>
         <div class="app-info">
           <div class="info-item">
             <span class="info-label">开发者</span>
-            <span class="info-value">FindRill Team</span>
+            <span class="info-value">第六组成员</span>
           </div>
           <div class="info-item">
             <span class="info-label">联系邮箱</span>
-            <span class="info-value">support@findrill.com</span>
+            <span class="info-value">z31689@outlook.com</span>
           </div>
         </div>
       </div>

@@ -150,19 +150,6 @@
             </div>
           </transition>
         </div>
-
-        <!-- 分页控件 -->
-        <div class="pagination-container">
-          <el-pagination
-              @size-change="handleSizeChange"
-              @current-change="handleCurrentChange"
-              :current-page="page"
-              :page-sizes="[10, 20, 50]"
-              :page-size="pageSize"
-              layout="total, sizes, prev, pager, next, jumper"
-              :total="totalWrong"
-          />
-        </div>
       </div>
     </div>
     <!-- 底部导航 -->

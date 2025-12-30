@@ -123,7 +123,7 @@
                   <el-icon><Upload /></el-icon>
                   开始上传
                 </el-button>
-                <el-button @click="showJsonExample">
+                <el-button class="ty" @click="showJsonExample">
                   <el-icon><Document /></el-icon>
                   查看示例
                 </el-button>
@@ -478,6 +478,10 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   margin-top: 20px;
+}
+
+.upload-actions .ty{
+  margin: auto;
 }
 
 :deep(.el-upload-dragger) {

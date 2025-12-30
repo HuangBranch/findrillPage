@@ -110,9 +110,6 @@
               查看详情
               <el-icon class="el-icon--right"><ArrowRight /></el-icon>
             </el-button>
-            <el-button text type="danger" @click="deleteRecord(record)">
-              <el-icon><Delete /></el-icon>
-            </el-button>
           </div>
         </div>
 
@@ -189,7 +186,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCourseStore } from '@/stores/course'
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus'
-import axios from 'axios'
+import {getPracticeDetailedResult} from '@/api/practice'
 import {
   ArrowLeft, Clock, Document, Calendar, ArrowRight, Delete
 } from '@element-plus/icons-vue'
@@ -365,9 +362,9 @@ const viewDetail = async (record) => {
   
   try {
     // 调用接口获取练习详情
-    const response = await axios.get(`/api/exam/${record.id}`)
+    const data = await getPracticeDetailedResult(`/api/exam/${record.id}`)
     
-    if (response.data && response.data.code === 200) {
+    if (data) {
       currentDetail.value = response.data.data
       subjectPage.value = 1 // 重置题目分页
       detailDialogVisible.value = true
@@ -379,27 +376,6 @@ const viewDetail = async (record) => {
     ElMessage.error('获取练习详情失败')
   } finally {
     loadingInstance.close()
-  }
-}
-
-/**
- * 删除练习记录：调用接口DELETE /api/practice/{id}
- */
-const deleteRecord = async (record) => {
-  try {
-    await ElMessageBox.confirm(
-        '确定要删除这条练习记录吗？',
-        '确认删除',
-        { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
-    )
-    await axios.delete(`/api/practice/${record.id}`) // 调用删除接口
-    ElMessage.success('删除成功')
-    await loadRecords() // 重新加载数据
-  } catch (error) {
-    if (error !== 'cancel' && !error.message.includes('cancel')) {
-      ElMessage.error('删除练习记录失败：' + (error.message || '服务器异常'))
-      console.error('删除练习记录错误：', error)
-    }
   }
 }
 
