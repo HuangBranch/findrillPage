@@ -892,6 +892,7 @@ const getDifficultyTag = (difficulty) => {
   line-height: 1.8;
   margin: 0;
   white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 .question-hint {
