@@ -576,7 +576,6 @@ onMounted(async () => {
 
 // 加载题目
 const loadQuestions = async (type = 'first') => {
-  console.log(questions.value.length, total.value)
     if (type === 'add') {
       if (questions.value.length >= total.value) return;
       const res = await practiceApi.getPracticeQuestions({
@@ -802,7 +801,11 @@ const handleNext = () => {
       }, 50)
     })
   } else {
-    showSummary.value = true
+    if (answeredCount.value < total.value) {
+      ElMessage.warning('还有未作答的题目，请检查后再提交')
+      return
+    }
+    handleFinishPractice()
   }
 }
 
