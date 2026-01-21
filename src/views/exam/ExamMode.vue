@@ -263,6 +263,7 @@ import { useCourseStore } from '@/stores/course'
 import { ArrowLeft, Clock, Edit, List, Select, WarningFilled, Grid, Loading } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import examAPI from '@/api/exam'
+import { questionTypeMap } from '@/utils/helpers'
 
 const router = useRouter()
 const route = useRoute()
@@ -836,12 +837,7 @@ const handleBack = () => {
 
 // 题目类型名称
 const getQuestionTypeName = (type) => {
-  const map = {
-    1: '单选题',
-    2: '多选题',
-    3: '判断题'
-  }
-  return map[type] || '未知'
+  return questionTypeMap[type] || '未知'
 }
 
 // 题目类型标签

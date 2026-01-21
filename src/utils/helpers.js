@@ -123,19 +123,12 @@ export const deepClone = (obj) => {
  * 题型映射
  */
 export const questionTypeMap = {
-  single: '单选题',
-  multiple: '多选题',
-  judge: '判断题'
+  1: '单选题',
+  2: '多选题',
+  3: '判断题',
+  4: '填空题'
 }
 
-/**
- * 获取题型名称
- * @param {String} type - 题型代码
- * @returns {String} 题型名称
- */
-export const getQuestionTypeName = (type) => {
-  return questionTypeMap[type] || '未知'
-}
 
 /**
  * 难度映射
@@ -192,7 +185,6 @@ export default {
   throttle,
   generateId,
   deepClone,
-  getQuestionTypeName,
   getDifficultyName,
   calculateScore,
   checkAnswer
