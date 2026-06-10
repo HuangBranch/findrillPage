@@ -436,7 +436,7 @@ const submitDataBeforeLeave = () => {
     // 使用 sendBeacon API（专为页面卸载场景设计）
     const blob = new Blob([JSON.stringify(submitData)], { type: 'application/json' })
     const apiUrl = import.meta.env.VITE_API_BASE_URL || ''
-    const url = `${apiUrl}/api/exam/submit`
+    const url = `${apiUrl.replace(/\/$/, '')}/exam/submit`
     const success = navigator.sendBeacon(url, blob)
     
     console.log(success ? '✅ 试卷已发送' : '⚠️ 发送失败')
