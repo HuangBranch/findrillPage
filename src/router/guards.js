@@ -10,13 +10,14 @@ export const setupRouterGuards = (router) => {
   router.beforeEach(async (to, from, next) => {
     const authStore = useAuthStore()
     const menuStore = useMenuStore()
+    const isLoggedIn = authStore.ensureAuthState()
 
     // 设置页面标题
     document.title = to.meta.title ? `${to.meta.title} - 学生在线学习系统` : '学生在线学习系统'
 
     // 如果是登录页，已登录则跳转到首页
     if (to.path === '/login') {
-      if (authStore.isLoggedIn) {
+      if (isLoggedIn) {
         next('/courses')
       } else {
         next()
@@ -26,7 +27,7 @@ export const setupRouterGuards = (router) => {
 
     // 需要登录的页面
     if (to.meta.requiresAuth) {
-      if (!authStore.isLoggedIn) {
+      if (!isLoggedIn) {
         ElMessage.warning('请先登录')
         next({
           path: '/login',
@@ -50,7 +51,7 @@ export const setupRouterGuards = (router) => {
     // 管理员路由访问检查（所有 /admin/ 开头的路径）
     if (to.path.startsWith('/admin/')) {
       // 先检查是否登录
-      if (!authStore.isLoggedIn) {
+      if (!isLoggedIn) {
         ElMessage.warning('请先登录')
         next({
           path: '/login',

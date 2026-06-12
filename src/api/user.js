@@ -48,52 +48,27 @@ export const count = () => {
 }
 /**
  * 修改密码
- * @param {Object} data - { id, oldPassword, newPassword, user }
- * @returns {Promise} 返回 { code: 0, data: true, msg: "" }
+ * @param {Object} data - { oldPassword, newPassword }
+ * @returns {Promise} 请求结果
  */
 export const changePassword = (data) => {
   return request({
     url: '/update/password',
     method: 'POST',
     data
-  }).then(response => {
-    // 如果code是0且data是true，表示成功
-    if (response === true) {
-      return true
-    }
-    return false
-  }).catch(err => {
-    console.error('修改密码失败：', err)
-    throw err
   })
 }
 
 /**
- * 发送邮箱验证邮件
- * @param {Object} data - { email } - 新邮箱验证时需要传邮箱，旧邮箱验证时不需要
- * @returns {Promise} - 返回 { code, msg, data: { uuid, email } }
+ * 修改邮箱并发送新邮箱验证邮件
+ * @param {Object} data - { email, password }
+ * @returns {Promise<{email: string}>} 返回新邮箱
  */
-export const sendEmailVerification = (data) => {
+export const updateEmail = (data) => {
   return request({
     url: '/update/email',
     method: 'POST',
     data
-  })
-}
-
-/**
- * 检查邮箱验证状态
- * @param {Object} params - { uuid } - 发送验证邮件后返回的uuid
- * @returns {Promise} - 返回验证状态，验证成功返回 true
- */
-export const checkEmailVerification = (params) => {
-  return request({
-    url: '/update/email/isverifi',
-    method: 'GET',
-    params
-  }).catch(err => {
-    // 捕获错误，返回未验证状态
-    return false
   })
 }
 
@@ -135,8 +110,7 @@ export default {
   getUserInfo,
   updateUserInfo,
   changePassword,
-  sendEmailVerification,
-  checkEmailVerification,
+  updateEmail,
   getExamRecords,
   getPracticeRecords,
   getUserStats,

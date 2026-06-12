@@ -81,19 +81,6 @@
             <span>{{ countdown > 0 ? `${countdown}秒后可重新发送` : '重新发送' }}</span>
           </el-button>
 
-          <!-- 手动检查验证状态按钮 -->
-          <el-button
-            v-if="emailSent"
-            size="large"
-            plain
-            :loading="checking"
-            @click="manualCheckStatus"
-            class="check-status-btn"
-          >
-            <el-icon><RefreshRight /></el-icon>
-            <span>{{ checking ? '检查中...' : '我已完成验证' }}</span>
-          </el-button>
-
           <!-- 提示信息 -->
           <div class="bind-tips">
             <p>• 验证链接 10 分钟内有效</p>
@@ -114,16 +101,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
-  ArrowLeft, Message, ChatDotSquare, Clock, Link, InfoFilled,
-  CircleCheck, Promotion, RefreshRight, Loading
+  ArrowLeft, Message, CircleCheck, Promotion, RefreshRight, Loading
 } from '@element-plus/icons-vue'
-import { sendEmailVerificationLink, checkEmailStatus } from '@/api/auth'
-import { setStorage } from '@/utils/storage'
+import { sendEmailVerificationLink } from '@/api/auth'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -133,7 +118,6 @@ const inputEmail = ref('')
 const binding = ref(false)
 const emailSent = ref(false)
 const countdown = ref(0)
-const checking = ref(false)
 const loggingOut = ref(false)
 const isDev = import.meta.env.DEV
 
@@ -178,31 +162,32 @@ const handleBindEmail = async () => {
     return
   }
 
+  if (!checkCooldown()) {
+    return
+  }
+
   binding.value = true
   
   try {
-    // 获取临时凭证
-    const pendingAuth = JSON.parse(sessionStorage.getItem('pendingAuth') || '{}')
+    // 获取绑定邮箱临时票据
+    const pendingBind = authStore.getPendingEmailBind()
     
-    if (!pendingAuth.user || !pendingAuth.password) {
+    if (!pendingBind.bindTicket) {
       ElMessage.error('登录信息已过期，请重新登录')
-      router.push('/login')
+      authStore.clearAuth()
+      router.replace('/login')
       return
     }
     
     // 调用发送验证链接接口
-    await sendEmailVerificationLink(
-      pendingAuth.user,
-      pendingAuth.password,
-      inputEmail.value
-    )
+    await sendEmailVerificationLink(pendingBind.bindTicket, inputEmail.value)
     
-    // 更新临时凭证中的邮箱
-    pendingAuth.email = inputEmail.value
-    sessionStorage.setItem('pendingAuth', JSON.stringify(pendingAuth))
+    // 更新临时凭证中的邮箱，仅用于当前绑定流程展示
+    authStore.setPendingEmailBind({
+      ...pendingBind,
+      email: inputEmail.value
+    })
     
-    // 更新本地用户信息
-    authStore.updateUserInfo({ email: inputEmail.value })
     emailSent.value = true
     
     // 记录发送时间
@@ -211,7 +196,7 @@ const handleBindEmail = async () => {
     startCountdown()
     
     ElMessage.success({
-      message: '验证链接已发送到您的邮箱，请查收',
+      message: '验证链接已发送到您的邮箱，请前往邮箱点击验证链接',
       duration: 3000
     })
     
@@ -234,68 +219,6 @@ const handleBindEmail = async () => {
   }
 }
 
-// 检查验证状态
-const checkVerificationStatus = async (showLoading = false) => {
-  if (showLoading) {
-    checking.value = true
-  }
-  
-  try {
-    // 获取临时凭证
-    const pendingAuth = JSON.parse(sessionStorage.getItem('pendingAuth') || '{}')
-    
-    if (!pendingAuth.user || !pendingAuth.password) {
-      if (showLoading) {
-        ElMessage.error('登录信息已过期，请重新登录')
-        router.push('/login')
-      }
-      return
-    }
-    
-    // 调用检测接口
-    const result = await checkEmailStatus(
-      pendingAuth.user,
-      pendingAuth.password
-    )
-    
-    if (result === true) {
-      // 邮箱已验证，后端已设置 sa-token cookie
-      
-      // 更新本地用户信息
-      authStore.setEmailVerified(true)
-      setStorage('isLoggedIn', true)
-      
-      // 清除临时凭证
-      sessionStorage.removeItem('pendingAuth')
-      
-      ElMessage.success('邮箱验证成功！')
-      setTimeout(() => {
-        router.push('/courses')
-      }, 1000)
-    } else {
-      // 验证未完成
-      if (showLoading) {
-        ElMessage.warning('邮箱尚未验证，请先点击邮件中的验证链接')
-      }
-    }
-  } catch (error) {
-    console.error('检查验证状态失败：', error)
-    if (showLoading) {
-      ElMessage.error('检查失败，请重试')
-    }
-  } finally {
-    if (showLoading) {
-      checking.value = false
-    }
-  }
-}
-
-// 手动检查验证状态
-const manualCheckStatus = () => {
-  checkVerificationStatus(true)
-}
-
-
 // 返回处理
 const handleBack = async () => {
   try {
@@ -312,12 +235,10 @@ const handleBack = async () => {
     loggingOut.value = true
     
     // 确保有足够的时间显示loading动画
-    await Promise.all([
-      authStore.logout(),
-      new Promise(resolve => setTimeout(resolve, 500))
-    ])
+    authStore.clearAuth()
+    await new Promise(resolve => setTimeout(resolve, 500))
     
-    router.push('/login')
+    router.replace('/login')
   } catch (error) {
     // 取消操作或出错
     console.log('取消退出或出错：', error)
@@ -328,13 +249,20 @@ const handleBack = async () => {
 
 // 页面初始化
 onMounted(() => {
-  // 检查是否有临时凭证
-  const pendingAuth = JSON.parse(sessionStorage.getItem('pendingAuth') || '{}')
+  // 检查是否有绑定邮箱临时票据
+  const pendingBind = authStore.getPendingEmailBind()
   
-  if (!pendingAuth.user || !pendingAuth.password) {
+  if (!pendingBind.bindTicket) {
     ElMessage.warning('请先登录')
-    router.push('/login')
+    authStore.clearAuth()
+    router.replace('/login')
     return
+  }
+
+  if (pendingBind.email) {
+    inputEmail.value = pendingBind.email
+    emailSent.value = true
+    checkCooldown()
   }
 })
 
@@ -532,18 +460,6 @@ onUnmounted(() => {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
-.check-status-btn {
-  width: 100%;
-  height: 3rem;
-  font-size: 1rem;
-  font-weight: 600;
-  margin-left: auto;
-}
-
-.check-status-btn .el-icon {
-  margin-right: 0.5rem;
-}
-
 .bind-btn {
   width: 100%;
   height: 3rem;
@@ -675,8 +591,7 @@ onUnmounted(() => {
     font-size: 1.25rem;
   }
 
-  .bind-btn,
-  .check-status-btn {
+  .bind-btn {
     height: 2.75rem;
     font-size: 0.9rem;
   }
@@ -770,8 +685,7 @@ onUnmounted(() => {
     font-size: 1rem;
   }
 
-  .bind-btn,
-  .check-status-btn {
+  .bind-btn {
     height: 3.25rem;
     font-size: 1.05rem;
   }

@@ -21,7 +21,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         // target: 'https://api.pnrp.cn', // 后端API地址
-        target: 'http://82.156.48.140:8850',
+        target: 'http://localhost:8850', // 后端API地址
         changeOrigin: true,
         // 如果后端接口路径包含 /api，则注释掉下面这行
         // 如果后端接口路径不包含 /api，则保留下面这行

@@ -16,11 +16,11 @@
           <div class="status-icon">
             <el-icon :size="80" color="#67c23a"><CircleCheck /></el-icon>
           </div>
-          <h2>验证成功！</h2>
-          <p v-if="isUpdate">您的新旧邮箱已验证完成，请返回个人设置页面完成邮箱修改</p>
-          <p v-else>您的邮箱已验证完成，现在可以正常使用系统了</p>
+          <h2>{{ isUpdate ? '邮箱修改成功' : '验证成功！' }}</h2>
+          <p v-if="isUpdate">您的邮箱已修改完成</p>
+          <p v-else>您的邮箱已验证完成，正在进入系统</p>
           <el-button type="primary" size="large" @click="closePage">
-            关闭页面
+            {{ isUpdate ? '返回个人资料' : '进入系统' }}
           </el-button>
         </div>
 
@@ -65,6 +65,7 @@ import {
   Clock, Check, WarningFilled 
 } from '@element-plus/icons-vue'
 import { verifyEmailByToken, verifyUpdateEmailByToken } from '@/api/auth'
+import { getUserInfo } from '@/api/user'
 
 const router = useRouter()
 const route = useRoute()
@@ -74,7 +75,6 @@ const verifying = ref(true)
 const status = ref('') // 'success' | 'error'
 const errorMessage = ref('')
 const errorType = ref('') // 'expired' | 'used' | 'invalid'
-const countdown = ref(3)
 
 // 判断是否为修改邮箱验证
 const isUpdate = ref(false)
@@ -110,8 +110,24 @@ const verifyToken = async () => {
       // 验证成功
       status.value = 'success'
       
-      // 更新用户邮箱验证状态
-      authStore.setEmailVerified(true)
+      if (isUpdate.value) {
+        if (authStore.isLoggedIn) {
+          try {
+            const userInfo = await getUserInfo()
+            authStore.updateUserInfo(userInfo)
+          } catch (refreshError) {
+            console.error('刷新用户信息失败：', refreshError)
+          }
+        }
+      } else {
+        // 首次绑定邮箱成功后，后端会建立登录态，此处刷新当前用户信息
+        const userInfo = await getUserInfo()
+        authStore.setAuth(userInfo)
+        authStore.clearPendingEmailBind()
+        setTimeout(() => {
+          router.replace('/courses')
+        }, 1000)
+      }
     } else {
       throw new Error('验证失败')
     }
@@ -129,12 +145,12 @@ const verifyToken = async () => {
 
 // 关闭页面
 const closePage = () => {
-  // 尝试关闭窗口
-  window.close()
-  // 如果无法关闭（不是通过脚本打开的窗口），则跳转到登录页
-  setTimeout(() => {
-    router.push('/login')
-  }, 100)
+  if (isUpdate.value) {
+    router.push('/profile')
+    return
+  }
+
+  router.replace(authStore.isLoggedIn ? '/courses' : '/login')
 }
 
 

@@ -164,7 +164,7 @@
             <el-alert
                 title="邮箱验证说明"
                 type="info"
-                description="修改邮箱需要验证当前邮箱和新邮箱。点击发送验证邮件后，请到邮箱中点击验证链接，然后返回此页面点击'检查验证状态'按钮。"
+                description="请输入新邮箱和当前密码。提交后系统会向新邮箱发送验证邮件，请前往新邮箱点击链接完成修改。"
                 :closable="false"
                 style="margin-bottom: 1.5rem;"
             />
@@ -176,9 +176,7 @@
                 label-width="120px"
                 class="edit-form"
             >
-              <!-- 步骤1：验证当前邮箱 -->
               <div class="verification-step">
-                <h3 class="step-title">步骤 1：验证当前邮箱</h3>
                 <el-form-item label="当前邮箱">
                   <el-input
                       :model-value="currentEmail"
@@ -187,73 +185,28 @@
                   />
                 </el-form-item>
 
-                <el-form-item label="邮箱验证">
-                  <div class="verification-actions">
-                    <el-button
-                        type="primary"
-                        :disabled="oldEmailCountdown > 0 || oldEmailVerified"
-                        @click="sendOldEmailVerification"
-                        :loading="oldEmailCodeSending"
-                    >
-                      {{ oldEmailCountdown > 0 ? `${oldEmailCountdown}秒后重试` : oldEmailVerified ? '已验证' : '发送验证邮件' }}
-                    </el-button>
-                    <el-button
-                        class="transmit-code-btn"
-                        v-if="oldEmailSent && !oldEmailVerified"
-                        type="success"
-                        @click="checkOldEmailVerification"
-                        :loading="checkingOldEmail"
-                    >
-                      检查验证状态
-                    </el-button>
-                    <el-tag v-if="oldEmailVerified" type="success" size="large">
-                      <el-icon><Check /></el-icon> 已验证
-                    </el-tag>
-                  </div>
-                </el-form-item>
-              </div>
-
-              <!-- 步骤2：验证新邮箱 -->
-              <div class="verification-step" v-if="oldEmailVerified">
-                <h3 class="step-title">步骤 2：验证新邮箱</h3>
                 <el-form-item label="新邮箱" prop="newEmail">
                   <el-input
                       v-model="emailForm.newEmail"
                       type="email"
                       placeholder="请输入新邮箱"
                       maxlength="50"
-                      :disabled="newEmailVerified"
                   />
                 </el-form-item>
 
-                <el-form-item label="邮箱验证">
-                  <div class="verification-actions">
-                    <el-button
-                        type="primary"
-                        :disabled="newEmailCountdown > 0 || !emailForm.newEmail || newEmailVerified"
-                        @click="sendNewEmailVerification"
-                        :loading="newEmailCodeSending"
-                    >
-                      {{ newEmailCountdown > 0 ? `${newEmailCountdown}秒后重试` : newEmailVerified ? '已验证' : '发送验证邮件' }}
-                    </el-button>
-                    <el-button
-                        class="transmit-code-btn"
-                        v-if="newEmailSent && !newEmailVerified"
-                        type="success"
-                        @click="checkNewEmailVerification"
-                        :loading="checkingNewEmail"
-                    >
-                      检查验证状态
-                    </el-button>
-                    <el-tag v-if="newEmailVerified" type="success" size="large">
-                      <el-icon><Check /></el-icon> 已验证
-                    </el-tag>
-                  </div>
+                <el-form-item label="当前密码" prop="password">
+                  <el-input
+                      v-model="emailForm.password"
+                      type="password"
+                      placeholder="请输入当前密码"
+                      show-password
+                      maxlength="50"
+                  />
                 </el-form-item>
               </div>
             </el-form>
 
-            <div class="submit-button-group" v-if="oldEmailVerified && newEmailVerified">
+            <div class="submit-button-group">
               <el-button
                   type="primary"
                   size="large"
@@ -261,7 +214,7 @@
                   :loading="emailSubmitting"
                   class="submit-btn"
               >
-                完成邮箱修改
+                发送验证邮件
               </el-button>
             </div>
           </div>
@@ -271,12 +224,12 @@
   </div>
 </template>
 <script setup>
-import { ref, onMounted, reactive, computed } from 'vue'
+import { ref, onMounted, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { ElMessage } from 'element-plus'
-import { ArrowLeft, Plus, Check } from '@element-plus/icons-vue'
-import { upavatar, updateUserInfo, changePassword, sendEmailVerification, checkEmailVerification, getUserInfo } from "@/api/user.js"
+import { ArrowLeft, Plus } from '@element-plus/icons-vue'
+import { upavatar, updateUserInfo, changePassword, updateEmail } from "@/api/user.js"
 import CryptoJS from 'crypto-js'
 
 // 路由和状态管理
@@ -287,8 +240,7 @@ const authStore = useAuthStore()
 // 当前标签页
 const activeTab = ref('avatar')
 
-// 用户ID和当前邮箱
-const userId = ref(0)
+// 当前邮箱
 const currentEmail = ref('')
 
 // ========== 头像设置 ==========
@@ -353,31 +305,17 @@ const passwordFormRules = reactive({
 const emailFormRef = ref(null)
 const emailSubmitting = ref(false)
 const emailForm = reactive({
-  newEmail: ''
+  newEmail: '',
+  password: ''
 })
-
-// 邮箱验证状态
-const oldEmailSent = ref(false) // 是否已发送旧邮箱验证邮件
-const oldEmailVerified = ref(false) // 旧邮箱是否已验证
-const newEmailSent = ref(false) // 是否已发送新邮箱验证邮件
-const newEmailVerified = ref(false) // 新邮箱是否已验证
-const checkingOldEmail = ref(false) // 正在检查旧邮箱验证状态
-const checkingNewEmail = ref(false) // 正在检查新邮箱验证状态
-
-// 保存验证邮件返回的UUID
-const oldEmailUuid = ref('') // 旧邮箱验证UUID
-const newEmailUuid = ref('') // 新邮箱验证UUID
-
-// 验证码倒计时
-const oldEmailCountdown = ref(0)
-const newEmailCountdown = ref(0)
-const oldEmailCodeSending = ref(false)
-const newEmailCodeSending = ref(false)
 
 const emailFormRules = reactive({
   newEmail: [
     { required: true, message: '请输入新邮箱', trigger: 'blur' },
     { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
+  ],
+  password: [
+    { required: true, message: '请输入当前密码', trigger: 'blur' }
   ]
 })
 
@@ -394,7 +332,6 @@ const initFormData = () => {
   const { name, realName, email, avatar } = route.query
   
   if (id) {
-    userId.value = Number(id)
     currentEmail.value = email || ''
     avatarPreview.value = avatar || ''
     
@@ -540,32 +477,21 @@ const handlePasswordSubmit = async () => {
     const encryptedNewPassword = CryptoJS.SHA256(passwordForm.newPassword).toString()
     
     const requestData = {
-      id: userId.value,
       oldPassword: encryptedOldPassword,
-      newPassword: encryptedNewPassword,
-      user: authStore.userInfo?.userId || ''
+      newPassword: encryptedNewPassword
     }
 
-    const result = await changePassword(requestData)
+    await changePassword(requestData)
     
-    if (result === true) {
-      ElMessage.success('密码修改成功，请重新登录！')
-      
-      // 清空表单
-      passwordForm.oldPassword = ''
-      passwordForm.newPassword = ''
-      passwordForm.confirmPassword = ''
-      
-      // 延迟跳转到登录页
-      setTimeout(() => {
-        authStore.logout()
-        router.push('/login')
-      }, 1500)
-    } else {
-      ElMessage.error('修改密码失败')
-    }
+    ElMessage.success('密码修改成功')
+
+    // 清空表单
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+    passwordFormRef.value.resetFields()
   } catch (error) {
-    ElMessage.error('修改密码失败：' + (error.message || '网络错误'))
+    ElMessage.error(error.message || '修改密码失败')
     console.error('修改密码错误：', error)
   } finally {
     passwordSubmitting.value = false
@@ -575,178 +501,9 @@ const handlePasswordSubmit = async () => {
 // ========== 修改邮箱相关方法 ==========
 
 /**
- * 发送旧邮箱验证邮件
- */
-const sendOldEmailVerification = async () => {
-  if (!currentEmail.value) {
-    ElMessage.warning('当前邮箱为空')
-    return
-  }
-
-  oldEmailCodeSending.value = true
-  try {
-    // 验证旧邮箱不需要携带参数
-    // 拦截器会自动提取data，所以response直接是data对象
-    const data = await sendEmailVerification({})
-    
-    // 保存返回的UUID
-    if (data?.uuid) {
-      oldEmailUuid.value = data.uuid
-      ElMessage.success('验证邮件已发送到当前邮箱，请查收并点击链接验证')
-      oldEmailSent.value = true
-      
-      // 开始倒计时
-      startCountdown('old')
-    } else {
-      ElMessage.error('发送验证邮件失败：未获取到验证标识')
-    }
-  } catch (error) {
-    ElMessage.error('发送验证邮件失败：' + (error.message || '网络错误'))
-    console.error('发送验证邮件错误：', error)
-  } finally {
-    oldEmailCodeSending.value = false
-  }
-}
-
-/**
- * 检查旧邮箱验证状态
- */
-const checkOldEmailVerification = async () => {
-  if (!oldEmailUuid.value) {
-    ElMessage.warning('请先发送验证邮件')
-    return
-  }
-  
-  checkingOldEmail.value = true
-  try {
-    // 拦截器返回的data就是true/false
-    const isVerified = await checkEmailVerification({ 
-      uuid: oldEmailUuid.value
-    })
-    
-    if (isVerified === true) {
-      oldEmailVerified.value = true
-      ElMessage.success('当前邮箱验证成功！请注意：如果发送新邮箱验证邮件时仍提示未验证，请刷新页面后重试')
-    } else {
-      ElMessage.warning('邮箱尚未验证，请先到邮箱中点击验证链接')
-    }
-  } catch (error) {
-    ElMessage.error('检查验证状态失败：' + (error.message || '网络错误'))
-    console.error('检查验证状态错误：', error)
-  } finally {
-    checkingOldEmail.value = false
-  }
-}
-
-/**
  * 发送新邮箱验证邮件
  */
-const sendNewEmailVerification = async () => {
-  if (!emailForm.newEmail) {
-    ElMessage.warning('请先输入新邮箱')
-    return
-  }
-
-  // 验证邮箱格式
-  const emailReg = /^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$/
-  if (!emailReg.test(emailForm.newEmail)) {
-    ElMessage.warning('请输入正确的邮箱格式')
-    return
-  }
-
-  // 检查是否与当前邮箱相同
-  if (emailForm.newEmail === currentEmail.value) {
-    ElMessage.warning('新邮箱不能与当前邮箱相同')
-    return
-  }
-
-  newEmailCodeSending.value = true
-  try {
-    // 验证新邮箱需要携带邮箱号
-    // 拦截器会自动提取data，所以data直接是data对象
-    const data = await sendEmailVerification({ 
-      email: emailForm.newEmail
-    })
-    
-    // 保存返回的UUID
-    if (data?.uuid) {
-      newEmailUuid.value = data.uuid
-      ElMessage.success('验证邮件已发送到新邮箱，请查收并点击链接验证')
-      newEmailSent.value = true
-      
-      // 开始倒计时
-      startCountdown('new')
-    } else {
-      ElMessage.error('发送验证邮件失败：未获取到验证标识')
-    }
-  } catch (error) {
-    ElMessage.error('发送验证邮件失败：' + (error.message || '网络错误'))
-    console.error('发送验证邮件错误：', error)
-  } finally {
-    newEmailCodeSending.value = false
-  }
-}
-
-/**
- * 检查新邮箱验证状态
- */
-const checkNewEmailVerification = async () => {
-  if (!newEmailUuid.value) {
-    ElMessage.warning('请先发送验证邮件')
-    return
-  }
-  
-  checkingNewEmail.value = true
-  try {
-    // 拦截器返回的data就是true/false
-    const isVerified = await checkEmailVerification({ 
-      uuid: newEmailUuid.value
-    })
-    
-    if (isVerified === true) {
-      newEmailVerified.value = true
-      ElMessage.success('新邮箱验证成功！')
-    } else {
-      ElMessage.warning('邮箱尚未验证，请先到新邮箱中点击验证链接')
-    }
-  } catch (error) {
-    ElMessage.error('检查验证状态失败：' + (error.message || '网络错误'))
-    console.error('检查验证状态错误：', error)
-  } finally {
-    checkingNewEmail.value = false
-  }
-}
-
-/**
- * 开始倒计时
- */
-const startCountdown = (type) => {
-  const countdownRef = type === 'old' ? oldEmailCountdown : newEmailCountdown
-  countdownRef.value = 60
-  
-  const timer = setInterval(() => {
-    countdownRef.value--
-    if (countdownRef.value <= 0) {
-      clearInterval(timer)
-    }
-  }, 1000)
-}
-
-/**
- * 提交修改邮箱
- */
 const handleEmailSubmit = async () => {
-  // 检查两个邮箱是否都已验证
-  if (!oldEmailVerified.value) {
-    ElMessage.warning('请先验证当前邮箱')
-    return
-  }
-  
-  if (!newEmailVerified.value) {
-    ElMessage.warning('请先验证新邮箱')
-    return
-  }
-
   try {
     await emailFormRef.value.validate()
   } catch (error) {
@@ -755,33 +512,23 @@ const handleEmailSubmit = async () => {
 
   emailSubmitting.value = true
   try {
-    await getUserInfo()
-    
-    // 更新当前邮箱显示
-    currentEmail.value = emailForm.newEmail
-    
-    // 更新全局存储的用户邮箱
-    authStore.updateUserInfo({
-      ...authStore.userInfo,
-      email: emailForm.newEmail
+    if (emailForm.newEmail === currentEmail.value) {
+      ElMessage.warning('新邮箱不能与当前邮箱相同')
+      return
+    }
+
+    const encryptedPassword = CryptoJS.SHA256(emailForm.password).toString()
+    await updateEmail({
+      email: emailForm.newEmail,
+      password: encryptedPassword
     })
-    ElMessage.success('邮箱修改成功！')
+
+    ElMessage.success('验证邮件已发送，请前往新邮箱点击链接完成修改。')
     
-    // 重置所有状态
-    emailForm.newEmail = ''
-    oldEmailSent.value = false
-    oldEmailVerified.value = false
-    newEmailSent.value = false
-    newEmailVerified.value = false
-    oldEmailCountdown.value = 0
-    newEmailCountdown.value = 0
-    oldEmailUuid.value = ''
-    newEmailUuid.value = ''
-    
-    // 重置验证
-    emailFormRef.value.resetFields()
+    emailForm.password = ''
+    emailFormRef.value.clearValidate()
   } catch (error) {
-    ElMessage.error('修改邮箱失败：' + (error.message || '网络错误'))
+    ElMessage.error(error.message || '修改邮箱失败')
     console.error('修改邮箱错误：', error)
   } finally {
     emailSubmitting.value = false

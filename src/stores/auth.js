@@ -3,15 +3,17 @@ import { login as loginApi, logout as logoutApi } from '@/api/auth'
 import { setStorage, getStorage, removeStorage } from '@/utils/storage'
 import CryptoJS from 'crypto-js'
 
+const PENDING_EMAIL_BIND_KEY = 'pendingEmailBind'
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    loginFlag: !!getStorage('isLoggedIn'), // 登录时的闪烁效果
+    loginFlag: !!getStorage('isLoggedIn') && !!getStorage('userInfo'), // 登录时的闪烁效果
     userInfo: getStorage('userInfo') || null
   }),
 
   getters: {
     // 是否已登录
-    isLoggedIn: (state) => state.loginFlag,
+    isLoggedIn: (state) => state.loginFlag && !!state.userInfo,
     
     // 邮箱是否已验证
     isEmailVerified: (state) => state.userInfo?.isActiveEmail || false,
@@ -34,11 +36,38 @@ export const useAuthStore = defineStore('auth', {
           password: await this.digestMessage(loginForm.password)
         }
         const data = await loginApi(encryptedForm)
-        this.userInfo = data
-        this.loginFlag = true
-        setStorage('isLoggedIn', true)
-        setStorage('userInfo', data)
-        return { success: true, data }
+
+        if (data?.status === 'SUCCESS') {
+          if (!data.user) {
+            this.clearAuth()
+            throw new Error('登录响应缺少用户信息')
+          }
+
+          this.setAuth(data.user)
+          this.clearPendingEmailBind()
+          return { success: true, status: data.status, data, user: data.user }
+        }
+
+        if (data?.status === 'NEED_BIND_EMAIL') {
+          this.clearAuth()
+          if (!data.bindTicket) {
+            throw new Error('登录响应缺少邮箱绑定凭证')
+          }
+
+          this.setPendingEmailBind({
+            bindTicket: data.bindTicket,
+            user: data.user,
+            createdAt: Date.now()
+          })
+          return {
+            success: false,
+            needBindEmail: true,
+            status: data.status,
+            data
+          }
+        }
+
+        throw new Error('登录状态异常')
       } catch (error) {
         console.error('登录失败：', error)
         return { success: false, error: error.message || '登录失败' }
@@ -62,14 +91,49 @@ export const useAuthStore = defineStore('auth', {
       this.loginFlag = false
       removeStorage('isLoggedIn')
       removeStorage('userInfo')
-      // 清除邮箱验证的临时凭证
-      sessionStorage.removeItem('pendingAuth')
+      this.clearPendingEmailBind()
+    },
+
+    ensureAuthState() {
+      if (this.loginFlag && this.userInfo) {
+        return true
+      }
+
+      if (this.loginFlag || this.userInfo) {
+        this.clearAuth()
+      }
+
+      return false
     },
 
     // 更新用户信息
     updateUserInfo(userInfo) {
       this.userInfo = { ...this.userInfo, ...userInfo }
       setStorage('userInfo', this.userInfo)
+    },
+
+    setAuth(userInfo) {
+      this.userInfo = userInfo
+      this.loginFlag = true
+      setStorage('isLoggedIn', true)
+      setStorage('userInfo', userInfo)
+    },
+
+    setPendingEmailBind(data) {
+      sessionStorage.setItem(PENDING_EMAIL_BIND_KEY, JSON.stringify(data))
+    },
+
+    getPendingEmailBind() {
+      try {
+        return JSON.parse(sessionStorage.getItem(PENDING_EMAIL_BIND_KEY) || '{}')
+      } catch (error) {
+        console.error('读取邮箱绑定凭证失败：', error)
+        return {}
+      }
+    },
+
+    clearPendingEmailBind() {
+      sessionStorage.removeItem(PENDING_EMAIL_BIND_KEY)
     },
 
     // 设置邮箱验证状态
@@ -83,12 +147,6 @@ export const useAuthStore = defineStore('auth', {
     // 刷新用户邮箱验证状态（从服务器获取最新状态）
     async refreshEmailStatus() {
       try {
-        // TODO: 调用检查邮箱状态的接口
-        // const result = await checkEmailStatus()
-        // if (result && result.data) {
-        //   this.setEmailVerified(result.data.isActiveEmail)
-        //   return result.data.isActiveEmail
-        // }
         return this.isEmailVerified
       } catch (error) {
         console.error('刷新邮箱验证状态失败：', error)

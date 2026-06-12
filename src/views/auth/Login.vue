@@ -141,7 +141,7 @@
 import { ref, reactive } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { checkEmailStatus, resetPassword } from '@/api/auth'
+import { resetPassword } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { Document, User, Lock, InfoFilled, Message } from '@element-plus/icons-vue'
 
@@ -212,34 +212,15 @@ const onSubmit = async () => {
     loading.value = true
     
     try {
-      // 1. 先登录获取用户信息
       const result = await authStore.login(form)
       
       if (result.success) {
-        // 2. 调用检测接口判断邮箱是否已认证
-        const encryptedPassword = authStore.digestMessage(form.password)
-        const checkResult = await checkEmailStatus(form.user, encryptedPassword)
-        
-        // 更新本地邮箱验证状态（与后端保持同步）
-        authStore.setEmailVerified(checkResult === true)
-        
-        if (checkResult === true) {
-          // 邮箱已认证，后端已设置 sa-token cookie
-          ElMessage.success('登录成功')
-          const redirect = route.query.redirect || '/courses'
-          router.push(redirect)
-        } else {
-          // 邮箱未认证，需要验证邮箱
-          // 保存临时凭证用于发送邮件和轮询
-          sessionStorage.setItem('pendingAuth', JSON.stringify({
-            user: form.user,
-            password: encryptedPassword,
-            email: result.data.email
-          }))
-          
-          ElMessage.warning('请先验证邮箱')
-          router.push('/email-verify')
-        }
+        ElMessage.success('登录成功')
+        const redirect = route.query.redirect || '/courses'
+        router.push(redirect)
+      } else if (result.needBindEmail) {
+        ElMessage.warning('请先绑定邮箱')
+        router.push('/email-verify')
       } else {
         ElMessage.error(result.error || '登录失败')
       }

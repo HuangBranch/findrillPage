@@ -17,7 +17,7 @@ const baseRoutes = [
     path: '/email-verify',
     name: 'EmailVerify',
     component: () => import('@/views/auth/EmailVerify.vue'),
-    meta: { title: '邮箱验证'}
+    meta: { title: '邮箱验证' }
   },
   {
     path: '/verify-email-token',

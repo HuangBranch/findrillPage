@@ -2,7 +2,7 @@ import request from '@/utils/request'
 
 /**
  * 用户登录
- * @param {Object} data - { userName, password }
+ * @param {Object} data - { user, password }
  */
 export const login = (data) => {
   return request({
@@ -15,15 +15,14 @@ export const login = (data) => {
 /**
  * 发送邮箱验证链接
  * 后端会发送包含 token 的验证链接到用户邮箱
- * @param {string} user - 用户名
- * @param {string} password - 加密后的密码
+ * @param {string} bindTicket - 登录接口返回的绑定邮箱票据
  * @param {string} email - 邮箱地址
  */
-export const sendEmailVerificationLink = (user, password, email) => {
+export const sendEmailVerificationLink = (bindTicket, email) => {
   return request({
     url: '/email/send',
     method: 'POST',
-    data: { user, password, email }
+    data: { bindTicket, email }
   })
 }
 
@@ -56,24 +55,10 @@ export const verifyUpdateEmailByToken = (token) => {
     method: 'GET',
     params: { token }
   }).then(result => {
-    return result === true
+    return result !== false
   }).catch(err => {
     console.error('修改邮箱验证失败：', err)
     return false
-  })
-}
-
-/**
- * 检查邮箱验证状态
- * @param {string} user - 用户名
- * @param {string} password - 加密后的密码
- * @returns {Promise<{code: number, data: boolean}>} data为true表示已认证，后端会设置sa-token cookie
- */
-export const checkEmailStatus = (user, password) => {
-  return request({
-    url: '/email/isverifi',
-    method: 'POST',
-    data: { user, password }
   })
 }
 
@@ -107,7 +92,6 @@ export default {
   sendEmailVerificationLink,
   verifyEmailByToken,
   verifyUpdateEmailByToken,
-  checkEmailStatus,
   resetPassword,
   logout
 }
