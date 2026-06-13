@@ -1,15 +1,20 @@
-export const EXAM_MODES = [
-  { label: '普通练习', value: 1, tag: 'success' },
-  { label: '正式考试', value: 2, tag: 'danger' },
-  { label: '错题练习', value: 3, tag: 'warning' }
-]
-
 export const QUESTION_TYPES = [
   { label: '单选题', value: 1 },
   { label: '多选题', value: 2 },
   { label: '判断题', value: 3 },
   { label: '填空题', value: 4 },
   { label: '简答题', value: 5 }
+]
+
+export const PRACTICE_SOURCE_TYPES = [
+  { label: '章节题库', value: 1, tag: 'success' },
+  { label: '错题练习', value: 2, tag: 'warning' },
+  { label: '收藏练习', value: 3, tag: 'primary' }
+]
+
+export const PRACTICE_ORDER_TYPES = [
+  { label: '顺序', value: 1 },
+  { label: '随机', value: 2 }
 ]
 
 export const DIFFICULTIES = [
@@ -33,12 +38,6 @@ export const AUDIT_STATUS = [
 export const ATTEMPT_STATUS = [
   { label: '进行中', value: 1, tag: 'warning' },
   { label: '已提交', value: 2, tag: 'success' }
-]
-
-export const GRADING_STATUS = [
-  { label: '无需批改', value: 0, tag: 'info' },
-  { label: '待人工批改', value: 1, tag: 'warning' },
-  { label: '批改完成', value: 2, tag: 'success' }
 ]
 
 export const REPORT_REASONS = [

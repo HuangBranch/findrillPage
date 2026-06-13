@@ -60,7 +60,6 @@ import {
   Menu,
   Notebook,
   Reading,
-  Tickets,
   Upload,
   User
 } from '@element-plus/icons-vue'
@@ -82,7 +81,6 @@ const iconMap = {
   Menu,
   Notebook,
   Reading,
-  Tickets,
   Upload,
   User
 }

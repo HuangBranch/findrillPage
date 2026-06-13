@@ -13,16 +13,13 @@ export const fallbackAdminMenus = [
   { id: 5, path: '/admin/chapters', name: 'ChapterManage', component: '@/views/admin/ChapterManage.vue', meta: { title: '章节管理', icon: 'Notebook', requiresAuth: true, requiresAdmin: true } },
   { id: 6, path: '/admin/questions', name: 'QuestionManage', component: '@/views/admin/QuestionManage.vue', meta: { title: '题库管理', icon: 'Document', requiresAuth: true, requiresAdmin: true } },
   { id: 7, path: '/admin/imports', name: 'QuestionUpload', component: '@/views/admin/QuestionUpload.vue', meta: { title: '题目导入', icon: 'Upload', requiresAuth: true, requiresAdmin: true } },
-  { id: 8, path: '/admin/exam-configs', name: 'ExamConfigManage', component: '@/views/admin/ExamConfigManage.vue', meta: { title: '考试配置', icon: 'Tickets', requiresAuth: true, requiresAdmin: true } },
   { id: 9, path: '/admin/traces', name: 'TraceManage', component: '@/views/admin/TraceManage.vue', meta: { title: '审核反馈', icon: 'Flag', requiresAuth: true, requiresAdmin: true } }
 ]
 
 const menuPathAliases = {
-  '/admin/exams': '/admin/exam-configs',
   '/admin/question-imports': '/admin/imports',
   '/admin/question-audits': '/admin/traces',
   '/admin/question-reports': '/admin/traces',
-  '/admin/gradings': '/admin/traces',
   '/admin/knowledge-points': '/admin/questions'
 }
 

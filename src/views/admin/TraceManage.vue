@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">审核反馈</h1>
-        <p class="page-subtitle">题目审核、用户反馈和人工批改统一处理。</p>
+        <p class="page-subtitle">题目审核和用户反馈统一处理。</p>
       </div>
       <el-button @click="loadData">刷新</el-button>
     </div>
@@ -49,20 +49,6 @@
             </el-table-column>
           </el-table>
         </el-tab-pane>
-
-        <el-tab-pane label="人工批改" name="grading">
-          <el-table :data="gradingRows" style="width: 100%">
-            <el-table-column prop="answerId" label="答案 ID" width="100" />
-            <el-table-column prop="attemptId" label="作答 ID" width="100" />
-            <el-table-column label="题干" min-width="260">
-              <template #default="{ row }">{{ stripHtml(row.stemHtml).slice(0, 90) }}</template>
-            </el-table-column>
-            <el-table-column prop="questionScore" label="满分" width="90" />
-            <el-table-column label="操作" width="120">
-              <template #default="{ row }"><el-button link type="primary" @click="openGrade(row)">批改</el-button></template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
       </el-tabs>
     </section>
 
@@ -82,21 +68,6 @@
         <el-button type="primary" @click="saveHandle">保存</el-button>
       </template>
     </el-dialog>
-
-    <el-dialog v-model="gradeVisible" title="人工批改" width="min(520px, 94%)">
-      <el-form label-position="top">
-        <el-form-item label="得分">
-          <el-input-number v-model="gradeForm.score" :min="0" :max="gradeForm.maxScore" style="width: 100%" />
-        </el-form-item>
-        <el-form-item label="评语">
-          <el-input v-model="gradeForm.comment" type="textarea" :rows="4" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="gradeVisible = false">取消</el-button>
-        <el-button type="primary" @click="saveGrade">保存</el-button>
-      </template>
-    </el-dialog>
   </div>
 </template>
 
@@ -105,10 +76,8 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   approveQuestion,
-  gradeAnswer,
   handleQuestionReport,
   listAuditQuestions,
-  listPendingGradings,
   listQuestionReports,
   rejectQuestion
 } from '@/api/admin'
@@ -118,13 +87,10 @@ import { getPageList, stripHtml } from '@/utils/helpers'
 const tab = ref('audit')
 const auditRows = ref([])
 const reportRows = ref([])
-const gradingRows = ref([])
 const reportStatus = ref()
 const handleVisible = ref(false)
-const gradeVisible = ref(false)
 const currentId = ref()
 const handleForm = reactive({ status: 2, handleResult: '' })
-const gradeForm = reactive({ answerId: undefined, score: 0, maxScore: 100, comment: '' })
 
 const loadData = async () => {
   if (tab.value === 'audit') {
@@ -133,9 +99,6 @@ const loadData = async () => {
   }
   if (tab.value === 'reports') {
     reportRows.value = await listQuestionReports({ status: reportStatus.value })
-  }
-  if (tab.value === 'grading') {
-    gradingRows.value = await listPendingGradings()
   }
 }
 
@@ -167,21 +130,6 @@ const saveHandle = async () => {
   await handleQuestionReport(currentId.value, handleForm)
   ElMessage.success('反馈已处理')
   handleVisible.value = false
-  loadData()
-}
-
-const openGrade = (row) => {
-  gradeForm.answerId = row.answerId
-  gradeForm.maxScore = Number(row.questionScore || 100)
-  gradeForm.score = gradeForm.maxScore
-  gradeForm.comment = ''
-  gradeVisible.value = true
-}
-
-const saveGrade = async () => {
-  await gradeAnswer(gradeForm.answerId, { score: gradeForm.score, comment: gradeForm.comment })
-  ElMessage.success('批改完成')
-  gradeVisible.value = false
   loadData()
 }
 

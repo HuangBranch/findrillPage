@@ -2,11 +2,11 @@
   <div class="page">
     <div class="page-header">
       <div>
-        <h1 class="page-title">作答结果</h1>
-        <p class="page-subtitle">{{ attempt?.name || '考试结果' }}</p>
+        <h1 class="page-title">练习结果</h1>
+        <p class="page-subtitle">{{ attempt?.name || '自主练习结果' }}</p>
       </div>
       <div class="toolbar">
-        <el-button @click="router.push('/profile/exam-records')">查看记录</el-button>
+        <el-button @click="router.push('/profile/practice-records')">查看记录</el-button>
         <el-button type="primary" @click="router.push('/courses')">继续学习</el-button>
       </div>
     </div>
@@ -28,17 +28,17 @@
           </div>
           <div class="metric">
             <div class="metric__value">{{ attempt.pendingCount || 0 }}</div>
-            <div class="metric__label">待批改</div>
+            <div class="metric__label">待判定</div>
           </div>
         </div>
 
         <section class="surface">
           <el-descriptions :column="descriptionColumns" border>
             <el-descriptions-item label="模式">
-              <el-tag :type="tagOf(EXAM_MODES, attempt.mode)">{{ labelOf(EXAM_MODES, attempt.mode) }}</el-tag>
+              <el-tag type="success">自主练习</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="状态">
-              <el-tag :type="tagOf(GRADING_STATUS, attempt.gradingStatus)">{{ labelOf(GRADING_STATUS, attempt.gradingStatus) }}</el-tag>
+              <el-tag :type="tagOf(ATTEMPT_STATUS, attempt.status)">{{ labelOf(ATTEMPT_STATUS, attempt.status) }}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="开始时间">{{ formatDateTime(attempt.startedTime) }}</el-descriptions-item>
             <el-descriptions-item label="提交时间">{{ formatDateTime(attempt.submittedTime) }}</el-descriptions-item>
@@ -54,7 +54,7 @@
                 <span class="result-title">
                   第 {{ index + 1 }} 题
                   <el-tag size="small">{{ labelOf(QUESTION_TYPES, question.type) }}</el-tag>
-                  <el-tag v-if="question.answer?.judgeStatus === 2" size="small" type="warning">待批改</el-tag>
+                  <el-tag v-if="question.answer?.judgeStatus === 2" size="small" type="warning">待判定</el-tag>
                   <el-tag v-else-if="question.answer?.isCorrect" size="small" type="success">正确</el-tag>
                   <el-tag v-else size="small" type="danger">错误</el-tag>
                 </span>
@@ -74,8 +74,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getAttemptResult } from '@/api/exam'
-import { EXAM_MODES, GRADING_STATUS, QUESTION_TYPES, labelOf, tagOf } from '@/utils/dictionaries'
+import { getPracticeResult } from '@/api/practice'
+import { ATTEMPT_STATUS, QUESTION_TYPES, labelOf, tagOf } from '@/utils/dictionaries'
 import { formatDateTime, formatDuration, parseAnswerArray } from '@/utils/helpers'
 
 const route = useRoute()
@@ -93,7 +93,7 @@ const displayAnswer = (question) => {
 onMounted(async () => {
   loading.value = true
   try {
-    attempt.value = await getAttemptResult(route.params.id)
+    attempt.value = await getPracticeResult(route.params.id)
   } finally {
     loading.value = false
   }

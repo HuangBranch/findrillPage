@@ -6,9 +6,6 @@
         <span>Findrill</span>
       </button>
       <div class="top-actions">
-        <el-button v-if="authStore.isAdmin" text bg type="primary" @click="router.push('/admin/dashboard')">
-          后台
-        </el-button>
         <el-dropdown trigger="click">
           <el-avatar :size="34" :src="authStore.userInfo?.avatar">
             {{ (authStore.userInfo?.name || 'U').slice(0, 1) }}

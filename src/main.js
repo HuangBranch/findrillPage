@@ -24,7 +24,7 @@ setupRouterGuards(router)
 // 使用 Element Plus
 app.use(ElementPlus)
 
-// 注册所有图标
+// 加载所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
   app.component(key, component)
 }

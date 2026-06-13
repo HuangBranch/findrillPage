@@ -43,25 +43,19 @@ const routes = [
         path: 'practice',
         name: 'Practice',
         component: () => import('@/views/practice/PracticeMode.vue'),
-        meta: { title: '普通练习', requiresAuth: true }
+        meta: { title: '自主练习', requiresAuth: true }
       },
       {
-        path: 'exam',
-        name: 'Exam',
-        component: () => import('@/views/exam/ExamMode.vue'),
-        meta: { title: '正式考试', requiresAuth: true }
+        path: 'practice/:attemptId',
+        name: 'PracticeAttempt',
+        component: () => import('@/views/practice/PracticeMode.vue'),
+        meta: { title: '自主练习', requiresAuth: true }
       },
       {
-        path: 'attempt/:attemptId',
-        name: 'AttemptWorkspace',
-        component: () => import('@/views/exam/ExamMode.vue'),
-        meta: { title: '答题中', requiresAuth: true }
-      },
-      {
-        path: 'exam/result/:id',
-        name: 'ExamResult',
-        component: () => import('@/views/exam/ExamResult.vue'),
-        meta: { title: '作答结果', requiresAuth: true }
+        path: 'practice/result/:id',
+        name: 'PracticeResult',
+        component: () => import('@/views/practice/PracticeResult.vue'),
+        meta: { title: '练习结果', requiresAuth: true }
       },
       {
         path: 'wrong',
@@ -88,12 +82,6 @@ const routes = [
         meta: { title: '编辑资料', requiresAuth: true }
       },
       {
-        path: 'profile/exam-records',
-        name: 'ExamRecords',
-        component: () => import('@/views/profile/ExamRecords.vue'),
-        meta: { title: '作答记录', requiresAuth: true }
-      },
-      {
         path: 'profile/practice-records',
         name: 'PracticeRecords',
         component: () => import('@/views/profile/PracticeRecords.vue'),
@@ -114,13 +102,10 @@ const routes = [
       { path: 'chapters', name: 'ChapterManage', component: () => import('@/views/admin/ChapterManage.vue'), meta: { title: '章节管理', requiresAuth: true, requiresAdmin: true } },
       { path: 'questions', name: 'QuestionManage', component: () => import('@/views/admin/QuestionManage.vue'), meta: { title: '题库管理', requiresAuth: true, requiresAdmin: true } },
       { path: 'imports', name: 'QuestionUpload', component: () => import('@/views/admin/QuestionUpload.vue'), meta: { title: '题目导入', requiresAuth: true, requiresAdmin: true } },
-      { path: 'exam-configs', name: 'ExamConfigManage', component: () => import('@/views/admin/ExamConfigManage.vue'), meta: { title: '考试配置', requiresAuth: true, requiresAdmin: true } },
       { path: 'traces', name: 'TraceManage', component: () => import('@/views/admin/TraceManage.vue'), meta: { title: '审核反馈', requiresAuth: true, requiresAdmin: true } },
-      { path: 'exams', redirect: '/admin/exam-configs', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'question-imports', redirect: '/admin/imports', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'question-audits', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'question-reports', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
-      { path: 'gradings', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'knowledge-points', redirect: '/admin/questions', meta: { requiresAuth: true, requiresAdmin: true } }
     ]
   },

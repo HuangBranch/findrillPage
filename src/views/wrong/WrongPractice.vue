@@ -1,7 +1,7 @@
 <template>
-  <AttemptWorkspace :mode="3" title="错题练习" />
+  <PracticeMode :default-source-type="2" />
 </template>
 
 <script setup>
-import AttemptWorkspace from '@/components/AttemptWorkspace.vue'
+import PracticeMode from '@/views/practice/PracticeMode.vue'
 </script>

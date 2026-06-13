@@ -3,9 +3,7 @@ import {
   updateCurrentUser,
   updatePassword
 } from '@/api/auth'
-import {
-  getExamHistory
-} from '@/api/exam'
+import { getPracticeHistory } from '@/api/practice'
 import {
   getMyTrend,
   listChapterProgress,
@@ -16,8 +14,7 @@ import {
 export const getUserInfo = getCurrentUser
 export const updateUserInfo = updateCurrentUser
 export const changePassword = updatePassword
-export const getExamRecords = getExamHistory
-export const getPracticeRecords = getExamHistory
+export const getPracticeRecords = getPracticeHistory
 export const getLearningTrend = getMyTrend
 export const getChapterProgress = listChapterProgress
 export const getQuestionStates = listQuestionStates
@@ -27,7 +24,6 @@ export default {
   getUserInfo,
   updateUserInfo,
   changePassword,
-  getExamRecords,
   getPracticeRecords,
   getLearningTrend,
   getChapterProgress,

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">我的</h1>
-        <p class="page-subtitle">个人资料、作答记录和学习状态。</p>
+        <p class="page-subtitle">个人资料、自主练习状态和错题复习。</p>
       </div>
       <div class="toolbar">
         <el-button @click="$router.push('/profile/edit')">编辑资料</el-button>
@@ -22,7 +22,7 @@
     <div class="metric-grid">
       <div class="metric">
         <div class="metric__value">{{ history.length }}</div>
-        <div class="metric__label">作答次数</div>
+        <div class="metric__label">练习次数</div>
       </div>
       <div class="metric">
         <div class="metric__value">{{ submittedCount }}</div>
@@ -36,8 +36,7 @@
 
     <section class="surface">
       <div class="toolbar profile-links">
-        <el-button @click="$router.push('/profile/exam-records')">作答记录</el-button>
-        <el-button @click="$router.push('/profile/practice-records')">学习状态</el-button>
+        <el-button @click="$router.push('/profile/practice-records')">练习记录</el-button>
         <el-button @click="$router.push('/wrong')">错题复习</el-button>
       </div>
     </section>
@@ -46,7 +45,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { getExamHistory } from '@/api/exam'
+import { getPracticeHistory } from '@/api/practice'
 import { useAuthStore } from '@/stores/auth'
 
 const authStore = useAuthStore()
@@ -61,7 +60,7 @@ const avgScore = computed(() => {
 
 onMounted(async () => {
   await authStore.refreshUser()
-  history.value = await getExamHistory()
+  history.value = await getPracticeHistory()
 })
 </script>
 

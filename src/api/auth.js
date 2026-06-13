@@ -2,8 +2,6 @@ import request from '@/utils/request'
 
 export const login = (data) => request({ url: '/auth/login', method: 'POST', data })
 
-export const register = (data) => request({ url: '/auth/register', method: 'POST', data })
-
 export const logout = () => request({ url: '/auth/logout', method: 'POST', silent: true })
 
 export const getCurrentUser = () => request({ url: '/users/me', method: 'GET', silent: true })
@@ -16,7 +14,6 @@ export const getCurrentMenu = () => request({ url: '/users/me/menu', method: 'GE
 
 export default {
   login,
-  register,
   logout,
   getCurrentUser,
   updateCurrentUser,

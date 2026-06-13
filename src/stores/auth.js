@@ -4,8 +4,7 @@ import {
   logout as logoutApi,
   getCurrentUser,
   updateCurrentUser,
-  updatePassword as updatePasswordApi,
-  register as registerApi
+  updatePassword as updatePasswordApi
 } from '@/api/auth'
 import { getStorage, setStorage, removeStorage } from '@/utils/storage'
 
@@ -72,10 +71,6 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.loading = false
       }
-    },
-
-    async register(form) {
-      return registerApi(form)
     },
 
     async logout() {

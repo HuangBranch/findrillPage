@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">{{ pageTitle }}</h1>
-        <p class="page-subtitle">{{ attempt ? attempt.name : '选择一个可用配置开始作答。' }}</p>
+        <p class="page-subtitle">{{ attempt ? attempt.name : emptySubtitle }}</p>
       </div>
       <div class="toolbar">
         <el-tag v-if="attempt" :type="attempt.status === 1 ? 'warning' : 'success'">
@@ -14,64 +14,29 @@
     </div>
 
     <section v-if="!attempt" class="surface">
-      <div class="toolbar">
-        <el-select v-model="filters.curriculumId" placeholder="课程 ID" clearable filterable style="width: 180px" @change="loadConfigs">
-          <el-option v-for="id in curriculumIds" :key="id" :label="`课程 #${id}`" :value="id" />
-        </el-select>
-        <el-button :icon="Refresh" @click="loadConfigs">刷新配置</el-button>
-      </div>
-
-      <el-skeleton :loading="loadingConfigs" animated :rows="4">
-        <el-empty v-if="!configs.length" description="暂无可用配置" />
-        <div v-else class="card-grid config-grid">
-          <el-card v-for="config in configs" :key="config.id" shadow="never">
-            <template #header>
-              <div class="config-title">
-                <strong>{{ config.name }}</strong>
-                <el-tag :type="tagOf(EXAM_MODES, config.mode)">{{ labelOf(EXAM_MODES, config.mode) }}</el-tag>
-              </div>
-            </template>
-            <div class="config-meta">
-              <span>课程 #{{ config.curriculumId }}</span>
-              <span v-if="config.chapterId">章节 #{{ config.chapterId }}</span>
-              <span>{{ config.questionCount || 0 }} 题</span>
-              <span>{{ config.durationMinutes || '不限时' }}{{ config.durationMinutes ? ' 分钟' : '' }}</span>
-            </div>
-            <template #footer>
-              <el-button type="primary" :loading="startingId === config.id" @click="start(config)">开始作答</el-button>
-            </template>
-          </el-card>
-        </div>
+      <el-skeleton :loading="true" animated :rows="4">
+        <el-empty description="正在加载练习" />
       </el-skeleton>
     </section>
 
     <template v-else>
-      <section class="surface answer-layout">
-        <aside class="answer-card">
-          <div class="answer-card__head">
-            <strong>答题卡</strong>
-            <span>{{ answeredCount }}/{{ questions.length }}</span>
-          </div>
-          <div class="answer-card__grid">
-            <button
-              v-for="(question, index) in questions"
-              :key="question.id"
-              type="button"
-              :class="{ active: index === currentIndex, done: answers[question.id]?.length }"
-              @click="currentIndex = index"
-            >
-              {{ index + 1 }}
-            </button>
-          </div>
-          <el-button v-if="attempt.status === 1" type="primary" class="submit-button" @click="submit">
-            提交
-          </el-button>
-          <el-button v-else class="submit-button" @click="router.push(`/exam/result/${attempt.id}`)">
-            查看结果
-          </el-button>
-        </aside>
+      <section class="surface attempt-controls">
+        <el-button @click="answerCardVisible = true">答题卡 {{ answeredCount }}/{{ questions.length }}</el-button>
+        <el-button v-if="attempt.status === 1" type="primary" @click="submit">
+          提交
+        </el-button>
+        <el-button v-else @click="goResult(attempt)">
+          查看结果
+        </el-button>
+      </section>
 
-        <article v-if="currentQuestion" class="question-panel">
+      <section class="surface answer-layout">
+        <article
+          v-if="currentQuestion"
+          class="question-panel"
+          @touchstart.passive="handleTouchStart"
+          @touchend.passive="handleTouchEnd"
+        >
           <div class="question-meta">
             <el-tag>{{ labelOf(QUESTION_TYPES, currentQuestion.type) }}</el-tag>
             <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
@@ -128,16 +93,60 @@
             />
           </div>
 
+          <section v-if="currentAnswerResult" class="practice-answer-result">
+            <div class="practice-answer-result__head">
+              <el-tag :type="answerResultType(currentAnswerResult)" effect="dark">
+                {{ answerResultText(currentAnswerResult) }}
+              </el-tag>
+              <span v-if="currentAnswerResult.earnedScore !== null && currentAnswerResult.earnedScore !== undefined">
+                得分 {{ currentAnswerResult.earnedScore }}
+              </span>
+            </div>
+
+            <div class="answer-detail-grid">
+              <div>
+                <strong>用户答案</strong>
+                <p>{{ displayUserAnswer(currentAnswerResult) }}</p>
+              </div>
+              <div>
+                <strong>正确答案</strong>
+                <p>{{ displayCorrectAnswer(currentAnswerResult) }}</p>
+              </div>
+            </div>
+
+            <div v-if="currentAnswerResult.analysisHtml" class="analysis-block">
+              <strong>解析</strong>
+              <div class="html-content" v-html="currentAnswerResult.analysisHtml"></div>
+            </div>
+          </section>
+
           <div class="question-actions">
-            <el-button :disabled="currentIndex === 0" @click="currentIndex--">上一题</el-button>
-            <el-button v-if="attempt.status === 1" type="primary" :loading="saving" @click="saveCurrent">保存答案</el-button>
-            <el-button :disabled="currentIndex >= questions.length - 1" @click="currentIndex++">下一题</el-button>
             <el-button @click="openNote">笔记</el-button>
             <el-button @click="reportVisible = true">反馈</el-button>
           </div>
         </article>
       </section>
     </template>
+
+    <el-drawer v-model="answerCardVisible" title="答题卡" size="min(420px, 92%)">
+      <div class="answer-card">
+        <div class="answer-card__head">
+          <strong>作答进度</strong>
+          <span>{{ answeredCount }}/{{ questions.length }}</span>
+        </div>
+        <div class="answer-card__grid">
+          <button
+            v-for="(question, index) in questions"
+            :key="questionAttemptId(question)"
+            type="button"
+            :class="answerCardClass(question, index)"
+            @click="selectQuestion(index)"
+          >
+            {{ index + 1 }}
+          </button>
+        </div>
+      </div>
+    </el-drawer>
 
     <el-drawer v-model="noteVisible" title="题目笔记" size="min(420px, 92%)">
       <el-input v-model="noteContent" type="textarea" :rows="8" placeholder="记录自己的思路或易错点" />
@@ -170,35 +179,44 @@
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh } from '@element-plus/icons-vue'
-import { getAttempt, listExamConfigs, saveAnswer, startExam, submitAttempt } from '@/api/exam'
+import {
+  getPracticeAttempt,
+  savePracticeAnswer,
+  submitPractice
+} from '@/api/practice'
 import { createQuestionReport, deleteNote, getNote, saveNote } from '@/api/learning'
-import { EXAM_MODES, QUESTION_TYPES, REPORT_REASONS, labelOf, tagOf } from '@/utils/dictionaries'
-import { formatDuration, parseAnswerArray, parseOptions } from '@/utils/helpers'
+import { QUESTION_TYPES, REPORT_REASONS, labelOf } from '@/utils/dictionaries'
+import { formatDuration, parseAnswerArray, parseOptions, safeJsonParse } from '@/utils/helpers'
 
 const props = defineProps({
-  mode: {
-    type: Number,
-    default: 1
-  },
   title: {
     type: String,
     default: '答题'
+  },
+  resultRouteName: {
+    type: String,
+    default: 'PracticeResult'
+  },
+  emptySubtitle: {
+    type: String,
+    default: '选择一个可用配置开始作答。'
   }
 })
 
 const route = useRoute()
 const router = useRouter()
 
-const loadingConfigs = ref(false)
-const configs = ref([])
-const filters = reactive({ curriculumId: undefined })
-const startingId = ref()
 const attempt = ref(null)
 const currentIndex = ref(0)
 const answers = reactive({})
+const answerResults = reactive({})
+const saveVersions = reactive({})
 const saving = ref(false)
+const pendingSaveCount = ref(0)
 const now = ref(Date.now())
+const answerCardVisible = ref(false)
+const touchStartX = ref(0)
+const touchStartY = ref(0)
 const noteVisible = ref(false)
 const noteContent = ref('')
 const reportVisible = ref(false)
@@ -211,18 +229,114 @@ const questions = computed(() => attempt.value?.questions || [])
 const currentQuestion = computed(() => questions.value[currentIndex.value])
 const currentOptions = computed(() => parseOptions(currentQuestion.value?.optionsJson))
 const answeredCount = computed(() => Object.values(answers).filter((item) => item?.length).length)
-const curriculumIds = computed(() => [...new Set(configs.value.map((item) => item.curriculumId).filter(Boolean))])
 const remainingText = computed(() => {
   if (!attempt.value?.deadlineTime) return ''
   const remain = Math.max(0, Math.floor((new Date(attempt.value.deadlineTime).getTime() - now.value) / 1000))
   return `剩余 ${formatDuration(remain)}`
 })
 
-const currentAnswer = computed(() => answers[currentQuestion.value?.id] || [])
+const currentAnswer = computed(() => answers[questionAttemptId(currentQuestion.value)] || [])
+const currentAnswerResult = computed(() => answerResults[questionAttemptId(currentQuestion.value)])
 const singleAnswer = ref('')
 const multiAnswer = ref([])
 const blankAnswer = ref([''])
 const textAnswer = ref('')
+
+const getAttemptId = (data) => data?.id || data?.attemptId
+const questionAttemptId = (question) => question?.attemptQuestionId || question?.id
+
+const setSaving = (delta) => {
+  pendingSaveCount.value = Math.max(0, pendingSaveCount.value + delta)
+  saving.value = pendingSaveCount.value > 0
+}
+
+const normalizeAnswerResult = (result, question) => {
+  if (!result && !question?.answer) return null
+  const answer = question?.answer || {}
+  return {
+    ...answer,
+    ...result,
+    attemptQuestionId: result?.attemptQuestionId ?? answer.attemptQuestionId ?? questionAttemptId(question),
+    questionId: result?.questionId ?? answer.questionId ?? question?.questionId,
+    userAnswerJson: result?.userAnswerJson ?? answer.userAnswerJson,
+    answersJson: result?.answersJson ?? answer.answersJson ?? question?.answersJson,
+    analysisHtml: result?.analysisHtml ?? answer.analysisHtml ?? question?.analysisHtml,
+    judgeStatus: result?.judgeStatus ?? answer.judgeStatus,
+    isCorrect: result?.isCorrect ?? answer.isCorrect,
+    earnedScore: result?.earnedScore ?? answer.earnedScore
+  }
+}
+
+const answerValueText = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(answerValueText).filter(Boolean).join('，')
+  }
+  if (value && typeof value === 'object') {
+    return value.answerValue ?? value.value ?? value.optionKey ?? value.content ?? JSON.stringify(value)
+  }
+  return value === null || value === undefined || value === '' ? '' : String(value)
+}
+
+const displayAnswerJson = (value) => {
+  const parsed = safeJsonParse(value, value)
+  const text = answerValueText(parsed)
+  return text || '未作答'
+}
+
+const displayUserAnswer = (result) => displayAnswerJson(result?.userAnswerJson ?? currentAnswer.value)
+const displayCorrectAnswer = (result) => displayAnswerJson(result?.answersJson)
+
+const answerResultType = (result) => {
+  if (result?.isCorrect === true) return 'success'
+  if (result?.isCorrect === false) return 'danger'
+  return 'warning'
+}
+
+const answerResultText = (result) => {
+  if (result?.isCorrect === true) return '回答正确'
+  if (result?.isCorrect === false) return '回答错误'
+  return '待判定'
+}
+
+const answerCardClass = (question, index) => {
+  const id = questionAttemptId(question)
+  const result = answerResults[id]
+  return {
+    active: index === currentIndex.value,
+    done: answers[id]?.length,
+    correct: result?.isCorrect === true,
+    wrong: result?.isCorrect === false
+  }
+}
+
+const selectQuestion = (index) => {
+  currentIndex.value = index
+  answerCardVisible.value = false
+}
+
+const goNextQuestion = () => {
+  if (currentIndex.value >= questions.value.length - 1) return false
+  currentIndex.value += 1
+  return true
+}
+
+const handleTouchStart = (event) => {
+  const touch = event.changedTouches?.[0]
+  if (!touch) return
+  touchStartX.value = touch.clientX
+  touchStartY.value = touch.clientY
+}
+
+const handleTouchEnd = (event) => {
+  if (window.innerWidth > 760 || answerCardVisible.value) return
+  const touch = event.changedTouches?.[0]
+  if (!touch) return
+  const deltaX = touch.clientX - touchStartX.value
+  const deltaY = touch.clientY - touchStartY.value
+  if (deltaX > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+    goNextQuestion()
+  }
+}
 
 const hydrateInputs = () => {
   const value = currentAnswer.value
@@ -236,62 +350,73 @@ watch(currentQuestion, hydrateInputs)
 
 const setCurrentAnswer = (value) => {
   if (!currentQuestion.value) return
-  answers[currentQuestion.value.id] = value.filter((item) => item !== null && item !== undefined).map((item) => String(item))
+  const id = questionAttemptId(currentQuestion.value)
+  answers[id] = value
+    .filter((item) => item !== null && item !== undefined)
+    .map((item) => String(item))
+  delete answerResults[id]
 }
 
-const updateSingle = () => setCurrentAnswer(singleAnswer.value ? [singleAnswer.value] : [])
-const updateMulti = () => setCurrentAnswer(multiAnswer.value)
-const updateBlank = () => setCurrentAnswer(blankAnswer.value)
-const updateText = () => setCurrentAnswer(textAnswer.value ? [textAnswer.value] : [])
+const saveAfterAnswerChange = () => {
+  saveCurrent({ silent: true }).catch(() => {})
+}
 
-const loadConfigs = async () => {
-  loadingConfigs.value = true
-  try {
-    configs.value = await listExamConfigs({
-      mode: props.mode,
-      curriculumId: filters.curriculumId
-    })
-  } finally {
-    loadingConfigs.value = false
-  }
+const updateSingle = () => {
+  setCurrentAnswer(singleAnswer.value ? [singleAnswer.value] : [])
+  saveAfterAnswerChange()
+}
+
+const updateMulti = () => {
+  setCurrentAnswer(multiAnswer.value)
+  saveAfterAnswerChange()
+}
+
+const updateBlank = () => {
+  setCurrentAnswer(blankAnswer.value)
+  saveAfterAnswerChange()
+}
+
+const updateText = () => {
+  setCurrentAnswer(textAnswer.value ? [textAnswer.value] : [])
+  saveAfterAnswerChange()
 }
 
 const loadAttempt = async (id) => {
-  const data = await getAttempt(id)
+  const data = await getPracticeAttempt(id)
   attempt.value = data
   Object.keys(answers).forEach((key) => delete answers[key])
+  Object.keys(answerResults).forEach((key) => delete answerResults[key])
+  Object.keys(saveVersions).forEach((key) => delete saveVersions[key])
   ;(data.questions || []).forEach((question) => {
-    answers[question.id] = parseAnswerArray(question.answer?.userAnswerJson)
+    const id = questionAttemptId(question)
+    answers[id] = parseAnswerArray(question.answer?.userAnswerJson)
   })
   hydrateInputs()
 }
 
-const start = async (config) => {
-  startingId.value = config.id
-  try {
-    const data = await startExam({ configId: config.id, practiceMode: 1 })
-    const attemptId = data?.id || data?.attemptId
-    if (!attemptId) {
-      throw new Error('启动作答失败：后端未返回作答 ID')
-    }
-    await router.replace({ name: 'AttemptWorkspace', params: { attemptId } })
-    await loadAttempt(attemptId)
-  } finally {
-    startingId.value = undefined
-  }
-}
-
-const saveCurrent = async () => {
+const saveCurrent = async ({ silent = false } = {}) => {
   if (!currentQuestion.value || attempt.value.status !== 1) return
-  saving.value = true
+  const question = currentQuestion.value
+  const attemptQuestionId = questionAttemptId(question)
+  const version = (saveVersions[attemptQuestionId] || 0) + 1
+  saveVersions[attemptQuestionId] = version
+  const payload = {
+    attemptQuestionId,
+    answers: answers[attemptQuestionId] || []
+  }
+  setSaving(1)
   try {
-    await saveAnswer(attempt.value.id, {
-      attemptQuestionId: currentQuestion.value.id,
-      answers: answers[currentQuestion.value.id] || []
-    })
-    ElMessage.success('已保存')
+    const result = await savePracticeAnswer(getAttemptId(attempt.value), payload)
+    if (saveVersions[attemptQuestionId] === version) {
+      const normalizedResult = normalizeAnswerResult(result, question)
+      answerResults[attemptQuestionId] = normalizedResult
+      if (normalizedResult?.isCorrect === true) {
+        goNextQuestion()
+      }
+    }
+    if (!silent) ElMessage.success('已保存')
   } finally {
-    saving.value = false
+    setSaving(-1)
   }
 }
 
@@ -300,10 +425,16 @@ const submit = async () => {
   if (currentQuestion.value) {
     await saveCurrent()
   }
-  const result = await submitAttempt(attempt.value.id)
+  const result = await submitPractice(getAttemptId(attempt.value))
   attempt.value = result
   ElMessage.success('提交成功')
-  router.push(`/exam/result/${result.id}`)
+  goResult(result)
+}
+
+const goResult = (data) => {
+  const id = getAttemptId(data)
+  if (!id) return
+  router.push({ name: props.resultRouteName, params: { id } })
 }
 
 const openNote = async () => {
@@ -352,8 +483,6 @@ onMounted(async () => {
   }, 1000)
   if (route.params.attemptId) {
     await loadAttempt(route.params.attemptId)
-  } else {
-    await loadConfigs()
   }
 })
 
@@ -364,9 +493,14 @@ onUnmounted(() => {
 
 <style scoped>
 .answer-layout {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 18px;
+  display: block;
+}
+
+.attempt-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .answer-card {
@@ -382,12 +516,12 @@ onUnmounted(() => {
 
 .answer-card__grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(34px, 1fr));
   gap: 8px;
 }
 
 .answer-card__grid button {
-  width: 34px;
+  width: 100%;
   height: 34px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
@@ -400,14 +534,22 @@ onUnmounted(() => {
   background: #f0fdf4;
 }
 
+.answer-card__grid button.correct {
+  border-color: #16a34a;
+  color: #166534;
+  background: #dcfce7;
+}
+
+.answer-card__grid button.wrong {
+  border-color: #ef4444;
+  color: #991b1b;
+  background: #fee2e2;
+}
+
 .answer-card__grid button.active {
   border-color: #2563eb;
   color: #fff;
   background: #2563eb;
-}
-
-.submit-button {
-  width: 100%;
 }
 
 .question-panel {
@@ -415,21 +557,11 @@ onUnmounted(() => {
 }
 
 .question-meta,
-.question-actions,
-.config-title,
-.config-meta {
+.question-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
-}
-
-.config-title {
-  justify-content: space-between;
-}
-
-.config-meta {
-  color: #64748b;
 }
 
 .question-stem {
@@ -464,21 +596,135 @@ onUnmounted(() => {
   font-weight: 700;
 }
 
+.practice-answer-result {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.practice-answer-result__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  color: #475569;
+}
+
+.answer-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.answer-detail-grid > div,
+.analysis-block {
+  min-width: 0;
+}
+
+.answer-detail-grid strong,
+.analysis-block strong {
+  display: block;
+  margin-bottom: 6px;
+  color: #111827;
+}
+
+.answer-detail-grid p {
+  margin: 0;
+  color: #475569;
+  overflow-wrap: anywhere;
+}
+
+.analysis-block {
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
 .question-actions {
   margin-top: 18px;
+  justify-content: flex-end;
 }
 
 @media (max-width: 760px) {
+  .attempt-page {
+    gap: 10px;
+  }
+
+  .attempt-page .page-header {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .attempt-page .page-title {
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .attempt-page .page-subtitle {
+    max-width: 210px;
+    margin-top: 1px;
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .attempt-page .toolbar {
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .attempt-page .toolbar :deep(.el-tag) {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .attempt-controls {
+    position: sticky;
+    top: 58px;
+    z-index: 12;
+    justify-content: stretch;
+    padding: 10px;
+  }
+
+  .attempt-controls .el-button {
+    flex: 1 1 0;
+    min-height: 34px;
+    margin-left: 0;
+    padding: 8px 10px;
+  }
+
   .answer-layout {
+    padding: 12px;
+  }
+
+  .question-meta {
+    gap: 6px;
+    font-size: 12px;
+  }
+
+  .question-meta :deep(.el-tag) {
+    height: 22px;
+    padding: 0 6px;
+    font-size: 12px;
+  }
+
+  .answer-detail-grid {
     grid-template-columns: 1fr;
   }
 
-  .answer-card {
-    order: 2;
+  .question-actions {
+    justify-content: stretch;
   }
 
-  .answer-card__grid {
-    grid-template-columns: repeat(8, 1fr);
+  .question-actions .el-button {
+    flex: 1 1 0;
+    margin-left: 0;
   }
 }
 </style>

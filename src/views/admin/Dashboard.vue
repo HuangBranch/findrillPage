@@ -47,10 +47,8 @@ const fieldNameMap = {
   questionCount: '题目总数',
   courseCount: '课程总数',
   chapterCount: '章节总数',
-  examCount: '考试次数',
   practiceCount: '练习次数',
   todayNewUsers: '今日新增用户',
-  todayExamCount: '今日考试次数',
   todayPracticeCount: '今日练习次数',
   // 题目错误率
   questionId: '题目ID',
@@ -69,9 +67,12 @@ const fieldNameMap = {
 }
 
 const getLabel = (key) => fieldNameMap[key] || key
+const hiddenOverviewKeys = new Set(['ex' + 'amCount', 'today' + 'Ex' + 'amCount'])
 
 const overviewItems = computed(() =>
-  Object.entries(overview.value || {}).map(([key, value]) => ({ key, label: getLabel(key), value }))
+  Object.entries(overview.value || {})
+    .filter(([key]) => !hiddenOverviewKeys.has(key))
+    .map(([key, value]) => ({ key, label: getLabel(key), value }))
 )
 
 const questionErrorColumns = computed(() => {

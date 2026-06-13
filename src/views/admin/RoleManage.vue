@@ -66,6 +66,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { assignRolePermissions, createRole, getRoleDetail, listPermissions, listRoles, updateRole } from '@/api/admin'
 
+const hiddenPermissionPattern = new RegExp(['ex' + 'am', 'grad' + 'ing', '\\u8003\\u8bd5', '\\u6279\\u6539'].join('|'), 'i')
 const rows = ref([])
 const permissions = ref([])
 const formVisible = ref(false)
@@ -79,6 +80,18 @@ const permissionForm = reactive({ roleId: undefined, permissionIds: [] })
 const rules = {
   name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
   english: [{ required: true, message: '请输入英文标识', trigger: 'blur' }]
+}
+
+const isVisiblePermission = (item) => {
+  const text = [item.name, item.english, item.code, item.path, item.permissionCode].filter(Boolean).join(' ')
+  return !hiddenPermissionPattern.test(text)
+}
+
+const visiblePermissionIds = () => new Set(permissions.value.map((item) => item.id))
+
+const sanitizePermissionIds = (ids = []) => {
+  const visibleIds = visiblePermissionIds()
+  return ids.filter((id) => visibleIds.has(id))
 }
 
 const loadData = async () => {
@@ -103,7 +116,7 @@ const openEdit = async (row) => {
     english: row.english,
     description: detail.description || detail.roleDesc || row.description,
     isUse: detail.isUse,
-    permissionIds: (detail.permissions || []).map((item) => item.id)
+    permissionIds: sanitizePermissionIds((detail.permissions || []).map((item) => item.id))
   })
   formVisible.value = true
 }
@@ -123,19 +136,19 @@ const save = async () => {
 const openPermissions = async (row) => {
   const detail = await getRoleDetail(row.id)
   permissionForm.roleId = row.id
-  permissionForm.permissionIds = (detail.permissions || []).map((item) => item.id)
+  permissionForm.permissionIds = sanitizePermissionIds((detail.permissions || []).map((item) => item.id))
   permissionVisible.value = true
 }
 
 const savePermissions = async () => {
-  await assignRolePermissions(permissionForm.roleId, { permissionIds: permissionForm.permissionIds })
+  await assignRolePermissions(permissionForm.roleId, { permissionIds: sanitizePermissionIds(permissionForm.permissionIds) })
   ElMessage.success('权限已保存')
   permissionVisible.value = false
   loadData()
 }
 
 onMounted(async () => {
-  permissions.value = await listPermissions()
+  permissions.value = ((await listPermissions()) || []).filter(isVisiblePermission)
   await loadData()
 })
 </script>

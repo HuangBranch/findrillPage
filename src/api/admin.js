@@ -77,16 +77,6 @@ export const rejectQuestion = (id, data = {}) => post(`/admin/question-audits/${
 export const listQuestionReports = (params) => get('/admin/question-reports/list', params)
 export const handleQuestionReport = (id, data) => put(`/admin/question-reports/${id}/handle`, data)
 
-export const listExamConfigsAdmin = (params) => get('/admin/exam-configs/list', params)
-export const getExamConfig = (id) => get(`/admin/exam-configs/${id}`)
-export const createExamConfig = (data) => post('/admin/exam-configs', data)
-export const updateExamConfig = (id, data) => put(`/admin/exam-configs/${id}`, data)
-export const updateExamConfigStatus = (id, enabled) => put(`/admin/exam-configs/${id}/status`, { enabled })
-export const deleteExamConfig = (id) => del(`/admin/exam-configs/${id}`)
-
-export const listPendingGradings = () => get('/admin/gradings/pending')
-export const gradeAnswer = (answerId, data) => post(`/admin/gradings/${answerId}`, data)
-
 export const getOverviewStats = () => get('/admin/statistics/overview')
 export const getQuestionErrorStats = () => get('/admin/statistics/question-errors')
 export const getChapterMasteryStats = () => get('/admin/statistics/chapter-mastery')
@@ -145,11 +135,6 @@ export default {
   submitQuestionAudit,
   publishQuestion,
   disableQuestion,
-  listExamConfigsAdmin,
-  createExamConfig,
-  updateExamConfig,
-  updateExamConfigStatus,
-  deleteExamConfig,
   getOverviewStats,
   getQuestionErrorStats,
   getChapterMasteryStats

@@ -40,13 +40,6 @@ export const clearStorage = () => {
 
 const progressKey = (type, userId, id) => `${type}_progress_${userId}_${id}`
 
-export const saveExamProgress = (userId, examId, progress) =>
-  setStorage(progressKey('exam', userId, examId), { ...progress, lastUpdateTime: new Date().toISOString() })
-
-export const getExamProgress = (userId, examId) => getStorage(progressKey('exam', userId, examId))
-
-export const clearExamProgress = (userId, examId) => removeStorage(progressKey('exam', userId, examId))
-
 export const savePracticeProgress = (userId, sessionId, progress) =>
   setStorage(progressKey('practice', userId, sessionId), { ...progress, lastUpdateTime: new Date().toISOString() })
 
@@ -58,7 +51,7 @@ export const cleanExpiredProgress = () => {
   const now = Date.now()
   const maxAge = 24 * 60 * 60 * 1000
   Object.keys(localStorage).forEach((key) => {
-    if (!key.startsWith('exam_progress_') && !key.startsWith('practice_progress_')) return
+    if (!key.startsWith('practice_progress_')) return
     const value = getStorage(key)
     const updatedAt = value?.lastUpdateTime ? new Date(value.lastUpdateTime).getTime() : 0
     if (!updatedAt || now - updatedAt > maxAge) {
@@ -72,9 +65,6 @@ export default {
   getStorage,
   removeStorage,
   clearStorage,
-  saveExamProgress,
-  getExamProgress,
-  clearExamProgress,
   savePracticeProgress,
   getPracticeProgress,
   clearPracticeProgress,
