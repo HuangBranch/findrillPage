@@ -1,29 +1,16 @@
+import { listChapterProgress } from '@/api/learning'
 import request from '@/utils/request'
+import { listChapters as listAdminChapters } from '@/api/admin'
 
-/**
- * 获取章节列表
- * @param {Object} params - { courseId }
- */
-export const getChapterList = (params) => {
-  return request({
-    url: '/chapters',
-    method: 'GET',
-    params
-  })
-}
-
-/**
- * 获取章节详情
- * @param {Number} chapterId - 章节ID
- */
-export const getChapterDetail = (chapterId) => {
-  return request({
-    url: `/chapters/${chapterId}`,
-    method: 'GET'
-  })
-}
+export const getChapterList = (curriculumId, config = {}) =>
+  request({ url: '/chapters/list', method: 'GET', params: { curriculumId }, ...config })
+export const getChapter = (id, config = {}) => request({ url: `/chapters/${id}`, method: 'GET', ...config })
+export const getChapterProgress = (params = {}) => listChapterProgress(params)
+export const getAdminChapterList = (params = {}, config = {}) => listAdminChapters(params, config)
 
 export default {
   getChapterList,
-  getChapterDetail
+  getChapter,
+  getChapterProgress,
+  getAdminChapterList
 }

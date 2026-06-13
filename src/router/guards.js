@@ -1,117 +1,45 @@
+import { ElMessage } from 'element-plus'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
-import { ElMessage, ElLoading } from 'element-plus'
 
-/**
- * 设置路由守卫
- * @param {Router} router - Vue Router 实例
- */
+const needs = (to, key) => to.matched.some((record) => record.meta?.[key])
+
 export const setupRouterGuards = (router) => {
-  router.beforeEach(async (to, from, next) => {
+  router.beforeEach(async (to) => {
     const authStore = useAuthStore()
     const menuStore = useMenuStore()
-    const isLoggedIn = authStore.ensureAuthState()
 
-    // 设置页面标题
-    document.title = to.meta.title ? `${to.meta.title} - 学生在线学习系统` : '学生在线学习系统'
+    document.title = to.meta.title ? `${to.meta.title} - Findrill` : 'Findrill'
 
-    // 如果是登录页，已登录则跳转到首页
     if (to.path === '/login') {
-      if (isLoggedIn) {
-        next('/courses')
+      if (authStore.isLoggedIn) return to.query.redirect || '/courses'
+      return true
+    }
+
+    if (needs(to, 'requiresAuth')) {
+      if (!authStore.isLoggedIn) {
+        const user = await authStore.hydrate()
+        if (!user) {
+          return { path: '/login', query: { redirect: to.fullPath } }
+        }
       } else {
-        next()
-      }
-      return
-    }
-
-    // 需要登录的页面
-    if (to.meta.requiresAuth) {
-      if (!isLoggedIn) {
-        ElMessage.warning('请先登录')
-        next({
-          path: '/login',
-          query: { redirect: to.fullPath }
-        })
-        return
-      }
-
-      // 邮箱验证检查（登录页和邮箱验证页除外）
-      if (
-        to.meta.requiresEmailVerified && 
-        !authStore.isEmailVerified && 
-        to.path !== '/email-verify'
-      ) {
-        ElMessage.warning('请先完成邮箱验证')
-        next('/email-verify')
-        return
+        authStore.hydrate().catch(() => {})
       }
     }
 
-    // 管理员路由访问检查（所有 /admin/ 开头的路径）
-    if (to.path.startsWith('/admin/')) {
-      // 先检查是否登录
-      if (!isLoggedIn) {
-        ElMessage.warning('请先登录')
-        next({
-          path: '/login',
-          query: { redirect: to.fullPath }
-        })
-        return
-      }
-
-      // 确保菜单已加载（动态路由已注册）
-      if (!menuStore.loaded) {
-        // 显示加载动画
-        const loading = ElLoading.service({
-          lock: true,
-          text: '正在加载权限信息...',
-          background: 'rgba(255, 255, 255, 0.9)'
-        })
-        
-        try {
-          await menuStore.loadMenus()
-          loading.close()
-          // 重新导航到目标路由，因为动态路由可能刚刚注册
-          next({ ...to, replace: true })
-          return
-        } catch (error) {
-          loading.close()
-          console.error('加载菜单失败:', error)
-          ElMessage.error('加载菜单失败，请重新登录')
-          next('/courses')
-          return
-        }
-      }
-
-      // 检查动态路由是否存在（权限验证）
-      const routes = router.getRoutes()
-      const routeExists = routes.some(route => route.path === to.path)
-      
-      if (!routeExists) {
-        ElMessage.error('您没有访问该页面的权限')
-        // 跳转到第一个有权限的菜单页面
-        if (menuStore.menus.length > 0) {
-          next(menuStore.menus[0].path)
-        } else {
-          next('/courses')
-        }
-        return
+    if (needs(to, 'requiresAdmin')) {
+      await menuStore.loadMenus()
+      if (!authStore.isAdmin && (menuStore.usingFallback || !menuStore.canAccessPath(to.path))) {
+        ElMessage.warning('当前账号没有后台访问权限')
+        return '/courses'
       }
     }
 
-    next()
+    return true
   })
 
-  // 全局后置守卫
-  router.afterEach(() => {
-    // 滚动到顶部
-    window.scrollTo(0, 0)
-  })
-
-  // 路由错误处理
   router.onError((error) => {
-    console.error('路由错误:', error)
+    console.error('Router error:', error)
     ElMessage.error('页面加载失败')
   })
 }

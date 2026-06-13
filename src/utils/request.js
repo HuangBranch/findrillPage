@@ -1,88 +1,112 @@
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
-import { useAuthStore } from '@/stores/auth'
 
-// 创建 axios 实例
+let loginDialogVisible = false
+
+const resolveApiBaseURL = () => {
+  const configured = import.meta.env.VITE_API_BASE_URL || '/api'
+  if (typeof window === 'undefined' || !configured.startsWith('http')) {
+    return configured
+  }
+
+  try {
+    const url = new URL(configured)
+    const isLocalPage = ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    const isLocalApi = ['localhost', '127.0.0.1'].includes(url.hostname)
+    if (isLocalPage && isLocalApi && window.location.hostname !== url.hostname) {
+      url.hostname = window.location.hostname
+      return url.toString().replace(/\/$/, '')
+    }
+  } catch {
+    return configured
+  }
+
+  return configured
+}
+
+const readCookie = (name) => {
+  if (typeof document === 'undefined') return ''
+  return document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(`${name}=`))
+    ?.split('=')
+    .slice(1)
+    .join('=') || ''
+}
+
 const request = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
-  timeout: 15000,
+  baseURL: resolveApiBaseURL(),
+  timeout: 20000,
   withCredentials: true
 })
 
-// // 请求拦截器
-// request.interceptors.request.use(
-//   (config) => {
-//     // 添加 token
-//     const token = localStorage.getItem('token')
-//     if (token) {
-//       config.headers.Authorization = `Bearer ${token}`
-//     }
-//     return config
-//   },
-//   (error) => {
-//     console.error('请求错误：', error)
-//     return Promise.reject(error)
-//   }
-// )
+request.interceptors.request.use((config) => {
+  const token = readCookie('token')
+  if (token && !config.headers?.token) {
+    config.headers = config.headers || {}
+    config.headers.token = decodeURIComponent(token)
+  }
+  return config
+})
 
-// 响应拦截器
 request.interceptors.response.use(
   (response) => {
-    // 兼容后端不同的字段命名：msg 或 message
-    const { code, msg, message, data } = response.data
-    const errorMessage = msg || message
+    const contentType = response.headers?.['content-type'] || ''
+    if (response.config.responseType === 'blob' || contentType.includes('application/octet-stream')) {
+      return response.data
+    }
+
+    const payload = response.data
+    if (!payload || typeof payload !== 'object' || !Object.prototype.hasOwnProperty.call(payload, 'code')) {
+      return payload
+    }
+
+    const { code, msg, message, data } = payload
     if (code === 200) {
       return data
     }
-    // 邮箱未验证
-    if (code === 403 && errorMessage && errorMessage.includes('邮箱未验证')) {
-      ElMessage.warning('请先完成邮箱验证')
-      router.push('/email-verify')
+
+    const errorMessage = msg || message || '请求失败'
+    if (code === 401) {
+      if (!loginDialogVisible) {
+        loginDialogVisible = true
+        ElMessageBox.alert('登录已失效，请重新登录。', '需要登录', {
+          confirmButtonText: '去登录',
+          type: 'warning'
+        }).finally(() => {
+          loginDialogVisible = false
+          localStorage.removeItem('auth:user')
+          router.push({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
+        })
+      }
       return Promise.reject(new Error(errorMessage))
     }
 
-    // 未登录或 token 失效
-    if (code === 401) {
-      ElMessageBox.alert('登录已过期，请重新登录', '提示', {
-        confirmButtonText: '确定',
-        type: 'warning'
-      }).then(() => {
-        const authStore = useAuthStore()
-        authStore.clearAuth()
-        router.push('/login')
-      })
-      return Promise.reject(new Error(errorMessage || '未授权'))
+    if (!response.config.silent) {
+      if (code === 403) {
+        ElMessage.warning(errorMessage || '当前账号没有权限访问该资源')
+      } else {
+        ElMessage.error(errorMessage)
+      }
     }
-
-    // 其他错误
-    ElMessage.error(errorMessage || '请求失败')
-    return Promise.reject(new Error(errorMessage || '请求失败'))
+    return Promise.reject(new Error(errorMessage))
   },
   (error) => {
-    console.error('响应错误：', error)
-
-    if (error.response) {
-      const { status } = error.response
-      switch (status) {
-        case 400:
-          ElMessage.error('请求参数错误')
-          break
-        case 404:
-          ElMessage.error('请求的资源不存在')
-          break
-        case 500:
-          ElMessage.error('服务器错误')
-          break
-        default:
-          ElMessage.error('网络错误，请稍后重试')
+    const silent = error.config?.silent
+    if (!silent) {
+      if (error.code === 'ECONNABORTED') {
+        ElMessage.error('请求超时，请检查后端服务是否正常。')
+      } else if (error.response?.status === 401) {
+        ElMessage.warning('请先登录')
+      } else if (error.response?.status === 403) {
+        ElMessage.warning('当前账号没有权限访问该资源')
+      } else if (error.response?.status >= 500) {
+        ElMessage.error('服务器异常，请稍后再试。')
+      } else {
+        ElMessage.error(error.message || '网络连接失败')
       }
-    } else if (error.message.includes('timeout')) {
-      ElMessage.error('请求超时，请检查网络')
-    } else {
-      ElMessage.error('网络连接失败')
     }
-
     return Promise.reject(error)
   }
 )

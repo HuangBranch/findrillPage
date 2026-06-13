@@ -1,244 +1,156 @@
 import request from '@/utils/request'
 
-/**
- * ========== 用户管理 ==========
- */
+const get = (url, params, config = {}) => request({ url, method: 'GET', params, ...config })
+const post = (url, data, config = {}) => request({ url, method: 'POST', data, ...config })
+const put = (url, data, config = {}) => request({ url, method: 'PUT', data, ...config })
+const patch = (url, data, config = {}) => request({ url, method: 'PATCH', data, ...config })
+const del = (url, config = {}) => request({ url, method: 'DELETE', ...config })
 
-// 获取用户列表
-export const getUserList = (params) => {
-  return request({ url: '/admin/users/', method: 'GET', params })
+export const listUsers = (params) => get('/admin/users/list', params)
+export const getUser = (id) => get(`/admin/users/${id}`)
+export const createUser = (data) => post('/admin/users', data)
+export const updateUser = (id, data) => put(`/admin/users/${id}`, data)
+export const resetUserPassword = (id, data) => patch(`/admin/users/${id}/reset-password`, data)
+export const updateUserStatus = (id, data) => patch(`/admin/users/${id}/status`, data)
+export const assignUserRole = (id, data) => put(`/admin/users/${id}/role`, data)
+export const deleteUser = (id) => del(`/admin/users/${id}`)
+
+export const listRoles = (params) => get('/admin/roles/list', params)
+export const getRoleDetail = (id) => get(`/admin/roles/${id}`)
+export const createRole = (data) => post('/admin/roles', data)
+export const updateRole = (id, data) => put(`/admin/roles/${id}`, data)
+export const assignRolePermissions = (id, data) => put(`/admin/roles/${id}/permissions`, data)
+export const listPermissions = () => get('/admin/permissions/list')
+export const listAdminMenu = (config = {}) => get('/admin/permissions/menu', undefined, config)
+
+export const listCourses = (params, config = {}) => get('/admin/courses/list', params, config)
+export const getCourse = (id) => get(`/admin/courses/${id}`)
+export const createCourse = (data) => post('/admin/courses', data)
+export const updateCourse = (id, data) => put(`/admin/courses/${id}`, data)
+export const updateCourseStatus = (id, enabled) => put(`/admin/courses/${id}/status`, { enabled })
+export const deleteCourse = (id) => del(`/admin/courses/${id}`)
+
+export const listChapters = (params, config = {}) => get('/admin/chapters/list', params, config)
+export const getChapter = (id) => get(`/admin/chapters/${id}`)
+export const createChapter = (data) => post('/admin/chapters', data)
+export const updateChapter = (id, data) => put(`/admin/chapters/${id}`, data)
+export const updateChapterStatus = (id, enabled) => put(`/admin/chapters/${id}/status`, { enabled })
+export const sortChapters = (data) => put('/admin/chapters/sort', data)
+export const deleteChapter = (id) => del(`/admin/chapters/${id}`)
+
+export const listKnowledgeTree = (params = {}) => get('/admin/knowledge-points/tree', params)
+export const getKnowledgePoint = (id) => get(`/admin/knowledge-points/${id}`)
+export const createKnowledgePoint = (data) => post('/admin/knowledge-points', data)
+export const updateKnowledgePoint = (id, data) => put(`/admin/knowledge-points/${id}`, data)
+export const updateKnowledgePointStatus = (id, enabled) => put(`/admin/knowledge-points/${id}/status`, { enabled })
+export const deleteKnowledgePoint = (id) => del(`/admin/knowledge-points/${id}`)
+
+export const listQuestions = (params) => get('/admin/questions/list', params)
+export const getQuestionDetail = (id) => get(`/admin/questions/${id}`)
+export const createQuestion = (data) => post('/admin/questions', data)
+export const updateQuestion = (id, data) => put(`/admin/questions/${id}`, data)
+export const deleteQuestion = (id) => del(`/admin/questions/${id}`)
+export const bindQuestionKnowledge = (id, data) => put(`/admin/questions/${id}/knowledge-points`, data)
+export const submitQuestionAudit = (id, data = {}) => post(`/admin/questions/${id}/submit`, data)
+export const publishQuestion = (id, data = {}) => post(`/admin/questions/${id}/publish`, data)
+export const disableQuestion = (id, data = {}) => put(`/admin/questions/${id}/disable`, data)
+export const listQuestionVersions = (id) => get(`/admin/questions/${id}/versions`)
+export const listQuestionAuditLogs = (id) => get(`/admin/questions/${id}/audit-logs`)
+
+export const getImportTemplate = () => get('/admin/question-imports/template')
+export const importQuestions = (data) => post('/admin/question-imports', data)
+export const importQuestionExcel = (file) => {
+  const data = new FormData()
+  data.append('file', file)
+  return post('/admin/question-imports/excel', data, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }
+export const listImportBatches = (params) => get('/admin/question-imports/list', params)
+export const getImportBatch = (id) => get(`/admin/question-imports/${id}`)
+export const listImportErrors = (id) => get(`/admin/question-imports/${id}/errors`)
 
-// 创建用户
-export const createUser = (data) => {
-  return request({ url: '/admin/users', method: 'POST', data })
+export const listAuditQuestions = (params) => get('/admin/question-audits/list', params)
+export const approveQuestion = (id, data = {}) => post(`/admin/question-audits/${id}/approve`, data)
+export const rejectQuestion = (id, data = {}) => post(`/admin/question-audits/${id}/reject`, data)
+
+export const listQuestionReports = (params) => get('/admin/question-reports/list', params)
+export const handleQuestionReport = (id, data) => put(`/admin/question-reports/${id}/handle`, data)
+
+export const listExamConfigsAdmin = (params) => get('/admin/exam-configs/list', params)
+export const getExamConfig = (id) => get(`/admin/exam-configs/${id}`)
+export const createExamConfig = (data) => post('/admin/exam-configs', data)
+export const updateExamConfig = (id, data) => put(`/admin/exam-configs/${id}`, data)
+export const updateExamConfigStatus = (id, enabled) => put(`/admin/exam-configs/${id}/status`, { enabled })
+export const deleteExamConfig = (id) => del(`/admin/exam-configs/${id}`)
+
+export const listPendingGradings = () => get('/admin/gradings/pending')
+export const gradeAnswer = (answerId, data) => post(`/admin/gradings/${answerId}`, data)
+
+export const getOverviewStats = () => get('/admin/statistics/overview')
+export const getQuestionErrorStats = () => get('/admin/statistics/question-errors')
+export const getChapterMasteryStats = () => get('/admin/statistics/chapter-mastery')
+
+export const getSystemInitStatus = () => get('/admin/system/init/status')
+export const initSystem = (data) => post('/admin/system/init', data)
+
+export const uploadMediaAsset = (file, ownerType, ownerId) => {
+  const data = new FormData()
+  data.append('file', file)
+  return post('/admin/media-assets/upload', data, {
+    params: { ownerType, ownerId },
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
 }
-
-// 更新用户
-export const updateUser = (userId, data) => {
-  return request({ url: `/admin/users/${userId}`, method: 'PUT', data })
-}
-
-// 删除用户
-export const deleteUser = (userId) => {
-  return request({ url: `/admin/users/${userId}`, method: 'DELETE' })
-}
-
-// 重置用户密码
-export const resetUserPassword = (userId, data) => {
-  return request({ url: `/admin/users/${userId}/reset-password`, method: 'PATCH', data })
-}
-
-// 获取角色列表
-export const getRoleList = () => {
-  return request({ url: '/admin/roles', method: 'GET' })
-}
-
-// 创建角色
-export const createRole = (data) => {
-  return request({ url: '/admin/roles', method: 'POST', data })
-}
-
-// 编辑角色
-export const updateRole = (id, data) => {
-  return request({ url: `/admin/roles/${id}`, method: 'PUT', data })
-}
-
-// 获取角色详情
-export const getRoleDetail = (id) => {
-  return request({ url: `/admin/roles/${id}`, method: 'GET' })
-}
-
-// 删除角色
-export const deleteRole = (id) => {
-  return request({ url: `/admin/roles/${id}`, method: 'DELETE' })
-}
-
-// 获取权限列表
-export const getPermissionList = () => {
-  return request({ url: '/admin/permissions', method: 'GET' })
-}
-
-// 获取菜单列表（动态菜单）
-export const getMenuList = () => {
-  return request({ url: '/menu', method: 'GET' })
-}
-
-/**
- * ========== 课程管理 ==========
- */
-
-// 获取课程列表
-export const getAdminCourseList = (params) => {
-  return request({ url: '/admin/courses', method: 'GET', params })
-}
-
-// 获取课程字典（下拉选项）
-export const getCourseDict = () => {
-  return request({ url: '/admin/courses/dict', method: 'GET' })
-}
-
-// 创建课程
-export const createCourse = (data) => {
-  return request({ url: '/admin/courses', method: 'POST', data })
-}
-
-// 更新课程
-export const updateCourse = (courseId, data) => {
-  return request({ url: `/admin/courses/${courseId}`, method: 'PUT', data })
-}
-
-// 删除课程
-export const deleteCourse = (courseId) => {
-  return request({ url: `/admin/courses/${courseId}`, method: 'DELETE' })
-}
-
-/**
- * ========== 章节管理 ==========
- */
-
-// 获取章节列表
-export const getAdminChapterList = (params) => {
-  return request({ url: '/admin/chapters', method: 'GET', params })
-}
-
-// 获取章节字典（根据课程ID）
-export const getChapterDict = (courseId) => {
-  return request({ url: `/admin/chapters/dict/${courseId}`, method: 'GET' })
-}
-
-// 创建章节
-export const createChapter = (data) => {
-  return request({ url: '/admin/chapters', method: 'POST', data })
-}
-
-// 更新章节
-export const updateChapter = (chapterId, data) => {
-  return request({ url: `/admin/chapters/${chapterId}`, method: 'PUT', data })
-}
-
-// 删除章节
-export const deleteChapter = (chapterId) => {
-  return request({ url: `/admin/chapters/${chapterId}`, method: 'DELETE' })
-}
-
-/**
- * ========== 题目管理 ==========
- */
-
-// 获取题目列表
-export const getQuestionList = (params) => {
-  return request({ url: '/admin/questions', method: 'GET', params })
-}
-
-// 获取题目详情
-export const getQuestionDetail = (questionId) => {
-  return request({ url: `/admin/questions/${questionId}`, method: 'GET' })
-}
-
-// 单题目上传
-export const createQuestion = (data) => {
-  return request({ url: '/admin/questions', method: 'POST', data })
-}
-
-// 批量上传题目
-export const batchAddQuestions = (data) => {
-  return request({ url: '/admin/questions/batchAdd', method: 'POST', data })
-}
-
-// 更新题目
-export const updateQuestion = (questionId, data) => {
-  return request({ url: `/admin/questions/${questionId}`, method: 'PUT', data })
-}
-
-// 删除题目（批量）
-export const deleteQuestion = (ids) => {
-  return request({ url: '/admin/questions/delete', method: 'POST', data: ids })
-}
-
-// Excel 批量上传
-export const batchUploadQuestions = (data) => {
-  return request({ url: '/admin/questions/batch-upload', method: 'POST', data })
-}
-
-// JSON 数据上传
-export const jsonUploadQuestions = (data) => {
-  return request({ url: '/admin/questions/json-upload', method: 'POST', data })
-}
-
-// 批量删除题目
-export const batchDeleteQuestions = (data) => {
-  return request({ url: '/admin/questions/batch-delete', method: 'POST', data })
-}
-
-/**
- * ========== 记录管理 ==========
- */
-
-// 获取考试/练习记录列表
-export const getTraceList = (params) => {
-  return request({ url: '/admin/exam', method: 'GET', params })
-}
-
-// 获取记录详情
-export const getTraceDetail = (traceId) => {
-  return request({ url: `/admin/exam/${traceId}`, method: 'GET' })
-}
-
-// 删除记录（单个或批量）
-export const deleteTraces = (ids) => {
-  return request({ url: '/admin/exam/delete', method: 'POST', data: ids })
-}
-
-/**
- * ========== 统计数据 ==========
- */
-
-// 获取后台统计数据
-export const getAdminStats = () => {
-  return request({ url: '/admin/count', method: 'GET' })
-}
-
-// 获取考试情况统计
-export const getExamStats = () => {
-  return request({ url: '/admin/count/exam', method: 'GET' })
-}
-
-// 获取用户增长趋势
-export const getUserGrowth = () => {
-  return request({ url: '/admin/count/growth', method: 'GET' })
-}
+export const createMediaAsset = (data) => post('/admin/media-assets', data)
+export const listMediaAssets = (params) => get('/admin/media-assets/list', params)
+export const bindMediaAsset = (id, data) => put(`/admin/media-assets/${id}/owner`, data)
+export const deleteMediaAsset = (id) => del(`/admin/media-assets/${id}`)
 
 export default {
-  // 用户管理
-  getUserList,
+  listUsers,
+  getUser,
   createUser,
   updateUser,
+  resetUserPassword,
+  updateUserStatus,
+  assignUserRole,
   deleteUser,
-  // 课程管理
-  getAdminCourseList,
+  listRoles,
+  getRoleDetail,
+  createRole,
+  updateRole,
+  assignRolePermissions,
+  listPermissions,
+  listAdminMenu,
+  listCourses,
+  getCourse,
   createCourse,
   updateCourse,
+  updateCourseStatus,
   deleteCourse,
-  // 章节管理
-  getAdminChapterList,
+  listChapters,
+  getChapter,
   createChapter,
   updateChapter,
+  updateChapterStatus,
+  sortChapters,
   deleteChapter,
-  // 题目管理
-  getQuestionList,
+  listKnowledgeTree,
+  listQuestions,
+  getQuestionDetail,
   createQuestion,
   updateQuestion,
   deleteQuestion,
-  batchUploadQuestions,
-  jsonUploadQuestions,
-  batchDeleteQuestions,
-  // 记录管理
-  getTraceList,
-  getTraceDetail,
-  deleteTraces,
-  // 统计
-  getAdminStats,
-  getExamStats,
-  getUserGrowth
+  submitQuestionAudit,
+  publishQuestion,
+  disableQuestion,
+  listExamConfigsAdmin,
+  createExamConfig,
+  updateExamConfig,
+  updateExamConfigStatus,
+  deleteExamConfig,
+  getOverviewStats,
+  getQuestionErrorStats,
+  getChapterMasteryStats
 }

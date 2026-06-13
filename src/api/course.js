@@ -1,30 +1,16 @@
+import { listExamConfigs } from '@/api/exam'
 import request from '@/utils/request'
+import { listCourses as listAdminCourses } from '@/api/admin'
 
-/**
- * 获取课程列表
- * @param {Object} params - { keyword, page, size }
- */
-export const getCourseList = (params) => {
-  return request({
-    url: '/courses',
-    method: 'GET',
-    params
-  })
-}
-
-/**
- * 获取课程详情
- * @param {Number} courseId - 课程ID
- */
-export const getCourseDetail = (courseId) => {
-  return request({
-    url: `/courses/${courseId}`,
-    method: 'GET'
-  })
-}
-
+export const getCourseList = (params = {}, config = {}) =>
+  request({ url: '/courses/list', method: 'GET', params, ...config })
+export const getCourse = (id, config = {}) => request({ url: `/courses/${id}`, method: 'GET', ...config })
+export const getCourseConfigs = (params = {}) => listExamConfigs(params)
+export const getAdminCourseList = (params = {}, config = {}) => listAdminCourses(params, config)
 
 export default {
   getCourseList,
-  getCourseDetail
+  getCourse,
+  getCourseConfigs,
+  getAdminCourseList
 }

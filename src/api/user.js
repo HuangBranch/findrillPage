@@ -1,119 +1,36 @@
-import request from '@/utils/request'
+import {
+  getCurrentUser,
+  updateCurrentUser,
+  updatePassword
+} from '@/api/auth'
+import {
+  getExamHistory
+} from '@/api/exam'
+import {
+  getMyTrend,
+  listChapterProgress,
+  listQuestionStates,
+  listMyQuestionReports
+} from '@/api/learning'
 
-/**
- * 获取个人信息
- */
-export const getUserInfo = () => {
-  return request({
-    url: '/me',
-    method: 'GET'
-  })
-}
-
-/**
- * 更新个人信息
- * @param {Object} data - 个人信息
- * @param {Number} id
- */
-
-export const updateUserInfo = (id,data) => {
-  return request({
-    url: `/profile/${id}`,
-    method: 'PUT',
-    data
-  })
-}
-/**
- * 更新头像
- * @param {formdata} data - 头像
- */
-
-export const upavatar = (data) => {
-  return request({
-    url: "/avatar",
-    method: 'POST',
-    data
-  })
-}
-/**
- * 个人页面统计数据
- *  - 头像
- */
-
-export const count = () => {
-  return request({
-    url: "/count",
-    method: 'GET',
-  })
-}
-/**
- * 修改密码
- * @param {Object} data - { oldPassword, newPassword }
- * @returns {Promise} 请求结果
- */
-export const changePassword = (data) => {
-  return request({
-    url: '/update/password',
-    method: 'POST',
-    data
-  })
-}
-
-/**
- * 修改邮箱并发送新邮箱验证邮件
- * @param {Object} data - { email, password }
- * @returns {Promise<{email: string}>} 返回新邮箱
- */
-export const updateEmail = (data) => {
-  return request({
-    url: '/update/email',
-    method: 'POST',
-    data
-  })
-}
-
-/**
- * 获取考试记录
- * @param {Object} params - { page, size }
- */
-export const getExamRecords = (params) => {
-  return request({
-    url: '/me/exam-records',
-    method: 'GET',
-    params
-  })
-}
-
-/**
- * 获取练习记录
- * @param {Object} params - { page, size }
- */
-export const getPracticeRecords = (params) => {
-  return request({
-    url: '/me/practice-records',
-    method: 'GET',
-    params
-  })
-}
-
-/**
- * 获取个人统计
- */
-export const getUserStats = () => {
-  return request({
-    url: '/me/stats',
-    method: 'GET'
-  })
-}
+export const getUserInfo = getCurrentUser
+export const updateUserInfo = updateCurrentUser
+export const changePassword = updatePassword
+export const getExamRecords = getExamHistory
+export const getPracticeRecords = getExamHistory
+export const getLearningTrend = getMyTrend
+export const getChapterProgress = listChapterProgress
+export const getQuestionStates = listQuestionStates
+export const getMyReports = listMyQuestionReports
 
 export default {
   getUserInfo,
   updateUserInfo,
   changePassword,
-  updateEmail,
   getExamRecords,
   getPracticeRecords,
-  getUserStats,
-  count,
-  upavatar,
+  getLearningTrend,
+  getChapterProgress,
+  getQuestionStates,
+  getMyReports
 }

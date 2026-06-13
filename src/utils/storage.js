@@ -1,117 +1,68 @@
-/**
- * localStorage 工具类
- */
-
-// 存储数据
 export const setStorage = (key, value) => {
   try {
-    const data = JSON.stringify(value)
-    localStorage.setItem(key, data)
+    localStorage.setItem(key, JSON.stringify(value))
     return true
   } catch (error) {
-    console.error('存储失败：', error)
+    console.error('Failed to write localStorage:', error)
     return false
   }
 }
 
-// 获取数据
 export const getStorage = (key, defaultValue = null) => {
   try {
-    const data = localStorage.getItem(key)
-    return data ? JSON.parse(data) : defaultValue
+    const value = localStorage.getItem(key)
+    return value ? JSON.parse(value) : defaultValue
   } catch (error) {
-    console.error('读取失败：', error)
+    console.error('Failed to read localStorage:', error)
     return defaultValue
   }
 }
 
-// 删除数据
 export const removeStorage = (key) => {
   try {
     localStorage.removeItem(key)
     return true
   } catch (error) {
-    console.error('删除失败：', error)
+    console.error('Failed to remove localStorage:', error)
     return false
   }
 }
 
-// 清空所有数据
 export const clearStorage = () => {
   try {
     localStorage.clear()
     return true
   } catch (error) {
-    console.error('清空失败：', error)
+    console.error('Failed to clear localStorage:', error)
     return false
   }
 }
 
-/**
- * 答题进度存储
- */
+const progressKey = (type, userId, id) => `${type}_progress_${userId}_${id}`
 
-// 保存考试进度
-export const saveExamProgress = (userId, examId, progress) => {
-  const key = `exam_progress_${userId}_${examId}`
-  return setStorage(key, {
-    ...progress,
-    lastUpdateTime: new Date().toISOString()
-  })
-}
+export const saveExamProgress = (userId, examId, progress) =>
+  setStorage(progressKey('exam', userId, examId), { ...progress, lastUpdateTime: new Date().toISOString() })
 
-// 获取考试进度
-export const getExamProgress = (userId, examId) => {
-  const key = `exam_progress_${userId}_${examId}`
-  return getStorage(key)
-}
+export const getExamProgress = (userId, examId) => getStorage(progressKey('exam', userId, examId))
 
-// 清除考试进度
-export const clearExamProgress = (userId, examId) => {
-  const key = `exam_progress_${userId}_${examId}`
-  return removeStorage(key)
-}
+export const clearExamProgress = (userId, examId) => removeStorage(progressKey('exam', userId, examId))
 
-// 保存刷题进度
-export const savePracticeProgress = (userId, sessionId, progress) => {
-  const key = `practice_progress_${userId}_${sessionId}`
-  return setStorage(key, {
-    ...progress,
-    lastUpdateTime: new Date().toISOString()
-  })
-}
+export const savePracticeProgress = (userId, sessionId, progress) =>
+  setStorage(progressKey('practice', userId, sessionId), { ...progress, lastUpdateTime: new Date().toISOString() })
 
-// 获取刷题进度
-export const getPracticeProgress = (userId, sessionId) => {
-  const key = `practice_progress_${userId}_${sessionId}`
-  return getStorage(key)
-}
+export const getPracticeProgress = (userId, sessionId) => getStorage(progressKey('practice', userId, sessionId))
 
-// 清除刷题进度
-export const clearPracticeProgress = (userId, sessionId) => {
-  const key = `practice_progress_${userId}_${sessionId}`
-  return removeStorage(key)
-}
+export const clearPracticeProgress = (userId, sessionId) => removeStorage(progressKey('practice', userId, sessionId))
 
-// 清理过期进度（超过24小时）
 export const cleanExpiredProgress = () => {
-  const now = new Date().getTime()
-  const maxAge = 24 * 60 * 60 * 1000 // 24小时
-
+  const now = Date.now()
+  const maxAge = 24 * 60 * 60 * 1000
   Object.keys(localStorage).forEach((key) => {
-    if (key.startsWith('exam_progress_') || key.startsWith('practice_progress_')) {
-      try {
-        const data = getStorage(key)
-        if (data && data.lastUpdateTime) {
-          const updateTime = new Date(data.lastUpdateTime).getTime()
-          if (now - updateTime > maxAge) {
-            removeStorage(key)
-          }
-        }
-      } catch (error) {
-        // 如果解析失败，直接删除
-        removeStorage(key)
-      }
+    if (!key.startsWith('exam_progress_') && !key.startsWith('practice_progress_')) return
+    const value = getStorage(key)
+    const updatedAt = value?.lastUpdateTime ? new Date(value.lastUpdateTime).getTime() : 0
+    if (!updatedAt || now - updatedAt > maxAge) {
+      removeStorage(key)
     }
   })
 }

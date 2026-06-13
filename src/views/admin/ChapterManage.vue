@@ -1,384 +1,142 @@
 <template>
-    <AdminLayout>
-        <div class="chapter-manage-page">
-            <el-card>
-                <!-- 搜索栏 -->
-                <div class="search-bar">
-                    <el-select v-model="searchCourseName" placeholder="选择课程" style="width: 200px" clearable
-                        @change="handleSearch">
-                        <el-option v-for="course in courseList" :key="course.id" :label="course.name"
-                            :value="course.name" />
-                    </el-select>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">章节管理</h1>
+        <p class="page-subtitle">按课程维护章节、排序和启停状态。</p>
+      </div>
+      <el-button type="primary" @click="openCreate">新增章节</el-button>
+    </div>
 
-                    <el-input v-model="searchKeyword" placeholder="搜索章节名称" style="width: 250px; margin-left: 12px"
-                        clearable @input="handleSearch">
-                        <template #prefix>
-                            <el-icon>
-                                <Search />
-                            </el-icon>
-                        </template>
-                    </el-input>
+    <section class="surface">
+      <div class="toolbar">
+        <el-select v-model="query.curriculumId" clearable filterable placeholder="课程" style="width: 220px" @change="loadData">
+          <el-option v-for="course in courses" :key="course.id" :label="course.name" :value="course.id" />
+        </el-select>
+        <el-select v-model="query.enabled" clearable placeholder="状态" style="width: 150px" @change="loadData">
+          <el-option label="启用" :value="true" />
+          <el-option label="停用" :value="false" />
+        </el-select>
+        <el-button @click="loadData">查询</el-button>
+      </div>
 
-                    <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
-                        新增章节
-                    </el-button>
-                </div>
+      <el-table :data="rows" style="width: 100%; margin-top: 14px">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column label="课程" min-width="140">
+          <template #default="{ row }">{{ courseName(row.curriculumId) }}</template>
+        </el-table-column>
+        <el-table-column prop="name" label="章节名称" min-width="180" />
+        <el-table-column prop="sort" label="排序" width="90" />
+        <el-table-column prop="description" label="说明" min-width="200" show-overflow-tooltip />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }"><el-switch v-model="row.isUse" @change="toggle(row)" /></template>
+        </el-table-column>
+        <el-table-column label="操作" width="140" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </section>
 
-                <!-- 章节表格 -->
-                <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading">
-                    <el-table-column prop="id" label="ID" width="80" />
-                    <el-table-column prop="curriculumName" label="所属课程名称" min-width="150" />
-                    <el-table-column prop="name" label="章节名称" min-width="180" />
-                    <el-table-column prop="description" label="章节描述" min-width="200" show-overflow-tooltip />
-                    <el-table-column prop="questionCount" label="题目数" width="100" align="center" />
-                    <el-table-column label="状态" width="100">
-                        <template #default="{ row }">
-                            <el-tag :type="row.isUse ? 'success' : 'info'">
-                                {{ row.isUse ? '启用' : '禁用' }}
-                            </el-tag>
-                        </template>
-                    </el-table-column>
-                    <el-table-column prop="createTime" label="创建时间" width="180" />
-                    <el-table-column label="操作" width="150" fixed="right">
-                        <template #default="{ row }">
-                            <el-button link type="primary" size="small" @click="handleEdit(row)">
-                                编辑
-                            </el-button>
-                            <el-button link type="danger" size="small" @click="handleDelete(row)">
-                                删除
-                            </el-button>
-                        </template>
-                    </el-table-column>
-                </el-table>
-
-                <!-- 分页 -->
-                <div class="pagination">
-                    <el-pagination v-model:current-page="currentPage" v-model:page-size="pageSize"
-                        :page-sizes="[10, 20, 50, 100]" layout="total, sizes, prev, pager, next, jumper" :total="total"
-                        @size-change="handlePageChange" @current-change="handlePageChange" />
-                </div>
-            </el-card>
-
-            <!-- 新增/编辑对话框 -->
-            <el-dialog v-model="dialogVisible" :title="dialogTitle" width="90%" :style="{ maxWidth: '600px' }"
-                @close="handleDialogClose">
-                <el-form ref="formRef" :model="formData" :rules="formRules" label-width="100px">
-                    <el-form-item label="所属课程" prop="courseId">
-                        <el-select v-model="formData.courseId" placeholder="请选择课程" style="width: 100%" clearable>
-                            <el-option v-for="course in courseList" :key="course.id" :label="course.name"
-                                :value="course.id" />
-                        </el-select>
-                    </el-form-item>
-
-                    <el-form-item label="章节名称" prop="name">
-                        <el-input v-model="formData.name" placeholder="请输入章节名称" />
-                    </el-form-item>
-
-                    <el-form-item label="章节描述" prop="description">
-                        <el-input v-model="formData.description" type="textarea" :rows="4" placeholder="请输入章节描述" />
-                    </el-form-item>
-
-                    <el-form-item label="是否启用" prop="isUse">
-                        <el-switch v-model="formData.isUse" active-text="启用" inactive-text="禁用" />
-                    </el-form-item>
-                </el-form>
-
-                <template #footer>
-                    <el-button @click="dialogVisible = false">取消</el-button>
-                    <el-button type="primary" @click="handleSubmit" :loading="submitting">
-                        确定
-                    </el-button>
-                </template>
-            </el-dialog>
+    <el-dialog v-model="formVisible" :title="editingId ? '编辑章节' : '新增章节'" width="min(560px, 94%)">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <el-form-item label="课程" prop="curriculumId">
+          <el-select v-model="form.curriculumId" filterable style="width: 100%">
+            <el-option v-for="course in courses" :key="course.id" :label="course.name" :value="course.id" />
+          </el-select>
+        </el-form-item>
+        <div class="form-grid">
+          <el-form-item label="章节名称" prop="name"><el-input v-model.trim="form.name" /></el-form-item>
+          <el-form-item label="排序"><el-input-number v-model="form.sort" :min="0" style="width: 100%" /></el-form-item>
         </div>
-    </AdminLayout>
+        <el-form-item label="说明"><el-input v-model="form.description" type="textarea" :rows="3" /></el-form-item>
+        <el-form-item label="状态"><el-switch v-model="form.isUse" active-text="启用" inactive-text="停用" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="formVisible = false">取消</el-button>
+        <el-button type="primary" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import {
-    createChapter,
-    deleteChapter,
-    getAdminChapterList,
-    getAdminCourseList,
-    updateChapter,
-    updateCourse
-} from "@/api/admin.js";
+import { createChapter, deleteChapter, listChapters, listCourses, updateChapter, updateChapterStatus } from '@/api/admin'
 
-const courseList = ref([])
-
-// 搜索条件
-const searchCourseName = ref('')
-const searchKeyword = ref('')
-
-// 表格数据
-const loading = ref(false)
-const tableData = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
-const total = ref(0)
-
-// 对话框
-const dialogVisible = ref(false)
-const isEdit = ref(false)
+const route = useRoute()
+const rows = ref([])
+const courses = ref([])
+const formVisible = ref(false)
+const editingId = ref()
 const formRef = ref()
-const submitting = ref(false)
-
-const dialogTitle = computed(() => isEdit.value ? '编辑章节' : '新增章节')
-
-// 表单数据
-const formData = reactive({
-    id: null,
-    courseId: null,
-    name: '',
-    description: '',
-    isUse: true,
-    sort: ''
-})
-
-// 表单验证规则
-const formRules = {
-    courseId: [
-        { required: true, message: '请选择课程', trigger: 'change' }
-    ],
-    name: [
-        { required: true, message: '请输入章节名称', trigger: 'blur' },
-        { min: 2, max: 50, message: '长度在 2 到 50 个字符', trigger: 'blur' }
-    ],
-    description: [
-        { max: 200, message: '长度不超过 200 个字符', trigger: 'blur' }
-    ]
+const query = reactive({ curriculumId: route.query.curriculumId ? Number(route.query.curriculumId) : undefined, enabled: undefined })
+const form = reactive({ curriculumId: undefined, name: '', description: '', sort: 0, isUse: true })
+const rules = {
+  curriculumId: [{ required: true, message: '请选择课程', trigger: 'change' }],
+  name: [{ required: true, message: '请输入章节名称', trigger: 'blur' }]
 }
-//加载课程数据
-const courseData = async () => {
-    try {
-        const params = {
-            isUse: "",
-            name: ""
-        }
-        const cdata = await getAdminCourseList(params)
-        // 响应拦截器已经返回了 data，直接使用
-        if (cdata) {
-            courseList.value = cdata
-        }
-    } catch (error) {
-        console.error('获取课程列表失败:', error)
-        ElMessage.error('获取课程列表失败')
-    }
-}
-courseData()
-// 加载数据
+
+const courseName = (id) => courses.value.find((item) => item.id === id)?.name || `课程 #${id}`
+
 const loadData = async () => {
-    loading.value = true
-    try {
-        const params = {
-            page: currentPage.value,
-            pageSize: pageSize.value,
-            chapterName: searchKeyword.value,
-            curriculumName: searchCourseName.value,
-        }
-
-        const data = await getAdminChapterList(params)
-        if (data) {
-            // 处理返回数据,映射字段
-            tableData.value = data.list
-            total.value = data.total || 0
-        } else {
-            tableData.value = []
-            total.value = 0
-        }
-    } catch (error) {
-        console.error('获取章节列表失败:', error)
-        ElMessage.error('获取章节列表失败')
-        tableData.value = []
-        total.value = 0
-    } finally {
-        loading.value = false
-    }
+  rows.value = await listChapters(query)
 }
 
-const handleSearch = () => {
-    currentPage.value = 1
-    loadData()
+const openCreate = () => {
+  editingId.value = undefined
+  Object.assign(form, { curriculumId: query.curriculumId || courses.value[0]?.id, name: '', description: '', sort: 0, isUse: true })
+  formVisible.value = true
 }
 
-const handlePageChange = () => {
-    loadData()
+const openEdit = (row) => {
+  editingId.value = row.id
+  Object.assign(form, row)
+  formVisible.value = true
 }
 
-const handleAdd = () => {
-    isEdit.value = false
-    Object.assign(formData, {
-        id: null,
-        courseId: null,
-        name: '',
-        description: '',
-        isUse: true
-    })
-    dialogVisible.value = true
+const save = async () => {
+  await formRef.value.validate()
+  if (editingId.value) await updateChapter(editingId.value, form)
+  else await createChapter(form)
+  ElMessage.success('保存成功')
+  formVisible.value = false
+  loadData()
 }
 
-const handleEdit = (row) => {
-    isEdit.value = true
-    Object.assign(formData, {
-        id: row.id,
-        courseId: Number(row.curriculumId) || row.courseId,
-        name: row.name,
-        description: row.description,
-        isUse: row.isUse
-    })
-    dialogVisible.value = true
+const toggle = async (row) => {
+  await updateChapterStatus(row.id, row.isUse)
+  ElMessage.success('状态已更新')
 }
 
-const handleDelete = async (row) => {
-    try {
-        // 等待用户确认删除操作（ElMessageBox.confirm 本身返回 Promise）
-        await ElMessageBox.confirm(
-            `确定要删除章节"${row.name}"吗？删除后该章节下的所有题目都将被删除，此操作不可恢复。`,
-            '警告',
-            {
-                confirmButtonText: '确定',
-                cancelButtonText: '取消',
-                type: 'warning'
-            }
-        );
-
-        // 等待删除接口执行完成（关键：确保删除操作先完成）
-        await deleteChapter(row.id);
-        // 等待数据重新加载完成（确保加载的是删除后的最新数据）
-        await loadData();
-        // 只有上面两步都完成，才提示删除成功
-        ElMessage.success('删除成功');
-    } catch (error) {
-        // 区分“用户取消删除”和“真正的接口错误”
-        if (error !== 'cancel') {
-            ElMessage.error('删除失败：' + (error.message || '服务器异常'));
-            console.error('删除章节失败：', error); // 便于调试问题
-        }
-        // 如果是用户取消（error === 'cancel'），则什么都不做
-    }
+const remove = async (row) => {
+  await ElMessageBox.confirm(`确认删除章节 ${row.name}？`, '删除确认', { type: 'warning' })
+  await deleteChapter(row.id)
+  ElMessage.success('已删除')
+  loadData()
 }
 
-const handleSubmit = async () => {
-    await formRef.value.validate(async (valid) => {
-        if (!valid) return
-
-        submitting.value = true
-
-        try {
-            if (isEdit.value) {
-                const newChapter = {
-                    curriculumId: formData.courseId,
-                    name: formData.name,
-                    description: formData.description,
-                    isUse: formData.isUse
-                }
-                await updateChapter(formData.id, newChapter);
-                ElMessage.success('编辑成功')
-            } else {
-                const newChapter = {
-                    curriculumId: formData.courseId,
-                    name: formData.name,
-                    description: formData.description,
-                    isUse: true,
-                    sort: 0
-                }
-                await createChapter(newChapter);
-                ElMessage.success('添加成功')
-            }
-
-            submitting.value = false
-            dialogVisible.value = false
-            loadData()
-        } catch (error) {
-            // 接口请求失败处理
-            ElMessage.error(isEdit.value ? '编辑失败' : '添加失败')
-            submitting.value = false // 失败也要重置加载状态
-            console.error('章节提交失败：', error)
-        }
-
-    })
-}
-
-const handleDialogClose = () => {
-    formRef.value?.resetFields()
-}
-
-onMounted(() => {
-    loadData()
+onMounted(async () => {
+  courses.value = await listCourses()
+  await loadData()
 })
 </script>
 
 <style scoped>
-.chapter-manage-page {
-    min-height: 100%;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 12px;
 }
 
-.search-bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.pagination {
-    margin-top: 20px;
-    display: flex;
-    justify-content: flex-end;
-}
-
-@media (max-width: 1024px) {
-    .pagination :deep(.el-pagination) {
-        justify-content: center;
-        flex-wrap: wrap;
-    }
-}
-
-@media (max-width: 768px) {
-    .search-bar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-
-    .search-bar :deep(.el-select),
-    .search-bar :deep(.el-input),
-    .search-bar :deep(.el-button) {
-        width: 100% !important;
-        margin-left: 0 !important;
-    }
-
-    :deep(.el-table) {
-        font-size: 13px;
-    }
-
-    :deep(.el-table .el-button) {
-        padding: 4px 8px;
-        font-size: 12px;
-    }
-
-    .pagination {
-        margin-top: 16px;
-    }
-
-    .pagination :deep(.el-pagination) {
-        justify-content: center;
-    }
-
-    .pagination :deep(.el-pagination__sizes) {
-        display: none;
-    }
-}
-
-@media (max-width: 375px) {
-    :deep(.el-table) {
-        font-size: 12px;
-    }
-
-    :deep(.el-table .cell) {
-        padding: 0 6px;
-    }
+@media (max-width: 620px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
 }
 </style>

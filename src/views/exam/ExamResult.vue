@@ -1,613 +1,126 @@
 <template>
-  <div class="result-page">
-    <!-- 顶部导航 -->
+  <div class="page">
     <div class="page-header">
-      <div class="header-content">
-        <el-button :icon="ArrowLeft" circle @click="handleBack" />
-        <h1 class="page-title">考试结果</h1>
-        <div style="width: 40px;"></div>
+      <div>
+        <h1 class="page-title">作答结果</h1>
+        <p class="page-subtitle">{{ attempt?.name || '考试结果' }}</p>
+      </div>
+      <div class="toolbar">
+        <el-button @click="router.push('/profile/exam-records')">查看记录</el-button>
+        <el-button type="primary" @click="router.push('/courses')">继续学习</el-button>
       </div>
     </div>
-    <div class="page-content" v-loading="resultLoading" element-loading-text="加载中...">
-      <!-- 内容区域 -->
-      <div class="page-content">
-        <div v-if="record" class="result-container">
-          <!-- 成绩卡片 -->
-          <div class="score-card">
-            <div class="score-icon" :class="isPassed ? 'passed' : 'failed'">
-              <el-icon v-if="isPassed">
-                <CircleCheck />
-              </el-icon>
-              <el-icon v-else>
-                <CircleClose />
-              </el-icon>
-            </div>
-            <div class="score-value">{{ record.score }}</div>
-            <div class="score-label">{{ isPassed ? '考试通过' : '考试未通过' }}</div>
-          </div>
 
-          <!-- 统计信息 -->
-          <div class="stats-card">
-            <div class="stat-item">
-              <div class="stat-icon"><el-icon>
-                  <DocumentChecked />
-                </el-icon></div>
-              <div class="stat-info">
-                <div class="stat-label">答对题数</div>
-                <div class="stat-value">{{ record.rightCount }}/{{ record.totalQuestion }}</div>
-              </div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-icon"><el-icon>
-                  <Clock />
-                </el-icon></div>
-              <div class="stat-info">
-                <div class="stat-label">用时</div>
-                <div class="stat-value">{{ formatDuration() }}</div>
-              </div>
-            </div>
-            <div class="stat-item">
-              <div class="stat-icon"><el-icon>
-                  <TrendCharts />
-                </el-icon></div>
-              <div class="stat-info">
-                <div class="stat-label">正确率</div>
-                <div class="stat-value">{{ accuracy }}%</div>
-              </div>
-            </div>
+    <el-skeleton :loading="loading" animated :rows="6">
+      <div v-if="attempt" class="page">
+        <div class="metric-grid">
+          <div class="metric">
+            <div class="metric__value">{{ attempt.earnedScore ?? '-' }}</div>
+            <div class="metric__label">得分 / {{ attempt.totalScore || 0 }}</div>
           </div>
-
-          <!-- 考试信息 -->
-          <div class="info-card">
-            <h3>考试信息</h3>
-            <div class="info-list">
-              <div class="info-item">
-                <span class="info-label">课程名称</span>
-                <span class="info-value">{{ record.curriculumName || '未知课程' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">章节名称</span>
-                <span class="info-value">{{ record.chapterName || '未知章节' }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">考试时间</span>
-                <span class="info-value">{{ formatTime(record.submitTime) }}</span>
-              </div>
-              <div class="info-item">
-                <span class="info-label">考试状态</span>
-                <span class="info-value">{{ getStatusText(record.status) }}</span>
-              </div>
-            </div>
+          <div class="metric">
+            <div class="metric__value">{{ attempt.rightCount || 0 }}</div>
+            <div class="metric__label">正确</div>
           </div>
-
-          <!-- 答题详情 -->
-          <div class="detail-card">
-            <h3>答题详情</h3>
-            <div class="detail-stats">
-              <div class="detail-item correct">
-                <el-icon>
-                  <CircleCheck />
-                </el-icon>
-                <span>正确: {{ record.rightCount }}</span>
-              </div>
-              <div class="detail-item wrong">
-                <el-icon>
-                  <CircleClose />
-                </el-icon>
-                <span>错误: {{ record.wrongCount }}</span>
-              </div>
-              <div class="detail-item unanswered">
-                <el-icon>
-                  <Remove />
-                </el-icon>
-                <span>未答: {{ unansweredCount }}</span>
-              </div>
-            </div>
+          <div class="metric">
+            <div class="metric__value">{{ attempt.wrongCount || 0 }}</div>
+            <div class="metric__label">错误</div>
           </div>
-
-          <!-- 操作按钮 -->
-          <div class="action-buttons">
-            <el-button size="large" @click="viewWrongQuestions" v-if="record.wrongCount > 0">
-              <el-icon>
-                <View />
-              </el-icon>
-              查看错题
-            </el-button>
-            <el-button type="primary" size="large" @click="backToCourses">
-              <el-icon>
-                <House />
-              </el-icon>
-              返回课程
-            </el-button>
+          <div class="metric">
+            <div class="metric__value">{{ attempt.pendingCount || 0 }}</div>
+            <div class="metric__label">待批改</div>
           </div>
         </div>
 
-        <el-empty v-else description="未找到考试记录" />
-      </div>
-    </div>
+        <section class="surface">
+          <el-descriptions :column="descriptionColumns" border>
+            <el-descriptions-item label="模式">
+              <el-tag :type="tagOf(EXAM_MODES, attempt.mode)">{{ labelOf(EXAM_MODES, attempt.mode) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="状态">
+              <el-tag :type="tagOf(GRADING_STATUS, attempt.gradingStatus)">{{ labelOf(GRADING_STATUS, attempt.gradingStatus) }}</el-tag>
+            </el-descriptions-item>
+            <el-descriptions-item label="开始时间">{{ formatDateTime(attempt.startedTime) }}</el-descriptions-item>
+            <el-descriptions-item label="提交时间">{{ formatDateTime(attempt.submittedTime) }}</el-descriptions-item>
+            <el-descriptions-item label="用时">{{ formatDuration(attempt.useTimeSeconds) }}</el-descriptions-item>
+          </el-descriptions>
+        </section>
 
+        <section class="surface question-results">
+          <h2>题目明细</h2>
+          <el-collapse>
+            <el-collapse-item v-for="(question, index) in attempt.questions || []" :key="question.id" :name="question.id">
+              <template #title>
+                <span class="result-title">
+                  第 {{ index + 1 }} 题
+                  <el-tag size="small">{{ labelOf(QUESTION_TYPES, question.type) }}</el-tag>
+                  <el-tag v-if="question.answer?.judgeStatus === 2" size="small" type="warning">待批改</el-tag>
+                  <el-tag v-else-if="question.answer?.isCorrect" size="small" type="success">正确</el-tag>
+                  <el-tag v-else size="small" type="danger">错误</el-tag>
+                </span>
+              </template>
+              <div class="html-content question-stem" v-html="question.stemHtml"></div>
+              <p class="answer-line">你的答案：{{ displayAnswer(question) }}</p>
+              <p class="answer-line">得分：{{ question.answer?.earnedScore ?? '-' }} / {{ question.questionScore || 0 }}</p>
+              <div v-if="question.analysisHtml" class="html-content analysis" v-html="question.analysisHtml"></div>
+            </el-collapse-item>
+          </el-collapse>
+        </section>
+      </div>
+    </el-skeleton>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
-import { ArrowLeft, CircleCheck, CircleClose, DocumentChecked, Clock, TrendCharts, View, House, Remove } from '@element-plus/icons-vue'
-import dayjs from 'dayjs'
-import { getExamResult } from "@/api/exam.js";
-import { ElMessage } from 'element-plus';
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { getAttemptResult } from '@/api/exam'
+import { EXAM_MODES, GRADING_STATUS, QUESTION_TYPES, labelOf, tagOf } from '@/utils/dictionaries'
+import { formatDateTime, formatDuration, parseAnswerArray } from '@/utils/helpers'
 
-const router = useRouter()
 const route = useRoute()
+const router = useRouter()
+const loading = ref(false)
+const attempt = ref(null)
 
-const record = ref(null)
-const resultLoading = ref(false)
+const descriptionColumns = computed(() => (window.innerWidth < 720 ? 1 : 3))
 
-// 根据接口数据判断是否通过
-const isPassed = computed(() => (record.value?.score || 0) >= 60)
+const displayAnswer = (question) => {
+  const values = parseAnswerArray(question.answer?.userAnswerJson)
+  return values.length ? values.join('，') : '未作答'
+}
 
-// 计算正确率
-const accuracy = computed(() => {
-  if (!record.value || !record.value.totalQuestion) return 0
-  // 防止除以0
-  return Math.round((record.value.rightCount / record.value.totalQuestion) * 100)
-})
-
-// 计算未答题数
-const unansweredCount = computed(() => {
-  if (!record.value) return 0
-  return (record.value.totalQuestion || 0) - (record.value.rightCount || 0) - (record.value.wrongCount || 0)
-})
-
-// 初始化
-onMounted(() => {
-  loadRecord()
-})
-const examId = route.params.id
-// 加载考试记录
-const loadRecord = async () => {
+onMounted(async () => {
+  loading.value = true
   try {
-    resultLoading.value = true
-    // 从路由 state 中获取传递的数据
-    const data = await getExamResult(examId)
-    if (data) {
-      // 将传入的数据映射到组件期望的字段
-      record.value = {
-        score: data.score || 0,
-        rightCount: data.rightCount || 0,
-        wrongCount: data.wrongCount || 0,
-        totalQuestion: data.totalQuestion || 0,
-        curriculumName: data.curriculumName || '未知课程',
-        chapterName: data.chapterName || '未知章节',
-        submitTime: data.timestamp ? new Date(data.timestamp).toISOString() : new Date().toISOString(),
-        startTime: data.timestamp ? new Date(data.timestamp - (data.duration || 0) * 1000).toISOString() : new Date().toISOString(),
-        status: 1, // 已完成
-        duration: data.duration || 0,
-        autoSubmit: data.autoSubmit || false
-      }
-      resultLoading.value = false
-    } else {
-      ElMessage.error('未找到考试记录数据')
-    }
-  } catch (error) {
-    ElMessage.error('加载考试记录失败: ' + (error.message || '服务器异常'))
+    attempt.value = await getAttemptResult(route.params.id)
   } finally {
-    resultLoading.value = false
+    loading.value = false
   }
-}
-
-// 格式化考试时长
-const formatDuration = () => {
-  if (!record.value) {
-    return '0分0秒'
-  }
-
-  const seconds = record.value.duration || 0
-  const minutes = Math.floor(seconds / 60)
-  const secs = seconds % 60
-  return `${minutes}分${secs}秒`
-}
-
-// 格式化时间显示
-const formatTime = (timeStr) => {
-  return timeStr ? dayjs(timeStr).format('YYYY-MM-DD HH:mm:ss') : '未知时间'
-}
-
-// 转换考试状态文本
-const getStatusText = (status) => {
-  const statusMap = {
-    0: '未完成',
-    1: '已完成',
-    2: '已过期'
-  }
-  return statusMap[status] || '未知状态'
-}
-
-// 查看错题
-const viewWrongQuestions = () => {
-  router.push({
-    path: '/wrong',
-    state: { examId: record.value.id }
-  })
-}
-
-// 返回课程列表
-const backToCourses = () => {
-  router.push('/courses')
-}
-
-// 返回
-const handleBack = () => {
-  router.push('/courses')
-}
+})
 </script>
 
 <style scoped>
-/* 样式部分保持不变 */
-.result-page {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: #f5f7fa;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+.question-results h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
 }
 
-.page-header {
-  padding: 1rem 1.5rem;
-  background: white;
-  border-bottom: 1px solid #e4e7ed;
-  flex-shrink: 0;
-}
-
-.header-content {
-  display: flex;
-  justify-content: space-between;
+.result-title {
+  display: inline-flex;
   align-items: center;
+  gap: 8px;
 }
 
-.page-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  margin: 0;
-  color: #303133;
-}
-
-.page-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 1.5rem;
-}
-
-.page-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.page-content::-webkit-scrollbar-track {
-  background: #f5f7fa;
-}
-
-.page-content::-webkit-scrollbar-thumb {
-  background: #dcdfe6;
-  border-radius: 3px;
-}
-
-.result-container {
-  max-width: 800px;
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  padding-bottom: 1rem;
-}
-
-/* 成绩卡片 */
-.score-card {
-  background: white;
-  border-radius: 12px;
-  padding: 2rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e4e7ed;
-  text-align: center;
-}
-
-.score-icon {
-  width: 80px;
-  height: 80px;
-  margin: 0 auto 1rem;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.score-icon.passed {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.score-icon.failed {
-  background: #fef0f0;
-  color: #f56c6c;
-}
-
-.score-icon :deep(.el-icon) {
-  font-size: 48px;
-}
-
-.score-value {
-  font-size: 4rem;
-  font-weight: 600;
-  color: #303133;
-  margin-bottom: 0.5rem;
-}
-
-.score-label {
-  font-size: 1.25rem;
-  color: #606266;
-}
-
-/* 统计卡片 */
-.stats-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e4e7ed;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.stat-item {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 1rem;
-  background: #f5f7fa;
+.question-stem,
+.analysis {
+  padding: 14px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
   border-radius: 8px;
 }
 
-.stat-icon {
-  width: 48px;
-  height: 48px;
-  background: #409eff;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  flex-shrink: 0;
-}
-
-.stat-icon :deep(.el-icon) {
-  font-size: 24px;
-}
-
-.stat-info {
-  flex: 1;
-}
-
-.stat-label {
-  font-size: 0.875rem;
-  color: #909399;
-  margin-bottom: 0.25rem;
-}
-
-.stat-value {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #303133;
-}
-
-/* 信息卡片 */
-.info-card,
-.detail-card {
-  background: white;
-  border-radius: 12px;
-  padding: 1.5rem;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border: 1px solid #e4e7ed;
-}
-
-.info-card h3,
-.detail-card h3 {
-  font-size: 1.125rem;
-  margin: 0 0 1rem 0;
-  color: #303133;
-}
-
-.info-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.info-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem;
-  background: #f5f7fa;
-  border-radius: 8px;
-}
-
-.info-label {
-  color: #909399;
-  font-size: 0.875rem;
-}
-
-.info-value {
-  color: #303133;
-  font-weight: 500;
-}
-
-/* 答题详情 */
-.detail-stats {
-  display: flex;
-  gap: 1rem;
-}
-
-.detail-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1rem;
-  border-radius: 8px;
-}
-
-.detail-item.correct {
-  background: #f0f9ff;
-  color: #67c23a;
-}
-
-.detail-item.wrong {
-  background: #fef0f0;
-  color: #f56c6c;
-}
-
-.detail-item.unanswered {
-  background: #f5f7fa;
-  color: #909399;
-}
-
-.detail-item :deep(.el-icon) {
-  font-size: 32px;
-}
-
-.detail-item span {
-  font-weight: 600;
-  font-size: 0.875rem;
-}
-
-/* 操作按钮 */
-.action-buttons {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.action-buttons .el-button {
-  flex: 1;
-}
-
-/* 移动端适配 */
-@media (max-width: 767px) {
-  .result-page {
-    /* iOS Safari 100vh修复 */
-    height: 100vh;
-    height: -webkit-fill-available;
-    min-height: 100vh;
-    min-height: -webkit-fill-available;
-  }
-
-  .page-header {
-    padding: 1rem;
-    flex-shrink: 0;
-  }
-
-  .page-title {
-    font-size: 1rem;
-  }
-
-  .page-content {
-    padding: 1rem;
-    padding-bottom: 1.5rem;
-    /* 隐藏滚动条 */
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  .page-content::-webkit-scrollbar {
-    display: none;
-  }
-
-  .result-container {
-    gap: 1rem;
-    padding-bottom: 0.5rem;
-  }
-
-  .score-card {
-    padding: 1.25rem 1rem;
-  }
-
-  .score-icon {
-    width: 55px;
-    height: 55px;
-    margin-bottom: 0.75rem;
-  }
-
-  .score-icon :deep(.el-icon) {
-    font-size: 32px;
-  }
-
-  .score-value {
-    font-size: 2.5rem;
-    margin-bottom: 0.25rem;
-  }
-
-  .score-label {
-    font-size: 0.95rem;
-  }
-
-  .stats-card,
-  .info-card,
-  .detail-card {
-    padding: 1rem;
-  }
-
-  .stats-card {
-    gap: 0.75rem;
-  }
-
-  .stat-item {
-    gap: 0.75rem;
-  }
-
-  .info-card h3,
-  .detail-card h3 {
-    font-size: 0.95rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .info-item {
-    padding: 0.625rem 0;
-  }
-
-  .detail-stats {
-    flex-direction: row;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .detail-item {
-    flex: 1;
-    min-width: calc(33.333% - 0.5rem);
-    padding: 0.5rem;
-  }
-
-  .action-buttons {
-    flex-direction: row;
-    gap: 0.75rem;
-    margin-top: 0.5rem;
-  }
-
-  .action-buttons .el-button {
-    font-size: 0.875rem;
-    padding: 0.75rem 1rem;
-    height: auto;
-  }
-}
-
-/* PC端适配 */
-@media (min-width: 1024px) {
-  .page-content {
-    padding: 2rem 3rem;
-  }
+.answer-line {
+  color: #475569;
 }
 </style>

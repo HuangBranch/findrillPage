@@ -1,65 +1,25 @@
 import request from '@/utils/request'
 
-/**
- * 获取考试试卷
- * @param {Object} params - { courseId, chapterId, count }
- */
-export const getExamPaper = (params) => {
-  return request({
-    url: '/exam/paper',
-    method: 'GET',
-    params
-  })
-}
+export const listExamConfigs = (params = {}) => request({ url: '/exams/configs', method: 'GET', params })
 
-/**
- * 提交考试
- * @param {Object} data - 考试答案数据
- */
-export const submitExam = (data) => {
-  return request({
-    url: '/exam/submit',
-    method: 'POST',
-    data
-  })
-}
+export const startExam = (data) => request({ url: '/exams/start', method: 'POST', data })
 
-/**
- * 获取考试结果
- * @param {Number} examId - 考试记录ID
- */
-export const getExamResult = (examId) => {
-  return request({
-    url: `/exam/${examId}`,
-    method: 'GET'
-  })
-}
+export const getAttempt = (attemptId) => request({ url: `/exams/${attemptId}`, method: 'GET' })
 
-/**
- * 获取上次考试成绩
- * @param {Object} params - { courseId, chapterId }
- */
-export const getLastExamScore = (params) => {
-  return request({
-    url: '/exam/last-score',
-    method: 'GET',
-    params
-  })
-}
-/**
- * 获取考试记录
- * @param {Object} params - { courseId, chapterId, page, size }
- */
-export const getExamList = () => {
-  return request({
-    url: '/exam/list',
-    method: 'GET',
-  })
-}
+export const saveAnswer = (attemptId, data) => request({ url: `/exams/${attemptId}/answer`, method: 'PUT', data })
+
+export const submitAttempt = (attemptId) => request({ url: `/exams/${attemptId}/submit`, method: 'POST' })
+
+export const getAttemptResult = (attemptId) => request({ url: `/exams/${attemptId}/result`, method: 'GET' })
+
+export const getExamHistory = () => request({ url: '/exams/history', method: 'GET' })
+
 export default {
-  getExamPaper,
-  submitExam,
-  getExamResult,
-  getLastExamScore,
-  getExamList
+  listExamConfigs,
+  startExam,
+  getAttempt,
+  saveAnswer,
+  submitAttempt,
+  getAttemptResult,
+  getExamHistory
 }

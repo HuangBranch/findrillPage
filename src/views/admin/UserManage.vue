@@ -1,701 +1,265 @@
 <template>
-  <AdminLayout>
-    <div class="user-manage-page">
-      <el-card>
-        <!-- 搜索栏 -->
-        <div class="search-bar">
-          <el-input
-            v-model="searchKeyword"
-            placeholder="搜索用户名或邮箱"
-            style="width: 300px"
-            clearable
-            @input="handleSearch"
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-          
-          <el-select
-            v-model="searchRole"
-            placeholder="角色筛选"
-            style="width: 150px; margin-left: 12px"
-            clearable
-            @change="handleSearch"
-          >
-            <el-option label="全部" value="" />
-            <el-option
-              v-for="role in roleList"
-              :key="role.id"
-              :label="role.name"
-              :value="role.id"
-            />
-          </el-select>
-          
-          <el-button type="primary" :icon="Plus" @click="handleAdd" style="margin-left: auto">
-            新增用户
-          </el-button>
-          
-          <el-button type="success" @click="handleGenerateRandom">
-            生成随机账号
-          </el-button>
+  <div class="page">
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">用户管理</h1>
+        <p class="page-subtitle">账号创建、资料维护、状态控制和角色分配。</p>
+      </div>
+      <el-button type="primary" @click="openCreate">新增用户</el-button>
+    </div>
+
+    <section class="surface">
+      <div class="toolbar">
+        <el-input v-model="query.name" clearable placeholder="搜索昵称/账号" style="width: 220px" @keyup.enter="loadData" />
+        <el-select v-model="query.roleId" clearable placeholder="角色" style="width: 180px">
+          <el-option v-for="role in roles" :key="role.id" :label="role.name" :value="role.id" />
+        </el-select>
+        <el-button @click="loadData">查询</el-button>
+      </div>
+
+      <el-table v-loading="loading" :data="rows" style="width: 100%; margin-top: 14px">
+        <el-table-column prop="id" label="ID" width="80" />
+        <el-table-column prop="userId" label="账号" min-width="120" />
+        <el-table-column prop="name" label="昵称" min-width="120" />
+        <el-table-column prop="email" label="邮箱" min-width="170" show-overflow-tooltip />
+        <el-table-column prop="roleName" label="角色" width="120" />
+        <el-table-column label="状态" width="100">
+          <template #default="{ row }">
+            <el-switch v-model="row.isUse" @change="toggleStatus(row)" />
+          </template>
+        </el-table-column>
+        <el-table-column label="操作" width="260" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+            <el-button link @click="openRole(row)">角色</el-button>
+            <el-button link @click="openReset(row)">重置密码</el-button>
+            <el-button link type="danger" @click="remove(row)">删除</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.pageSize"
+        layout="total, sizes, prev, pager, next"
+        :total="total"
+        style="margin-top: 14px"
+        @current-change="loadData"
+        @size-change="loadData"
+      />
+    </section>
+
+    <el-dialog v-model="formVisible" :title="editingId ? '编辑用户' : '新增用户'" width="min(620px, 94%)">
+      <el-form ref="formRef" :model="form" :rules="rules" label-position="top">
+        <div class="form-grid">
+          <el-form-item label="账号" prop="userId"><el-input v-model.trim="form.userId" /></el-form-item>
+          <el-form-item label="昵称" prop="name"><el-input v-model.trim="form.name" /></el-form-item>
         </div>
-
-        <!-- 用户表格 -->
-        <el-table :data="tableData" style="width: 100%; margin-top: 20px" v-loading="loading">
-          <el-table-column prop="id" label="ID" width="80" />
-          <el-table-column prop="userName" label="用户ID" min-width="120" />
-          <el-table-column prop="name" label="姓名" min-width="120" />
-          <el-table-column prop="email" label="邮箱" min-width="180" />
-          <el-table-column label="角色" width="120">
-            <template #default="{ row }">
-              <el-tag :type="getRoleType(row.roleId)">
-                {{ row.roleName }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column label="邮箱状态" width="100">
-            <template #default="{ row }">
-              <el-tag :type="row.isActiveEmail ? 'success' : 'info'">
-                {{ row.isActiveEmail ? '已验证' : '未验证' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="isUse" label="是否启用" width="100" >
-            <template #default="{ row }">
-              <el-tag :type="row.isUse ? 'success' : 'error'">
-                {{ row.isUse ? '已启用' : '未启用' }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          <el-table-column prop="createTime" label="创建时间" width="180" />
-          <el-table-column prop="lastLoginTime" label="最后登录时间" width="180" />
-          <el-table-column label="操作" width="220" fixed="right">
-            <template #default="{ row }">
-              <el-button link type="primary" size="small" @click="handleEdit(row)">
-                编辑
-              </el-button>
-              <el-button link type="primary" size="small" @click="handleResetPassword(row)">
-                重置密码
-              </el-button>
-              <el-button link type="danger" size="small" @click="handleDelete(row)">
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-
-        <!-- 分页 -->
-        <div class="pagination">
-          <el-pagination
-            v-model:current-page="currentPage"
-            v-model:page-size="pageSize"
-            :page-sizes="[10, 20, 50, 100]"
-            layout="total, sizes, prev, pager, next, jumper"
-            :total="total"
-            @size-change="handlePageChange"
-            @current-change="handlePageChange"
-          />
+        <div class="form-grid">
+          <el-form-item label="邮箱" prop="email"><el-input v-model.trim="form.email" /></el-form-item>
+          <el-form-item label="真实姓名"><el-input v-model.trim="form.realName" /></el-form-item>
         </div>
-      </el-card>
-
-      <!-- 新增/编辑对话框 -->
-      <el-dialog
-        v-model="dialogVisible"
-        :title="dialogTitle"
-        width="90%"
-        :style="{ maxWidth: '500px' }"
-        @close="handleDialogClose"
-      >
-        <el-form
-          ref="formRef"
-          :model="formData"
-          :rules="formRules"
-          label-width="100px"
-        >
-          <el-form-item label="用户ID" prop="userId">
-            <el-input v-model="formData.userId" placeholder="请输入用户ID(用于登陆的账号)" />
-          </el-form-item>
-          
-          <el-form-item label="用户名" prop="name">
-            <el-input v-model="formData.name" placeholder="请输入用户名（非必填）" />
-          </el-form-item>
-          
-          <el-form-item label="真实姓名" prop="realName">
-            <el-input v-model="formData.realName" placeholder="请输入真实姓名" />
-          </el-form-item>
-          
-          <el-form-item label="邮箱" prop="email">
-            <el-input v-model="formData.email" placeholder="请输入邮箱" />
-          </el-form-item>
-          
+        <div class="form-grid">
           <el-form-item label="角色" prop="roleId">
-            <el-select v-model="formData.roleId" placeholder="请选择角色" style="width: 100%">
-              <el-option
-                v-for="role in roleList"
-                :key="role.id"
-                :label="role.name"
-                :value="role.id"
-              />
+            <el-select v-model="form.roleId" style="width: 100%">
+              <el-option v-for="role in roles" :key="role.id" :label="role.name" :value="role.id" />
             </el-select>
           </el-form-item>
-          
-          <el-form-item label="启用账号" prop="isUse">
-            <el-switch v-model="formData.isUse" active-text="启用" inactive-text="禁用" />
-          </el-form-item>
-          
-          <el-form-item label="邮箱验证" prop="isActiveEmail">
-            <el-switch v-model="formData.isActiveEmail" active-text="已验证" inactive-text="未验证" />
-          </el-form-item>
-          
-          <el-form-item label="备注" prop="remarks">
-            <el-input v-model="formData.remarks" type="textarea" :rows="3" placeholder="请输入备注（非必填）" />
-          </el-form-item>
-          
-          <el-alert
-            v-if="!isEdit"
-            title="默认密码为：用户ID+123456"
-            type="info"
-            :closable="false"
-            show-icon
-            style="margin-bottom: 16px"
-          />
-          
-          <!-- 随机生成信息展示 -->
-          <el-alert
-            v-if="generatedInfo.visible"
-            type="success"
-            :closable="false"
-            style="margin-bottom: 16px"
-          >
-            <template #title>
-              <div style="font-weight: bold; margin-bottom: 8px;">随机生成的账号信息：</div>
-              <div style="line-height: 1.8;">
-                <div><strong>用户ID：</strong>{{ generatedInfo.userId }}</div>
-                <div><strong>用户名：</strong>{{ generatedInfo.name }}</div>
-                <div><strong>真实姓名：</strong>{{ generatedInfo.realName }}</div>
-                <div><strong>邮箱：</strong>{{ generatedInfo.email }}</div>
-                <div><strong>角色：</strong>{{ generatedInfo.roleName }}</div>
-                <div style="color: #e6a23c;"><strong>密码：</strong>{{ generatedInfo.password }}</div>
-              </div>
-            </template>
-          </el-alert>
-        </el-form>
-        
-        <template #footer>
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit" :loading="submitting">
-            确定
-          </el-button>
-        </template>
-      </el-dialog>
-    </div>
-  </AdminLayout>
+          <el-form-item label="状态"><el-switch v-model="form.isUse" active-text="启用" inactive-text="停用" /></el-form-item>
+        </div>
+        <el-form-item v-if="!editingId" label="初始密码" prop="password">
+          <el-input v-model="form.password" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="备注"><el-input v-model="form.remarks" type="textarea" :rows="3" /></el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="formVisible = false">取消</el-button>
+        <el-button type="primary" @click="save">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="roleVisible" title="分配角色" width="min(420px, 94%)">
+      <el-select v-model="roleForm.roleId" style="width: 100%">
+        <el-option v-for="role in roles" :key="role.id" :label="role.name" :value="role.id" />
+      </el-select>
+      <template #footer>
+        <el-button @click="roleVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveRole">保存</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog v-model="resetVisible" title="重置密码" width="min(420px, 94%)">
+      <el-input v-model="resetPasswordForm.newPwd" type="password" show-password placeholder="新密码" />
+      <template #footer>
+        <el-button @click="resetVisible = false">取消</el-button>
+        <el-button type="primary" @click="saveReset">确认重置</el-button>
+      </template>
+    </el-dialog>
+  </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Search, Plus } from '@element-plus/icons-vue'
-import AdminLayout from '@/components/layout/AdminLayout.vue'
-import { getUserList, createUser, updateUser, resetUserPassword, getRoleList,deleteUser } from '@/api/admin'
-import { getStorage, setStorage } from '@/utils/storage'
-import CryptoJS from 'crypto-js'
+import {
+  assignUserRole,
+  createUser,
+  deleteUser,
+  listRoles,
+  listUsers,
+  resetUserPassword,
+  updateUser,
+  updateUserStatus
+} from '@/api/admin'
+import { getPageList, getPageTotal } from '@/utils/helpers'
 
-// 搜索条件
-const searchKeyword = ref('')
-const searchRole = ref('')
-
-// 角色列表
-const roleList = ref([])
-
-// 表格数据
 const loading = ref(false)
-const tableData = ref([])
-const currentPage = ref(1)
-const pageSize = ref(10)
+const rows = ref([])
+const roles = ref([])
 const total = ref(0)
-
-// 对话框
-const dialogVisible = ref(false)
-const isEdit = ref(false)
+const formVisible = ref(false)
+const roleVisible = ref(false)
+const resetVisible = ref(false)
+const editingId = ref()
+const currentUserId = ref()
 const formRef = ref()
-const submitting = ref(false)
 
-// 生成的随机信息
-const generatedInfo = reactive({
-  visible: false,
+const query = reactive({ page: 1, pageSize: 10, name: '', roleId: undefined })
+const form = reactive({
   userId: '',
   name: '',
-  realName: '',
-  email: '',
-  roleName: '',
-  password: ''
-})
-
-const dialogTitle = computed(() => isEdit.value ? '编辑用户' : '新增用户')
-
-// 表单数据
-const formData = reactive({
-  id: null,
-  userId: '',
-  name: '',
-  realName: '',
-  email: '',
   password: '',
-  roleId: 3,
-  isActiveEmail: false,
+  email: '',
+  isActiveEmail: true,
+  realName: '',
+  roleId: undefined,
   isUse: true,
   remarks: ''
 })
+const roleForm = reactive({ roleId: undefined })
+const resetPasswordForm = reactive({ newPwd: '' })
 
-// 表单验证规则
-const formRules = {
-  userId: [
-    { required: true, message: '请输入用户ID(用于登陆的账号)', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
-  name: [
-    { required: true, message: '请输入用户名', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
-  realName: [
-    { required: true, message: '请输入真实姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '长度在 2 到 20 个字符', trigger: 'blur' }
-  ],
-  email: [
-    {  message: '请输入邮箱', trigger: 'blur' },
-    { type: 'email', message: '请输入正确的邮箱格式', trigger: 'blur' }
-  ],
-  roleId: [
-    { required: true, message: '请选择角色', trigger: 'change' }
-  ]
+const rules = {
+  userId: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  name: [{ required: true, message: '请输入昵称', trigger: 'blur' }],
+  password: [{ required: true, min: 6, message: '密码至少 6 位', trigger: 'blur' }],
+  roleId: [{ required: true, message: '请选择角色', trigger: 'change' }],
+  email: [{ type: 'email', message: '邮箱格式不正确', trigger: 'blur' }]
 }
 
-// 加载数据
+const resetUserForm = () => {
+  Object.assign(form, {
+    userId: '',
+    name: '',
+    password: '',
+    email: '',
+    isActiveEmail: true,
+    realName: '',
+    roleId: roles.value[0]?.id,
+    isUse: true,
+    remarks: ''
+  })
+}
+
 const loadData = async () => {
   loading.value = true
-  
   try {
-    const params = {
-      page: currentPage.value,
-      pageSize: pageSize.value
-    }
-    
-    // 添加搜索关键词（可搜索用户名或邮箱）
-    if (searchKeyword.value) {
-      params.name = searchKeyword.value
-    }
-    
-    // 添加角色筛选
-    if (searchRole.value !== '' && searchRole.value !== null) {
-      params.roleId = searchRole.value
-    }
-    
-    const data = await getUserList(params)
-
-    // 响应拦截器已经返回了 data，直接使用
-    if (data && data.list) {
-      // 处理返回数据,映射字段
-      tableData.value = data.list.map(user => ({
-        id: user.id,
-        userName: user.userId || user.name, // userId作为用户名
-        name: user.name, // 用户姓名
-        realName: user.realName || '', // 真实姓名
-        email: user.email || '',
-        roleId: user.roleId ?? 3, // 使用空值合并运算符
-        roleName: user.roleName || '未知', // 角色名称
-        isActiveEmail: user.isActiveEmail ?? false,
-        isUse: user.isUse ?? false,
-        remarks: user.remarks || '', // 备注
-        createTime: user.createTime || '',
-        lastLoginTime: user.lastLoginTime || ''
-      }))
-      
-      total.value = data.total || 0
-    } else {
-      tableData.value = []
-      total.value = 0
-    }
-  } catch (error) {
-    console.error('获取用户列表失败:', error)
-    ElMessage.error('获取用户列表失败')
-    tableData.value = []
-    total.value = 0
+    const data = await listUsers(query)
+    rows.value = getPageList(data)
+    total.value = getPageTotal(data)
   } finally {
     loading.value = false
   }
 }
 
-// 搜索
-const handleSearch = () => {
-  currentPage.value = 1
-  loadData()
-}
-
-// 分页
-const handlePageChange = () => {
-  loadData()
-}
-
-// 获取角色标签类型
-const getRoleType = (roleId) => {
-  const map = { 1: 'danger', 2: 'warning', 3: '' }
-  return map[roleId] || ''
-}
-
-// 生成随机字符串
-const generateRandomString = (length = 8) => {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
-  let result = ''
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
-  }
-  return result
-}
-
-// 生成随机英文用户名
-const generateRandomEnglishName = () => {
-  const firstNames = ['James', 'John', 'Robert', 'Michael', 'William', 'David', 'Richard', 'Joseph', 'Thomas', 'Charles',
-    'Mary', 'Patricia', 'Jennifer', 'Linda', 'Elizabeth', 'Barbara', 'Susan', 'Jessica', 'Sarah', 'Karen',
-    'Daniel', 'Matthew', 'Andrew', 'Joshua', 'Christopher', 'Emily', 'Emma', 'Olivia', 'Sophia', 'Isabella']
-  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Rodriguez', 'Martinez',
-    'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Thompson', 'White']
-  const firstName = firstNames[Math.floor(Math.random() * firstNames.length)]
-  const lastName = lastNames[Math.floor(Math.random() * lastNames.length)]
-  return `${firstName} ${lastName}`
-}
-
-// 生成随机姓名
-const generateRandomName = () => {
-  const surnames = ['张', '王', '李', '赵', '陈', '刘', '杨', '黄', '周', '吴', '徐', '孙', '马', '朱', '胡', '郭', '何', '林', '罗', '高']
-  const names = ['伟', '芳', '娜', '敏', '静', '丽', '强', '磊', '军', '洋', '勇', '艳', '杰', '娟', '涛', '明', '超', '秀英', '霞', '平', '刚', '桂英', '建华', '文', '辉', '利', '萍', '燕', '鹏', '华']
-  return surnames[Math.floor(Math.random() * surnames.length)] + names[Math.floor(Math.random() * names.length)]
-}
-
-// 生成随机账号
-const handleGenerateRandom = () => {
-  ElMessageBox.confirm(
-    '确定要生成一个随机账号吗？生成后将自动创建该账号。',
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'info'
-    }
-  ).then(async () => {
-    // 直接创建账号，不打开对话框
-    try {
-      loading.value = true
-      
-      // 生成随机数据
-      const randomUserId = 'user' + generateRandomString(6)
-      const randomName = generateRandomEnglishName() // 使用英文名
-      const randomRealName = generateRandomName()
-      const randomEmail = ''
-      const defaultPassword = randomUserId + '123456'
-      const encryptedPassword = CryptoJS.SHA256(defaultPassword).toString()
-      const roleId = 3 // 普通角色
-      const roleName = roleList.value.find(r => r.id === roleId)?.name || '普通用户'
-      
-      const params = {
-        userId: randomUserId,
-        name: randomName,
-        realName: randomRealName,
-        email: randomEmail,
-        password: encryptedPassword,
-        roleId: roleId,
-        isActiveEmail: false,
-        isUse: true,
-        remarks: '随机生成的账号'
-      }
-      
-      await createUser(params)
-      
-      // 显示生成信息的对话框
-      ElMessageBox.alert(
-        `<div style="line-height: 1.8;">
-          <div><strong>用户ID：</strong>${randomUserId}</div>
-          <div><strong>用户名：</strong>${randomName}</div>
-          <div><strong>真实姓名：</strong>${randomRealName}</div>
-          <div><strong>邮箱：</strong>${randomEmail || '未设置'}</div>
-          <div><strong>角色：</strong>${roleName}</div>
-          <div style="color: #e6a23c;"><strong>密码：</strong>${defaultPassword}</div>
-        </div>`,
-        '随机账号创建成功',
-        {
-          confirmButtonText: '确定',
-          dangerouslyUseHTMLString: true,
-          type: 'success'
-        }
-      ).then(() => {
-        loadData()
-      })
-    } catch (error) {
-      console.error('创建随机账号失败:', error)
-      ElMessage.error('创建随机账号失败')
-    } finally {
-      loading.value = false
-    }
-  }).catch(() => {})
-}
-
-// 新增
-const handleAdd = () => {
-  isEdit.value = false
-  Object.assign(formData, {
-    id: null,
-    userId: '',
-    name: '',
-    realName: '',
-    email: '',
-    password: '',
-    roleId: 3,
-    isActiveEmail: false,
-    isUse: true,
-    remarks: ''
-  })
-  generatedInfo.visible = false
-  dialogVisible.value = true
-}
-
-// 编辑
-const handleEdit = (row) => {
-  isEdit.value = true
-  Object.assign(formData, {
-    id: row.id,
-    userId: row.userName,
-    name: row.name,
-    realName: row.realName || row.name,
-    email: row.email,
-    password: '',
-    roleId: row.roleId,
-    isActiveEmail: row.isActiveEmail,
-    isUse: row.isUse !== undefined ? row.isUse : true,
-    remarks: row.remarks || ''
-  })
-  dialogVisible.value = true
-}
-
-// 重置密码
-const handleResetPassword = (row) => {
-  ElMessageBox.confirm(
-    `确定要重置用户 ${row.userName} 的密码吗？密码将重置为：${row.userName}123456`,
-    '提示',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    try {
-      // 生成默认密码：用户ID + 123456，并加密
-      const defaultPassword = row.userName + '123456'
-      const encryptedPassword = CryptoJS.SHA256(defaultPassword).toString()
-      
-      await resetUserPassword(row.id, {
-        newPwd: encryptedPassword
-      })
-      
-      ElMessage.success('密码重置成功')
-    } catch (error) {
-      console.error('重置密码失败:', error)
-      ElMessage.error('重置密码失败')
-    }
-  }).catch(() => {})
-}
-
-// 删除
-const handleDelete = (row) => {
-  ElMessageBox.confirm(
-    `确定要删除用户 ${row.userName} 吗？此操作不可恢复。`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    }
-  ).then(async () => {
-    loading.value = true
-    // TODO: 调用删除接口
-    await deleteUser(row.id)
-    ElMessage.success('删除成功')
-    loadData()
-    loading.value = false
-  }).catch(() => {})
-}
-
-// 提交表单
-const handleSubmit = async () => {
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    
-    submitting.value = true
-    
-    try {
-      if (isEdit.value) {
-        // 调用编辑接口
-        const params = {
-          userId: formData.userId,
-          name: formData.name,
-          email: formData.email,
-          roleId: formData.roleId,
-          realName: formData.realName,
-          isActiveEmail: formData.isActiveEmail,
-          isUse: formData.isUse
-        }
-        
-        // 备注字段非必填
-        if (formData.remarks) {
-          params.remarks = formData.remarks
-        }
-        
-        await updateUser(formData.id, params)
-        ElMessage.success('编辑成功')
-      } else {
-        // 调用新增接口
-        // 生成默认密码：用户ID+123456，并加密
-        const defaultPassword = formData.userId + '123456'
-        const encryptedPassword = CryptoJS.SHA256(defaultPassword).toString()
-        
-        const params = {
-          userId: formData.userId,
-          name: formData.name,
-          realName: formData.realName,
-          email: formData.email,
-          password: encryptedPassword,
-          roleId: formData.roleId,
-          isActiveEmail: formData.isActiveEmail,
-          isUse: formData.isUse
-        }
-        
-        // 备注字段非必填
-        if (formData.remarks) {
-          params.remarks = formData.remarks
-        }
-        
-        await createUser(params)
-        ElMessage.success('添加成功')
-      }
-      
-      dialogVisible.value = false
-      loadData()
-    } catch (error) {
-      console.error('提交失败:', error)
-      ElMessage.error(isEdit.value ? '编辑失败' : '添加失败')
-    } finally {
-      submitting.value = false
-    }
-  })
-}
-
-// 关闭对话框
-const handleDialogClose = () => {
-  formRef.value?.resetFields()
-  generatedInfo.visible = false
-}
-
-// 加载角色列表
 const loadRoles = async () => {
-  try {
-    // 先从本地缓存读取
-    const cachedRoles = getStorage('roleList')
-    if (cachedRoles && Array.isArray(cachedRoles) && cachedRoles.length > 0) {
-      roleList.value = cachedRoles
-      return
-    }
-    
-    // 如果本地没有，从后端获取
-    const data = await getRoleList()
-    if (data && Array.isArray(data)) {
-      roleList.value = data
-      // 存储到本地
-      setStorage('roleList', data)
-    }
-  } catch (error) {
-    console.error('获取角色列表失败:', error)
-    // 如果请求失败，尝试使用缓存
-    const cachedRoles = getStorage('roleList')
-    if (cachedRoles && Array.isArray(cachedRoles)) {
-      roleList.value = cachedRoles
-    }
-  }
+  roles.value = await listRoles()
 }
 
-onMounted(() => {
-  loadRoles()
+const openCreate = () => {
+  editingId.value = undefined
+  resetUserForm()
+  formVisible.value = true
+}
+
+const openEdit = (row) => {
+  editingId.value = row.id
+  Object.assign(form, { ...row, password: '', uPwd: undefined })
+  formVisible.value = true
+}
+
+const save = async () => {
+  await formRef.value.validate()
+  if (editingId.value) {
+    const payload = { ...form }
+    delete payload.password
+    await updateUser(editingId.value, payload)
+  } else {
+    await createUser(form)
+  }
+  ElMessage.success('保存成功')
+  formVisible.value = false
   loadData()
+}
+
+const toggleStatus = async (row) => {
+  await updateUserStatus(row.id, { isUse: row.isUse })
+  ElMessage.success('状态已更新')
+}
+
+const openRole = (row) => {
+  currentUserId.value = row.id
+  roleForm.roleId = row.roleId
+  roleVisible.value = true
+}
+
+const saveRole = async () => {
+  await assignUserRole(currentUserId.value, roleForm)
+  ElMessage.success('角色已更新')
+  roleVisible.value = false
+  loadData()
+}
+
+const openReset = (row) => {
+  currentUserId.value = row.id
+  resetPasswordForm.newPwd = ''
+  resetVisible.value = true
+}
+
+const saveReset = async () => {
+  if (!resetPasswordForm.newPwd) {
+    ElMessage.warning('请输入新密码')
+    return
+  }
+  await resetUserPassword(currentUserId.value, resetPasswordForm)
+  ElMessage.success('密码已重置')
+  resetVisible.value = false
+}
+
+const remove = async (row) => {
+  await ElMessageBox.confirm(`确认删除用户 ${row.name}？`, '删除确认', { type: 'warning' })
+  await deleteUser(row.id)
+  ElMessage.success('已删除')
+  loadData()
+}
+
+onMounted(async () => {
+  await loadRoles()
+  await loadData()
 })
 </script>
 
 <style scoped>
-.user-manage-page {
-  min-height: 100%;
-}
-
-.search-bar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 12px;
 }
 
-.pagination {
-  margin-top: 20px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-@media (max-width: 1024px) {
-  .pagination :deep(.el-pagination) {
-    justify-content: center;
-    flex-wrap: wrap;
-  }
-}
-
-@media (max-width: 768px) {
-  .search-bar {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .search-bar :deep(.el-input),
-  .search-bar :deep(.el-select),
-  .search-bar :deep(.el-button) {
-    width: 100% !important;
-    margin-left: 0 !important;
-  }
-  
-  /* 移动端表格优化 */
-  :deep(.el-table) {
-    font-size: 13px;
-  }
-  
-  :deep(.el-table .el-button) {
-    padding: 4px 8px;
-    font-size: 12px;
-  }
-  
-  .pagination {
-    margin-top: 16px;
-  }
-  
-  .pagination :deep(.el-pagination) {
-    justify-content: center;
-  }
-  
-  .pagination :deep(.el-pagination__sizes) {
-    display: none;
-  }
-}
-
-@media (max-width: 375px) {
-  :deep(.el-table) {
-    font-size: 12px;
-  }
-  
-  :deep(.el-table .cell) {
-    padding: 0 6px;
+@media (max-width: 620px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
   }
 }
 </style>
