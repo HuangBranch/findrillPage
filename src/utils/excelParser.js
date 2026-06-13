@@ -73,7 +73,6 @@ const formatQuestionData = (row, index) => {
     year: row['年份'] || new Date().getFullYear(),
     type: row['题型'] || 'single',
     difficulty: difficulty,
-    knowledgePoint: row['知识点'] || '',
     questionTitle: row['题目标题'] || row['题目'] || '',
     options: {},
     answer: [],
@@ -175,7 +174,6 @@ export const downloadTemplate = () => {
       年份: 2024,
       题型: '单选题',
       难度: '简单',
-      知识点: '物理层',
       题目: 'OSI 参考模型的最底层是？',
       选项A: '物理层',
       选项B: '数据链路层',
@@ -188,7 +186,6 @@ export const downloadTemplate = () => {
       年份: 2024,
       题型: '多选题',
       难度: '困难',
-      知识点: '传输层',
       题目: '以下哪些属于传输层协议？',
       选项A: 'TCP',
       选项B: 'UDP',
@@ -201,7 +198,6 @@ export const downloadTemplate = () => {
       年份: 2024,
       题型: '判断题',
       难度: '中等',
-      知识点: 'HTTP协议',
       题目: 'HTTP是无状态协议',
       选项A: '正确',
       选项B: '错误',
@@ -218,7 +214,6 @@ export const downloadTemplate = () => {
     { wch: 8 },  // 年份
     { wch: 10 }, // 题型
     { wch: 8 },  // 难度
-    { wch: 15 }, // 知识点
     { wch: 50 }, // 题目标题
     { wch: 30 }, // 选项A
     { wch: 30 }, // 选项B

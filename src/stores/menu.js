@@ -19,8 +19,7 @@ export const fallbackAdminMenus = [
 const menuPathAliases = {
   '/admin/question-imports': '/admin/imports',
   '/admin/question-audits': '/admin/traces',
-  '/admin/question-reports': '/admin/traces',
-  '/admin/knowledge-points': '/admin/questions'
+  '/admin/question-reports': '/admin/traces'
 }
 
 const canonicalMenus = new Map(fallbackAdminMenus.map((menu) => [menu.path, menu]))
@@ -52,7 +51,7 @@ const normalizeAdminMenus = (menus = []) => {
 
 export const useMenuStore = defineStore('menu', {
   state: () => ({
-    menuList: getStorage(MENU_KEY, []),
+    menuList: normalizeAdminMenus(getStorage(MENU_KEY, [])),
     loading: false,
     loaded: false,
     usingFallback: false
@@ -81,7 +80,8 @@ export const useMenuStore = defineStore('menu', {
         this.loaded = true
         return this.menuList
       } catch {
-        this.menuList = getStorage(MENU_KEY, fallbackAdminMenus)
+        const cachedMenus = normalizeAdminMenus(getStorage(MENU_KEY, fallbackAdminMenus))
+        this.menuList = cachedMenus.length ? cachedMenus : fallbackAdminMenus
         this.usingFallback = true
         this.loaded = true
         return this.menuList

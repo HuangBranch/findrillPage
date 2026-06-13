@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">错题复习</h1>
-        <p class="page-subtitle">查看错题、收藏、复习计划和题目反馈。</p>
+        <p class="page-subtitle">查看错题、收藏、题目掌握状态和章节进度。</p>
       </div>
       <el-button type="primary" @click="$router.push({ name: 'Practice', query: { sourceType: 2 } })">开始错题练习</el-button>
     </div>
@@ -50,32 +50,34 @@
           </el-table>
         </el-tab-pane>
 
-        <el-tab-pane label="复习计划" name="review">
-          <el-table :data="reviewRows" style="width: 100%">
+        <el-tab-pane label="题目掌握状态" name="states">
+          <el-table :data="questionRows" style="width: 100%">
             <el-table-column prop="questionId" label="题目 ID" width="110" />
-            <el-table-column prop="reviewCount" label="复习次数" width="100" />
-            <el-table-column label="下次复习" min-width="160">
-              <template #default="{ row }">{{ formatDateTime(row.nextReviewTime) }}</template>
+            <el-table-column prop="rightCount" label="正确次数" width="100" />
+            <el-table-column prop="wrongCount" label="错误次数" width="100" />
+            <el-table-column label="正确率" width="120">
+              <template #default="{ row }">{{ percent(row.accuracyRate) }}</template>
             </el-table-column>
-            <el-table-column label="操作" width="170">
+            <el-table-column label="掌握状态" width="120">
               <template #default="{ row }">
-                <el-button link type="primary" @click="complete(row.id)">完成</el-button>
-                <el-button link @click="ignore(row.id)">忽略</el-button>
+                <el-tag :type="masteryTag(row)">{{ masteryText(row) }}</el-tag>
               </template>
+            </el-table-column>
+            <el-table-column label="最近练习" min-width="160">
+              <template #default="{ row }">{{ formatDateTime(row.lastPracticeTime || row.updateTime) }}</template>
             </el-table-column>
           </el-table>
         </el-tab-pane>
 
-        <el-tab-pane label="我的反馈" name="reports">
-          <el-table :data="reportRows" style="width: 100%">
-            <el-table-column prop="questionId" label="题目 ID" width="110" />
-            <el-table-column label="原因" width="120">
-              <template #default="{ row }">{{ labelOf(REPORT_REASONS, row.reason) }}</template>
-            </el-table-column>
-            <el-table-column prop="description" label="说明" min-width="180" show-overflow-tooltip />
-            <el-table-column label="状态" width="110">
+        <el-tab-pane label="章节进度" name="chapters">
+          <el-table :data="chapterRows" style="width: 100%">
+            <el-table-column prop="chapterName" label="章节" min-width="180" />
+            <el-table-column prop="totalQuestion" label="题量" width="90" />
+            <el-table-column prop="masteredQuestion" label="掌握" width="90" />
+            <el-table-column prop="wrongQuestion" label="错题" width="90" />
+            <el-table-column label="进度" min-width="180">
               <template #default="{ row }">
-                <el-tag :type="tagOf(REPORT_STATUS, row.status)">{{ labelOf(REPORT_STATUS, row.status) }}</el-tag>
+                <el-progress :percentage="rate(row.accuracyRate)" />
               </template>
             </el-table-column>
           </el-table>
@@ -89,23 +91,20 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  completeReview,
-  ignoreReview,
+  listChapterProgress,
   listFavorites,
-  listMyQuestionReports,
-  listReviewSchedules,
+  listQuestionStates,
   listWrongQuestions,
   removeFavorite,
   removeWrongQuestion
 } from '@/api/learning'
-import { REPORT_REASONS, REPORT_STATUS, labelOf, tagOf } from '@/utils/dictionaries'
 import { formatDateTime } from '@/utils/helpers'
 
 const activeTab = ref('wrong')
 const wrongRows = ref([])
 const favoriteRows = ref([])
-const reviewRows = ref([])
-const reportRows = ref([])
+const questionRows = ref([])
+const chapterRows = ref([])
 
 const questionStem = (row) =>
   row.stemHtml ||
@@ -120,8 +119,8 @@ const questionStem = (row) =>
 const loadData = async () => {
   if (activeTab.value === 'wrong') wrongRows.value = await listWrongQuestions({ active: true })
   if (activeTab.value === 'favorite') favoriteRows.value = await listFavorites()
-  if (activeTab.value === 'review') reviewRows.value = await listReviewSchedules({ dueOnly: false })
-  if (activeTab.value === 'reports') reportRows.value = await listMyQuestionReports()
+  if (activeTab.value === 'states') questionRows.value = await listQuestionStates()
+  if (activeTab.value === 'chapters') chapterRows.value = await listChapterProgress()
 }
 
 const remove = async (questionId) => {
@@ -136,16 +135,22 @@ const unfavorite = async (questionId) => {
   loadData()
 }
 
-const complete = async (id) => {
-  await completeReview(id)
-  ElMessage.success('已完成复习')
-  loadData()
+const rate = (value) => Math.round(Number(value || 0))
+
+const percent = (value) => `${rate(value)}%`
+
+const masteryText = (row) => {
+  const mastered = row.mastered ?? row.isMastered
+  if (mastered === true || mastered === 1) return '已掌握'
+  if (rate(row.accuracyRate) >= 80) return '趋于掌握'
+  return '待巩固'
 }
 
-const ignore = async (id) => {
-  await ignoreReview(id)
-  ElMessage.success('已忽略')
-  loadData()
+const masteryTag = (row) => {
+  const text = masteryText(row)
+  if (text === '已掌握') return 'success'
+  if (text === '趋于掌握') return 'warning'
+  return 'danger'
 }
 
 onMounted(loadData)

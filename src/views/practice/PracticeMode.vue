@@ -60,17 +60,6 @@
             </el-radio-group>
           </el-form-item>
 
-          <el-form-item label="题量">
-            <el-input-number
-              v-model="form.questionCount"
-              :min="1"
-              :max="999"
-              :step="5"
-              controls-position="right"
-              placeholder="全部"
-              style="width: 100%"
-            />
-          </el-form-item>
         </div>
 
         <el-collapse v-model="filterPanels" class="filter-collapse">
@@ -133,8 +122,7 @@ const form = reactive({
   chapterId: undefined,
   sourceType: props.defaultSourceType,
   orderType: 1,
-  questionTypes: [],
-  questionCount: undefined
+  questionTypes: []
 })
 
 const normalizeRows = (value) => {
@@ -193,7 +181,6 @@ const buildPayload = () => {
 
   if (form.curriculumId) payload.curriculumId = form.curriculumId
   if (form.chapterId) payload.chapterId = form.chapterId
-  if (form.questionCount) payload.questionCount = form.questionCount
 
   return payload
 }
@@ -221,7 +208,6 @@ const resetOptional = () => {
   form.curriculumId = undefined
   form.chapterId = undefined
   form.questionTypes = []
-  form.questionCount = undefined
   chapters.value = []
 }
 
@@ -240,7 +226,6 @@ watch(
     form.curriculumId = toNumber(query.curriculumId)
     form.chapterId = toNumber(query.chapterId)
     form.orderType = toNumber(query.orderType) || 1
-    form.questionCount = toNumber(query.questionCount)
     await loadChapters()
   }
 )
@@ -250,7 +235,6 @@ onMounted(async () => {
   form.curriculumId = toNumber(route.query.curriculumId)
   form.chapterId = toNumber(route.query.chapterId)
   form.orderType = toNumber(route.query.orderType) || 1
-  form.questionCount = toNumber(route.query.questionCount)
 
   await loadCourses()
   await loadChapters()

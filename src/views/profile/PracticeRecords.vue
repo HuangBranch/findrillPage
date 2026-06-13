@@ -53,8 +53,8 @@
             <el-table-column prop="answerCount" label="作答次数" />
             <el-table-column prop="rightCount" label="正确" />
             <el-table-column prop="wrongCount" label="错误" />
-            <el-table-column label="下次复习">
-              <template #default="{ row }">{{ formatDateTime(row.nextReviewTime) }}</template>
+            <el-table-column label="最近练习">
+              <template #default="{ row }">{{ formatDateTime(row.lastPracticeTime || row.updateTime) }}</template>
             </el-table-column>
           </el-table>
         </el-tab-pane>

@@ -105,8 +105,7 @@ const routes = [
       { path: 'traces', name: 'TraceManage', component: () => import('@/views/admin/TraceManage.vue'), meta: { title: '审核反馈', requiresAuth: true, requiresAdmin: true } },
       { path: 'question-imports', redirect: '/admin/imports', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'question-audits', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
-      { path: 'question-reports', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
-      { path: 'knowledge-points', redirect: '/admin/questions', meta: { requiresAuth: true, requiresAdmin: true } }
+      { path: 'question-reports', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } }
     ]
   },
   {

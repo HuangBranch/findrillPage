@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">题库管理</h1>
-        <p class="page-subtitle">维护题目草稿、选项、答案、知识点和题目生命周期。</p>
+        <p class="page-subtitle">维护题目草稿、选项、答案和题目生命周期。</p>
       </div>
       <el-button type="primary" @click="openCreate">新增题目</el-button>
     </div>
@@ -132,17 +132,6 @@
           </div>
         </el-form-item>
 
-        <el-form-item label="知识点">
-          <el-tree-select
-            v-model="form.knowledgeIds"
-            :data="knowledgeTree"
-            multiple
-            clearable
-            check-strictly
-            :props="{ label: 'name', value: 'id', children: 'children' }"
-            style="width: 100%"
-          />
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="formVisible = false">取消</el-button>
@@ -163,7 +152,6 @@ import {
   getQuestionDetail,
   listChapters,
   listCourses,
-  listKnowledgeTree,
   listQuestions,
   publishQuestion,
   submitQuestionAudit,
@@ -177,7 +165,6 @@ const rows = ref([])
 const total = ref(0)
 const courses = ref([])
 const chapters = ref([])
-const knowledgeTree = ref([])
 const formVisible = ref(false)
 const editingId = ref()
 const formRef = ref()
@@ -195,8 +182,7 @@ const form = reactive({
   status: 1,
   sort: 0,
   options: [],
-  answers: [],
-  knowledgeIds: []
+  answers: []
 })
 
 const rules = {
@@ -270,8 +256,7 @@ const resetForm = () => {
     status: 1,
     sort: 0,
     options: [],
-    answers: [],
-    knowledgeIds: []
+    answers: []
   })
   resetByType()
 }
@@ -313,8 +298,7 @@ const openEdit = async (row) => {
     status: detail.status ?? 1,
     sort: detail.sort || 0,
     options: (detail.options || []).map((item, index) => ({ ...item, sort: item.sort ?? index })),
-    answers: (detail.answers || []).map(normalizeAnswer),
-    knowledgeIds: detail.knowledgeIds || []
+    answers: (detail.answers || []).map(normalizeAnswer)
   })
   formVisible.value = true
 }
@@ -331,8 +315,7 @@ const payload = () => ({
   status: form.status,
   sort: form.sort,
   options: needsOptions.value ? form.options : [],
-  answers: form.answers.map(normalizeAnswer),
-  knowledgeIds: form.knowledgeIds || []
+  answers: form.answers.map(normalizeAnswer)
 })
 
 const validateNested = () => {
@@ -393,13 +376,6 @@ onMounted(async () => {
   const [courseRows, chapterRows] = await Promise.all([listCourses(), listChapters()])
   courses.value = courseRows || []
   chapters.value = chapterRows || []
-  if (courses.value[0]) {
-    try {
-      knowledgeTree.value = await listKnowledgeTree({ curriculumId: courses.value[0].id })
-    } catch {
-      knowledgeTree.value = []
-    }
-  }
   await loadData()
 })
 </script>

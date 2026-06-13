@@ -48,7 +48,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getChapterList } from '@/api/chapter'
-import { getCourseList } from '@/api/course'
+import { getCourse } from '@/api/course'
 import { listChapterProgress } from '@/api/learning'
 import { startPractice } from '@/api/practice'
 
@@ -134,13 +134,13 @@ const openPracticeForm = (chapter) =>
 const loadData = async () => {
   loading.value = true
   try {
-    const [progressRows, courseRows, chapterRows] = await Promise.all([
+    const [progressRows, courseDetail, chapterRows] = await Promise.all([
       listChapterProgress({ curriculumId: curriculumId.value }),
-      getCourseList({}, { silent: true }),
+      getCourse(curriculumId.value, { silent: true }),
       getChapterList(curriculumId.value, { silent: true })
     ])
     progress.value = normalizeRows(progressRows)
-    courses.value = normalizeRows(courseRows)
+    courses.value = courseDetail ? [courseDetail] : []
     chapters.value = normalizeRows(chapterRows)
   } finally {
     loading.value = false

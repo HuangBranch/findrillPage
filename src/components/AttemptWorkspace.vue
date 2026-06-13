@@ -121,7 +121,6 @@
           </section>
 
           <div class="question-actions">
-            <el-button @click="openNote">笔记</el-button>
             <el-button @click="reportVisible = true">反馈</el-button>
           </div>
         </article>
@@ -146,14 +145,6 @@
           </button>
         </div>
       </div>
-    </el-drawer>
-
-    <el-drawer v-model="noteVisible" title="题目笔记" size="min(420px, 92%)">
-      <el-input v-model="noteContent" type="textarea" :rows="8" placeholder="记录自己的思路或易错点" />
-      <template #footer>
-        <el-button @click="deleteCurrentNote">删除</el-button>
-        <el-button type="primary" @click="saveCurrentNote">保存</el-button>
-      </template>
     </el-drawer>
 
     <el-dialog v-model="reportVisible" title="题目反馈" width="min(460px, 92%)">
@@ -184,7 +175,7 @@ import {
   savePracticeAnswer,
   submitPractice
 } from '@/api/practice'
-import { createQuestionReport, deleteNote, getNote, saveNote } from '@/api/learning'
+import { createQuestionReport } from '@/api/learning'
 import { QUESTION_TYPES, REPORT_REASONS, labelOf } from '@/utils/dictionaries'
 import { formatDuration, parseAnswerArray, parseOptions, safeJsonParse } from '@/utils/helpers'
 
@@ -217,8 +208,6 @@ const now = ref(Date.now())
 const answerCardVisible = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
-const noteVisible = ref(false)
-const noteContent = ref('')
 const reportVisible = ref(false)
 const reportForm = reactive({ reason: 1, description: '' })
 
@@ -435,31 +424,6 @@ const goResult = (data) => {
   const id = getAttemptId(data)
   if (!id) return
   router.push({ name: props.resultRouteName, params: { id } })
-}
-
-const openNote = async () => {
-  if (!currentQuestion.value) return
-  noteContent.value = ''
-  try {
-    const note = await getNote(currentQuestion.value.questionId)
-    noteContent.value = note?.content || ''
-  } catch {
-    noteContent.value = ''
-  }
-  noteVisible.value = true
-}
-
-const saveCurrentNote = async () => {
-  await saveNote(currentQuestion.value.questionId, { content: noteContent.value })
-  ElMessage.success('笔记已保存')
-  noteVisible.value = false
-}
-
-const deleteCurrentNote = async () => {
-  await deleteNote(currentQuestion.value.questionId)
-  noteContent.value = ''
-  ElMessage.success('笔记已删除')
-  noteVisible.value = false
 }
 
 const submitReport = async () => {

@@ -11,26 +11,11 @@ export const addFavorite = (questionId) => request({ url: `/learning/favorites/$
 
 export const removeFavorite = (questionId) => request({ url: `/learning/favorites/${questionId}`, method: 'DELETE' })
 
-export const getNote = (questionId) => request({ url: `/learning/notes/${questionId}`, method: 'GET', silent: true })
-
-export const saveNote = (questionId, data) => request({ url: `/learning/notes/${questionId}`, method: 'PUT', data })
-
-export const deleteNote = (questionId) => request({ url: `/learning/notes/${questionId}`, method: 'DELETE' })
-
 export const listChapterProgress = (params = {}) =>
   request({ url: '/learning/progress/chapters', method: 'GET', params })
 
 export const listQuestionStates = (params = {}) =>
   request({ url: '/learning/question-states', method: 'GET', params })
-
-export const listReviewSchedules = (params = {}) =>
-  request({ url: '/learning/review-schedules', method: 'GET', params })
-
-export const completeReview = (scheduleId) =>
-  request({ url: `/learning/review-schedules/${scheduleId}/complete`, method: 'PUT' })
-
-export const ignoreReview = (scheduleId) =>
-  request({ url: `/learning/review-schedules/${scheduleId}/ignore`, method: 'PUT' })
 
 export const createQuestionReport = (data) => request({ url: '/question-reports', method: 'POST', data })
 
@@ -45,14 +30,8 @@ export default {
   listFavorites,
   addFavorite,
   removeFavorite,
-  getNote,
-  saveNote,
-  deleteNote,
   listChapterProgress,
   listQuestionStates,
-  listReviewSchedules,
-  completeReview,
-  ignoreReview,
   createQuestionReport,
   listMyQuestionReports,
   getMyTrend

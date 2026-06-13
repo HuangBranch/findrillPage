@@ -38,19 +38,11 @@ export const updateChapterStatus = (id, enabled) => put(`/admin/chapters/${id}/s
 export const sortChapters = (data) => put('/admin/chapters/sort', data)
 export const deleteChapter = (id) => del(`/admin/chapters/${id}`)
 
-export const listKnowledgeTree = (params = {}) => get('/admin/knowledge-points/tree', params)
-export const getKnowledgePoint = (id) => get(`/admin/knowledge-points/${id}`)
-export const createKnowledgePoint = (data) => post('/admin/knowledge-points', data)
-export const updateKnowledgePoint = (id, data) => put(`/admin/knowledge-points/${id}`, data)
-export const updateKnowledgePointStatus = (id, enabled) => put(`/admin/knowledge-points/${id}/status`, { enabled })
-export const deleteKnowledgePoint = (id) => del(`/admin/knowledge-points/${id}`)
-
 export const listQuestions = (params) => get('/admin/questions/list', params)
 export const getQuestionDetail = (id) => get(`/admin/questions/${id}`)
 export const createQuestion = (data) => post('/admin/questions', data)
 export const updateQuestion = (id, data) => put(`/admin/questions/${id}`, data)
 export const deleteQuestion = (id) => del(`/admin/questions/${id}`)
-export const bindQuestionKnowledge = (id, data) => put(`/admin/questions/${id}/knowledge-points`, data)
 export const submitQuestionAudit = (id, data = {}) => post(`/admin/questions/${id}/submit`, data)
 export const publishQuestion = (id, data = {}) => post(`/admin/questions/${id}/publish`, data)
 export const disableQuestion = (id, data = {}) => put(`/admin/questions/${id}/disable`, data)
@@ -126,7 +118,6 @@ export default {
   updateChapterStatus,
   sortChapters,
   deleteChapter,
-  listKnowledgeTree,
   listQuestions,
   getQuestionDetail,
   createQuestion,
