@@ -22,10 +22,7 @@
     <template v-else>
       <section class="surface attempt-controls">
         <el-button @click="answerCardVisible = true">答题卡 {{ answeredCount }}/{{ questions.length }}</el-button>
-        <el-button v-if="attempt.status === 1" type="primary" @click="submit">
-          提交
-        </el-button>
-        <el-button v-else @click="goResult(attempt)">
+        <el-button type="primary" @click="goResult(attempt)">
           查看结果
         </el-button>
       </section>
@@ -49,7 +46,7 @@
             <el-radio-group
               v-if="[1, 3].includes(currentQuestion.type)"
               v-model="singleAnswer"
-              :disabled="attempt.status !== 1"
+              :disabled="currentQuestionLocked"
               @change="updateSingle"
             >
               <el-radio v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
@@ -61,7 +58,7 @@
             <el-checkbox-group
               v-else-if="currentQuestion.type === 2"
               v-model="multiAnswer"
-              :disabled="attempt.status !== 1"
+              :disabled="currentQuestionLocked"
               @change="updateMulti"
             >
               <el-checkbox v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
@@ -75,11 +72,11 @@
                 v-for="(_, index) in blankAnswer"
                 :key="index"
                 v-model="blankAnswer[index]"
-                :disabled="attempt.status !== 1"
+                :disabled="currentQuestionLocked"
                 :placeholder="`第 ${index + 1} 空`"
                 @change="updateBlank"
               />
-              <el-button v-if="attempt.status === 1" @click="blankAnswer.push('')">增加空位</el-button>
+              <el-button v-if="!currentQuestionLocked" @click="blankAnswer.push('')">增加空位</el-button>
             </div>
 
             <el-input
@@ -87,13 +84,13 @@
               v-model="textAnswer"
               type="textarea"
               :rows="6"
-              :disabled="attempt.status !== 1"
+              :disabled="currentQuestionLocked"
               placeholder="请输入答案"
               @change="updateText"
             />
           </div>
 
-          <section v-if="currentAnswerResult" class="practice-answer-result">
+          <section v-if="hasSubmittedAnswer(currentAnswerResult)" class="practice-answer-result">
             <div class="practice-answer-result__head">
               <el-tag :type="answerResultType(currentAnswerResult)" effect="dark">
                 {{ answerResultText(currentAnswerResult) }}
@@ -122,6 +119,14 @@
 
           <div class="question-actions">
             <el-button @click="reportVisible = true">反馈</el-button>
+            <el-button
+              v-if="showNextQuestionButton"
+              type="primary"
+              :loading="saving"
+              @click="goNextQuestion"
+            >
+              下一题
+            </el-button>
           </div>
         </article>
       </section>
@@ -169,11 +174,10 @@
 <script setup>
 import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import {
   getPracticeAttempt,
-  savePracticeAnswer,
-  submitPractice
+  submitPracticeAnswer
 } from '@/api/practice'
 import { createQuestionReport } from '@/api/learning'
 import { QUESTION_TYPES, REPORT_REASONS, labelOf } from '@/utils/dictionaries'
@@ -226,6 +230,12 @@ const remainingText = computed(() => {
 
 const currentAnswer = computed(() => answers[questionAttemptId(currentQuestion.value)] || [])
 const currentAnswerResult = computed(() => answerResults[questionAttemptId(currentQuestion.value)])
+const hasSubmittedAnswer = (result) =>
+  Boolean(result && (result.answeredTime || result.userAnswerJson !== undefined || result.isCorrect !== undefined))
+const currentQuestionLocked = computed(() => hasSubmittedAnswer(currentAnswerResult.value) || attempt.value?.status !== 1)
+const showNextQuestionButton = computed(() =>
+  currentAnswerResult.value?.isCorrect === false && currentIndex.value < questions.value.length - 1
+)
 const singleAnswer = ref('')
 const multiAnswer = ref([])
 const blankAnswer = ref([''])
@@ -239,20 +249,25 @@ const setSaving = (delta) => {
   saving.value = pendingSaveCount.value > 0
 }
 
+const sanitizeAttemptDetail = (data) => ({
+  ...data,
+  questions: (data?.questions || []).map(({ answer, answersJson, analysisHtml, ...question }) => question)
+})
+
 const normalizeAnswerResult = (result, question) => {
-  if (!result && !question?.answer) return null
-  const answer = question?.answer || {}
+  if (!result) return null
   return {
-    ...answer,
     ...result,
-    attemptQuestionId: result?.attemptQuestionId ?? answer.attemptQuestionId ?? questionAttemptId(question),
-    questionId: result?.questionId ?? answer.questionId ?? question?.questionId,
-    userAnswerJson: result?.userAnswerJson ?? answer.userAnswerJson,
-    answersJson: result?.answersJson ?? answer.answersJson ?? question?.answersJson,
-    analysisHtml: result?.analysisHtml ?? answer.analysisHtml ?? question?.analysisHtml,
-    judgeStatus: result?.judgeStatus ?? answer.judgeStatus,
-    isCorrect: result?.isCorrect ?? answer.isCorrect,
-    earnedScore: result?.earnedScore ?? answer.earnedScore
+    attemptQuestionId: result?.attemptQuestionId ?? questionAttemptId(question),
+    questionId: result?.questionId ?? question?.questionId,
+    userAnswerJson: result?.userAnswerJson,
+    answersJson: result?.answersJson,
+    analysisHtml: result?.analysisHtml,
+    autoJudgeDetailJson: result?.autoJudgeDetailJson,
+    answeredTime: result?.answeredTime,
+    judgeStatus: result?.judgeStatus,
+    isCorrect: result?.isCorrect,
+    earnedScore: result?.earnedScore
   }
 }
 
@@ -338,86 +353,78 @@ const hydrateInputs = () => {
 watch(currentQuestion, hydrateInputs)
 
 const setCurrentAnswer = (value) => {
-  if (!currentQuestion.value) return
+  if (!currentQuestion.value || currentQuestionLocked.value) return
   const id = questionAttemptId(currentQuestion.value)
   answers[id] = value
     .filter((item) => item !== null && item !== undefined)
     .map((item) => String(item))
-  delete answerResults[id]
-}
-
-const saveAfterAnswerChange = () => {
-  saveCurrent({ silent: true }).catch(() => {})
 }
 
 const updateSingle = () => {
   setCurrentAnswer(singleAnswer.value ? [singleAnswer.value] : [])
-  saveAfterAnswerChange()
+  submitCurrentAnswer({ silent: true })
 }
 
 const updateMulti = () => {
   setCurrentAnswer(multiAnswer.value)
-  saveAfterAnswerChange()
+  submitCurrentAnswer({ silent: true })
 }
 
 const updateBlank = () => {
   setCurrentAnswer(blankAnswer.value)
-  saveAfterAnswerChange()
+  submitCurrentAnswer({ silent: true })
 }
 
 const updateText = () => {
   setCurrentAnswer(textAnswer.value ? [textAnswer.value] : [])
-  saveAfterAnswerChange()
+  submitCurrentAnswer({ silent: true })
 }
 
 const loadAttempt = async (id) => {
-  const data = await getPracticeAttempt(id)
+  const data = sanitizeAttemptDetail(await getPracticeAttempt(id))
   attempt.value = data
   Object.keys(answers).forEach((key) => delete answers[key])
   Object.keys(answerResults).forEach((key) => delete answerResults[key])
   Object.keys(saveVersions).forEach((key) => delete saveVersions[key])
   ;(data.questions || []).forEach((question) => {
     const id = questionAttemptId(question)
-    answers[id] = parseAnswerArray(question.answer?.userAnswerJson)
+    answers[id] = []
   })
   hydrateInputs()
 }
 
-const saveCurrent = async ({ silent = false } = {}) => {
-  if (!currentQuestion.value || attempt.value.status !== 1) return
+const submitCurrentAnswer = async ({ silent = false } = {}) => {
+  if (!currentQuestion.value || currentQuestionLocked.value || saving.value) return
   const question = currentQuestion.value
   const attemptQuestionId = questionAttemptId(question)
+  const submittedAnswers = answers[attemptQuestionId] || []
+  if (!submittedAnswers.length) {
+    if (!silent) ElMessage.warning('请先作答')
+    return
+  }
   const version = (saveVersions[attemptQuestionId] || 0) + 1
   saveVersions[attemptQuestionId] = version
   const payload = {
     attemptQuestionId,
-    answers: answers[attemptQuestionId] || []
+    answers: submittedAnswers
   }
   setSaving(1)
   try {
-    const result = await savePracticeAnswer(getAttemptId(attempt.value), payload)
+    const result = await submitPracticeAnswer(getAttemptId(attempt.value), payload)
     if (saveVersions[attemptQuestionId] === version) {
       const normalizedResult = normalizeAnswerResult(result, question)
       answerResults[attemptQuestionId] = normalizedResult
+      answers[attemptQuestionId] = parseAnswerArray(
+        normalizedResult?.userAnswerJson ?? normalizedResult?.answerJson ?? submittedAnswers
+      )
       if (normalizedResult?.isCorrect === true) {
         goNextQuestion()
       }
     }
-    if (!silent) ElMessage.success('已保存')
+    if (!silent) ElMessage.success('本题已判定')
   } finally {
     setSaving(-1)
   }
-}
-
-const submit = async () => {
-  await ElMessageBox.confirm('提交后将进入判题，确认提交吗？', '提交确认', { type: 'warning' })
-  if (currentQuestion.value) {
-    await saveCurrent()
-  }
-  const result = await submitPractice(getAttemptId(attempt.value))
-  attempt.value = result
-  ElMessage.success('提交成功')
-  goResult(result)
 }
 
 const goResult = (data) => {

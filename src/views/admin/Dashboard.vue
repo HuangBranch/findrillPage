@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">数据看板</h1>
-        <p class="page-subtitle">平台概览、题目错误率和章节掌握度。</p>
+        <p class="page-subtitle">平台概览、题目错误率和章节正确率。</p>
       </div>
       <el-button :icon="Refresh" @click="loadData">刷新</el-button>
     </div>
@@ -23,9 +23,9 @@
     </section>
 
     <section class="surface">
-      <h2>章节掌握度</h2>
-      <el-table :data="chapterMastery" style="width: 100%">
-        <el-table-column v-for="column in chapterMasteryColumns" :key="column.prop" :prop="column.prop" :label="column.label" />
+      <h2>章节正确率</h2>
+      <el-table :data="chapterAccuracyRows" style="width: 100%">
+        <el-table-column v-for="column in chapterAccuracyColumns" :key="column.prop" :prop="column.prop" :label="column.label" />
       </el-table>
     </section>
   </div>
@@ -34,11 +34,11 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { Refresh } from '@element-plus/icons-vue'
-import { getChapterMasteryStats, getOverviewStats, getQuestionErrorStats } from '@/api/admin'
+import { getChapterAccuracyStats, getOverviewStats, getQuestionErrorStats } from '@/api/admin'
 
 const overview = ref({})
 const questionErrors = ref([])
-const chapterMastery = ref([])
+const chapterAccuracy = ref([])
 
 // 字段名中文映射
 const fieldNameMap = {
@@ -57,9 +57,9 @@ const fieldNameMap = {
   totalCount: '答题总次数',
   errorRate: '错误率',
   chapterName: '所属章节',
-  // 章节掌握度
+  // 章节正确率
   chapterId: '章节ID',
-  masteryRate: '掌握度',
+  accuracyRate: '正确率',
   averageScore: '平均分',
   completionRate: '完成率',
   totalQuestions: '题目总数',
@@ -80,20 +80,27 @@ const questionErrorColumns = computed(() => {
   return keys.map(key => ({ prop: key, label: getLabel(key) }))
 })
 
-const chapterMasteryColumns = computed(() => {
-  const keys = Object.keys(chapterMastery.value[0] || {})
+const chapterAccuracyRows = computed(() =>
+  chapterAccuracy.value.map(({ masteryRate, ...row }) => ({
+    ...row,
+    accuracyRate: row.accuracyRate ?? masteryRate
+  }))
+)
+
+const chapterAccuracyColumns = computed(() => {
+  const keys = Object.keys(chapterAccuracyRows.value[0] || {})
   return keys.map(key => ({ prop: key, label: getLabel(key) }))
 })
 
 const loadData = async () => {
-  const [overviewData, errorRows, masteryRows] = await Promise.all([
+  const [overviewData, errorRows, accuracyRows] = await Promise.all([
     getOverviewStats(),
     getQuestionErrorStats(),
-    getChapterMasteryStats()
+    getChapterAccuracyStats()
   ])
   overview.value = overviewData || {}
   questionErrors.value = errorRows || []
-  chapterMastery.value = masteryRows || []
+  chapterAccuracy.value = accuracyRows || []
 }
 
 onMounted(loadData)

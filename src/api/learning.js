@@ -11,12 +11,6 @@ export const addFavorite = (questionId) => request({ url: `/learning/favorites/$
 
 export const removeFavorite = (questionId) => request({ url: `/learning/favorites/${questionId}`, method: 'DELETE' })
 
-export const listChapterProgress = (params = {}) =>
-  request({ url: '/learning/progress/chapters', method: 'GET', params })
-
-export const listQuestionStates = (params = {}) =>
-  request({ url: '/learning/question-states', method: 'GET', params })
-
 export const createQuestionReport = (data) => request({ url: '/question-reports', method: 'POST', data })
 
 export const listMyQuestionReports = (params = {}) =>
@@ -30,8 +24,6 @@ export default {
   listFavorites,
   addFavorite,
   removeFavorite,
-  listChapterProgress,
-  listQuestionStates,
   createQuestionReport,
   listMyQuestionReports,
   getMyTrend

@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">学习中心</h1>
-        <p class="page-subtitle">选择课程后直接开始自主练习，也可以进入章节查看进度。</p>
+        <p class="page-subtitle">选择课程后进入章节题库，开始自主练习。</p>
       </div>
     </div>
 

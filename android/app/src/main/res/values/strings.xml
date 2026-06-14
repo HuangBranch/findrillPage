@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Findrill</string>
+    <string name="title_activity_main">Findrill</string>
+    <string name="package_name">com.findrill.page</string>
+    <string name="custom_url_scheme">com.findrill.page</string>
+</resources>

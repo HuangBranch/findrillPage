@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 import UserLayout from '@/components/layout/UserLayout.vue'
 import AdminLayout from '@/components/layout/AdminLayout.vue'
 
@@ -37,7 +37,7 @@ const routes = [
         path: 'courses/:courseId/chapters',
         name: 'ChapterList',
         component: () => import('@/views/course/ChapterList.vue'),
-        meta: { title: '章节进度', requiresAuth: true }
+        meta: { title: '章节题库', requiresAuth: true }
       },
       {
         path: 'practice',
@@ -85,7 +85,7 @@ const routes = [
         path: 'profile/practice-records',
         name: 'PracticeRecords',
         component: () => import('@/views/profile/PracticeRecords.vue'),
-        meta: { title: '学习状态', requiresAuth: true }
+        meta: { title: '练习记录', requiresAuth: true }
       }
     ]
   },
@@ -116,8 +116,10 @@ const routes = [
   }
 ]
 
+const useHashHistory = import.meta.env.MODE === 'android' || import.meta.env.VITE_ROUTER_MODE === 'hash'
+
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: useHashHistory ? createWebHashHistory(import.meta.env.BASE_URL) : createWebHistory(import.meta.env.BASE_URL),
   routes,
   scrollBehavior: () => ({ top: 0 })
 })

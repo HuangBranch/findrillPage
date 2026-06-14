@@ -51,10 +51,17 @@ export const listQuestionAuditLogs = (id) => get(`/admin/questions/${id}/audit-l
 
 export const getImportTemplate = () => get('/admin/question-imports/template')
 export const importQuestions = (data) => post('/admin/question-imports', data)
-export const importQuestionExcel = (file) => {
+export const importQuestionExcel = (file, target = {}) => {
   const data = new FormData()
+  const params = Object.fromEntries(
+    Object.entries(target).filter(([, value]) => value !== undefined && value !== null && value !== '')
+  )
   data.append('file', file)
+  Object.entries(params).forEach(([key, value]) => {
+    data.append(key, value)
+  })
   return post('/admin/question-imports/excel', data, {
+    params,
     headers: { 'Content-Type': 'multipart/form-data' }
   })
 }
@@ -71,7 +78,7 @@ export const handleQuestionReport = (id, data) => put(`/admin/question-reports/$
 
 export const getOverviewStats = () => get('/admin/statistics/overview')
 export const getQuestionErrorStats = () => get('/admin/statistics/question-errors')
-export const getChapterMasteryStats = () => get('/admin/statistics/chapter-mastery')
+export const getChapterAccuracyStats = () => get('/admin/statistics/chapter-mastery')
 
 export const getSystemInitStatus = () => get('/admin/system/init/status')
 export const initSystem = (data) => post('/admin/system/init', data)
@@ -128,5 +135,5 @@ export default {
   disableQuestion,
   getOverviewStats,
   getQuestionErrorStats,
-  getChapterMasteryStats
+  getChapterAccuracyStats
 }

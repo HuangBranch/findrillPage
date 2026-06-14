@@ -28,7 +28,7 @@
           </div>
           <div class="metric">
             <div class="metric__value">{{ attempt.pendingCount || 0 }}</div>
-            <div class="metric__label">待判定</div>
+            <div class="metric__label">未答题</div>
           </div>
         </div>
 
@@ -54,7 +54,8 @@
                 <span class="result-title">
                   第 {{ index + 1 }} 题
                   <el-tag size="small">{{ labelOf(QUESTION_TYPES, question.type) }}</el-tag>
-                  <el-tag v-if="question.answer?.judgeStatus === 2" size="small" type="warning">待判定</el-tag>
+                  <el-tag v-if="!question.answer" size="small" type="info">未作答</el-tag>
+                  <el-tag v-else-if="question.answer?.judgeStatus === 2" size="small" type="warning">待判定</el-tag>
                   <el-tag v-else-if="question.answer?.isCorrect" size="small" type="success">正确</el-tag>
                   <el-tag v-else size="small" type="danger">错误</el-tag>
                 </span>
@@ -62,7 +63,12 @@
               <div class="html-content question-stem" v-html="question.stemHtml"></div>
               <p class="answer-line">你的答案：{{ displayAnswer(question) }}</p>
               <p class="answer-line">得分：{{ question.answer?.earnedScore ?? '-' }} / {{ question.questionScore || 0 }}</p>
-              <div v-if="question.analysisHtml" class="html-content analysis" v-html="question.analysisHtml"></div>
+              <p class="answer-line">正确答案：{{ displayCorrectAnswer(question) }}</p>
+              <div
+                v-if="question.answer?.analysisHtml"
+                class="html-content analysis"
+                v-html="question.answer.analysisHtml"
+              ></div>
             </el-collapse-item>
           </el-collapse>
         </section>
@@ -85,9 +91,16 @@ const attempt = ref(null)
 
 const descriptionColumns = computed(() => (window.innerWidth < 720 ? 1 : 3))
 
-const displayAnswer = (question) => {
-  const values = parseAnswerArray(question.answer?.userAnswerJson)
+const displayAnswerValues = (value, fallback) => {
+  const values = parseAnswerArray(value)
   return values.length ? values.join('，') : '未作答'
+}
+
+const displayAnswer = (question) => displayAnswerValues(question.answer?.userAnswerJson, '未作答')
+
+const displayCorrectAnswer = (question) => {
+  const values = parseAnswerArray(question.answer?.answersJson)
+  return values.length ? values.join('，') : '-'
 }
 
 onMounted(async () => {

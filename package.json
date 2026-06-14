@@ -9,9 +9,17 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "build:android": "vite build --mode android",
+    "preview": "vite preview",
+    "cap:config": "node scripts/write-capacitor-config.cjs",
+    "cap:add:android": "pnpm cap:config && cap add android",
+    "cap:open:android": "cap open android",
+    "cap:sync": "pnpm cap:config && cap sync",
+    "android:build": "pnpm build:android && pnpm cap:config && cap sync android"
   },
   "dependencies": {
+    "@capacitor/android": "^7.6.6",
+    "@capacitor/core": "^7.6.6",
     "@element-plus/icons-vue": "^2.3.2",
     "@vueuse/core": "^14.1.0",
     "axios": "^1.13.2",
@@ -25,6 +33,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@capacitor/cli": "^7.6.6",
     "@vitejs/plugin-vue": "^6.0.2",
     "sass": "^1.94.2",
     "vite": "^7.2.4",

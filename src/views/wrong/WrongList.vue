@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">错题复习</h1>
-        <p class="page-subtitle">查看错题、收藏、题目掌握状态和章节进度。</p>
+        <p class="page-subtitle">查看错题和收藏，继续针对性练习。</p>
       </div>
       <el-button type="primary" @click="$router.push({ name: 'Practice', query: { sourceType: 2 } })">开始错题练习</el-button>
     </div>
@@ -50,38 +50,6 @@
           </el-table>
         </el-tab-pane>
 
-        <el-tab-pane label="题目掌握状态" name="states">
-          <el-table :data="questionRows" style="width: 100%">
-            <el-table-column prop="questionId" label="题目 ID" width="110" />
-            <el-table-column prop="rightCount" label="正确次数" width="100" />
-            <el-table-column prop="wrongCount" label="错误次数" width="100" />
-            <el-table-column label="正确率" width="120">
-              <template #default="{ row }">{{ percent(row.accuracyRate) }}</template>
-            </el-table-column>
-            <el-table-column label="掌握状态" width="120">
-              <template #default="{ row }">
-                <el-tag :type="masteryTag(row)">{{ masteryText(row) }}</el-tag>
-              </template>
-            </el-table-column>
-            <el-table-column label="最近练习" min-width="160">
-              <template #default="{ row }">{{ formatDateTime(row.lastPracticeTime || row.updateTime) }}</template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
-
-        <el-tab-pane label="章节进度" name="chapters">
-          <el-table :data="chapterRows" style="width: 100%">
-            <el-table-column prop="chapterName" label="章节" min-width="180" />
-            <el-table-column prop="totalQuestion" label="题量" width="90" />
-            <el-table-column prop="masteredQuestion" label="掌握" width="90" />
-            <el-table-column prop="wrongQuestion" label="错题" width="90" />
-            <el-table-column label="进度" min-width="180">
-              <template #default="{ row }">
-                <el-progress :percentage="rate(row.accuracyRate)" />
-              </template>
-            </el-table-column>
-          </el-table>
-        </el-tab-pane>
       </el-tabs>
     </section>
   </div>
@@ -91,9 +59,7 @@
 import { onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import {
-  listChapterProgress,
   listFavorites,
-  listQuestionStates,
   listWrongQuestions,
   removeFavorite,
   removeWrongQuestion
@@ -103,8 +69,6 @@ import { formatDateTime } from '@/utils/helpers'
 const activeTab = ref('wrong')
 const wrongRows = ref([])
 const favoriteRows = ref([])
-const questionRows = ref([])
-const chapterRows = ref([])
 
 const questionStem = (row) =>
   row.stemHtml ||
@@ -119,8 +83,6 @@ const questionStem = (row) =>
 const loadData = async () => {
   if (activeTab.value === 'wrong') wrongRows.value = await listWrongQuestions({ active: true })
   if (activeTab.value === 'favorite') favoriteRows.value = await listFavorites()
-  if (activeTab.value === 'states') questionRows.value = await listQuestionStates()
-  if (activeTab.value === 'chapters') chapterRows.value = await listChapterProgress()
 }
 
 const remove = async (questionId) => {
@@ -133,24 +95,6 @@ const unfavorite = async (questionId) => {
   await removeFavorite(questionId)
   ElMessage.success('已取消收藏')
   loadData()
-}
-
-const rate = (value) => Math.round(Number(value || 0))
-
-const percent = (value) => `${rate(value)}%`
-
-const masteryText = (row) => {
-  const mastered = row.mastered ?? row.isMastered
-  if (mastered === true || mastered === 1) return '已掌握'
-  if (rate(row.accuracyRate) >= 80) return '趋于掌握'
-  return '待巩固'
-}
-
-const masteryTag = (row) => {
-  const text = masteryText(row)
-  if (text === '已掌握') return 'success'
-  if (text === '趋于掌握') return 'warning'
-  return 'danger'
 }
 
 onMounted(loadData)

@@ -285,12 +285,23 @@ onMounted(async () => {
     grid-template-columns: 1fr;
   }
 
+  .page-header :deep(.el-button) {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .question-type-group :deep(.el-checkbox-button),
+  .practice-form :deep(.el-radio-button) {
+    flex: 1 1 calc(50% - 10px);
+  }
+
   .form-actions {
     justify-content: stretch;
   }
 
   .form-actions .el-button {
     flex: 1;
+    margin-left: 0;
   }
 }
 </style>

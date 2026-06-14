@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">我的</h1>
-        <p class="page-subtitle">个人资料、自主练习状态和错题复习。</p>
+        <p class="page-subtitle">个人资料、自主练习和错题复习。</p>
       </div>
       <div class="toolbar">
         <el-button @click="$router.push('/profile/edit')">编辑资料</el-button>
