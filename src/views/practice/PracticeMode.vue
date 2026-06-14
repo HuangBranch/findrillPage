@@ -2,15 +2,13 @@
   <AttemptWorkspace
     v-if="route.params.attemptId"
     result-route-name="PracticeResult"
-    title="自主练习"
-    empty-subtitle="正在加载练习。"
   />
 
   <div v-else class="page">
     <div class="page-header">
       <div>
         <h1 class="page-title">自主练习</h1>
-        <p class="page-subtitle">按课程、章节、错题或收藏范围直接开始刷题。</p>
+        <p class="page-subtitle">按课程、章节或错题范围直接开始刷题。</p>
       </div>
       <el-button :icon="Refresh" @click="loadCourses">刷新课程</el-button>
     </div>
@@ -140,6 +138,13 @@ const toNumber = (value) => {
   return Number.isNaN(numberValue) ? undefined : numberValue
 }
 
+const normalizeSourceType = (value, fallback = props.defaultSourceType) => {
+  const fallbackSourceType = toNumber(fallback)
+  const normalizedFallback = fallbackSourceType === 1 || fallbackSourceType === 2 ? fallbackSourceType : 1
+  const sourceType = toNumber(value)
+  return sourceType === 1 || sourceType === 2 ? sourceType : normalizedFallback
+}
+
 const getAttemptId = (data) => data?.id || data?.attemptId
 
 const loadCourses = async () => {
@@ -214,7 +219,7 @@ const resetOptional = () => {
 watch(
   () => props.defaultSourceType,
   (value) => {
-    if (!route.query.sourceType) form.sourceType = value
+    if (!route.query.sourceType) form.sourceType = normalizeSourceType(value)
   }
 )
 
@@ -222,7 +227,7 @@ watch(
   () => route.query,
   async (query) => {
     if (route.params.attemptId) return
-    form.sourceType = toNumber(query.sourceType) || props.defaultSourceType
+    form.sourceType = normalizeSourceType(query.sourceType)
     form.curriculumId = toNumber(query.curriculumId)
     form.chapterId = toNumber(query.chapterId)
     form.orderType = toNumber(query.orderType) || 1
@@ -231,7 +236,7 @@ watch(
 )
 
 onMounted(async () => {
-  form.sourceType = toNumber(route.query.sourceType) || props.defaultSourceType
+  form.sourceType = normalizeSourceType(route.query.sourceType)
   form.curriculumId = toNumber(route.query.curriculumId)
   form.chapterId = toNumber(route.query.chapterId)
   form.orderType = toNumber(route.query.orderType) || 1

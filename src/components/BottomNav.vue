@@ -16,15 +16,13 @@
 
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
-import { Collection, EditPen, User, Warning } from '@element-plus/icons-vue'
+import { Collection, User } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const router = useRouter()
 
 const items = [
-  { label: '学习', path: '/courses', icon: Collection },
-  { label: '练习', path: '/practice', icon: EditPen },
-  { label: '错题', path: '/wrong', icon: Warning },
+  { label: '课程', path: '/courses', icon: Collection },
   { label: '我的', path: '/profile', icon: User }
 ]
 

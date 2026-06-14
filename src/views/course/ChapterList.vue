@@ -1,24 +1,23 @@
 <template>
-  <div class="page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{{ title }}</h1>
-        <p class="page-subtitle">选择章节后直接开始题库自主练习。</p>
-      </div>
-    </div>
-
+  <div class="page chapter-page">
     <section class="surface">
       <h2 class="section-title">章节题库</h2>
       <el-skeleton :loading="loading" animated :rows="5">
         <el-empty v-if="!chapterCards.length" description="暂无章节数据" />
         <div v-else class="card-grid">
-          <el-card v-for="item in chapterCards" :key="item.id" shadow="never">
+          <el-card
+            v-for="item in chapterCards"
+            :key="item.id"
+            class="chapter-card"
+            :class="{ 'chapter-card--has-summary': item.remarks }"
+            shadow="never"
+          >
             <template #header>
               <div class="chapter-card__header">
                 <strong>{{ item.name }}</strong>
               </div>
             </template>
-            <div class="chapter-summary">{{ item.remarks || `章节 ID：${item.id}` }}</div>
+            <div v-if="item.remarks" class="chapter-summary">{{ item.remarks }}</div>
             <template #footer>
               <div class="toolbar">
                 <el-button
@@ -39,7 +38,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getChapterList } from '@/api/chapter'
 import { getCourse } from '@/api/course'
@@ -52,8 +51,11 @@ const loading = ref(false)
 const startingId = ref()
 const courses = ref([])
 const chapters = ref([])
+const setTopbarTitle = inject('setTopbarTitle', () => {})
 
 const title = computed(() => courses.value.find((item) => item.id === curriculumId.value)?.name || `课程 #${curriculumId.value}`)
+
+watch(title, (value) => setTopbarTitle(value), { immediate: true })
 
 const normalizeRows = (value) => {
   if (Array.isArray(value)) return value
@@ -121,6 +123,10 @@ const loadData = async () => {
 }
 
 onMounted(loadData)
+
+onUnmounted(() => {
+  setTopbarTitle('')
+})
 </script>
 
 <style scoped>
@@ -137,9 +143,12 @@ onMounted(loadData)
 }
 
 .chapter-summary {
-  margin-bottom: 12px;
   color: #64748b;
   line-height: 1.6;
+}
+
+.chapter-card:not(.chapter-card--has-summary) :deep(.el-card__body) {
+  display: none;
 }
 
 @media (max-width: 760px) {

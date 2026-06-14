@@ -43,19 +43,19 @@ const routes = [
         path: 'practice',
         name: 'Practice',
         component: () => import('@/views/practice/PracticeMode.vue'),
-        meta: { title: '自主练习', requiresAuth: true }
+        meta: { title: '自主练习', requiresAuth: true, hideBottomNav: true }
       },
       {
         path: 'practice/:attemptId',
         name: 'PracticeAttempt',
         component: () => import('@/views/practice/PracticeMode.vue'),
-        meta: { title: '自主练习', requiresAuth: true }
+        meta: { title: '自主练习', requiresAuth: true, hideBottomNav: true }
       },
       {
         path: 'practice/result/:id',
         name: 'PracticeResult',
         component: () => import('@/views/practice/PracticeResult.vue'),
-        meta: { title: '练习结果', requiresAuth: true }
+        meta: { title: '练习结果', requiresAuth: true, hideBottomNav: true }
       },
       {
         path: 'wrong',
@@ -67,7 +67,7 @@ const routes = [
         path: 'wrong/practice',
         name: 'WrongPractice',
         component: () => import('@/views/wrong/WrongPractice.vue'),
-        meta: { title: '错题练习', requiresAuth: true }
+        meta: { title: '错题练习', requiresAuth: true, hideBottomNav: true }
       },
       {
         path: 'profile',

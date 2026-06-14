@@ -1,18 +1,5 @@
 <template>
   <div class="page attempt-page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">{{ pageTitle }}</h1>
-        <p class="page-subtitle">{{ attempt ? attempt.name : emptySubtitle }}</p>
-      </div>
-      <div class="toolbar">
-        <el-tag v-if="attempt" :type="attempt.status === 1 ? 'warning' : 'success'">
-          {{ attempt.status === 1 ? '进行中' : '已提交' }}
-        </el-tag>
-        <el-tag v-if="remainingText && attempt?.status === 1" type="danger">{{ remainingText }}</el-tag>
-      </div>
-    </div>
-
     <section v-if="!attempt" class="surface">
       <el-skeleton :loading="true" animated :rows="4">
         <el-empty description="正在加载练习" />
@@ -20,13 +7,6 @@
     </section>
 
     <template v-else>
-      <section class="surface attempt-controls">
-        <el-button @click="answerCardVisible = true">答题卡 {{ answeredCount }}/{{ questions.length }}</el-button>
-        <el-button type="primary" @click="goResult(attempt)">
-          查看结果
-        </el-button>
-      </section>
-
       <section class="surface answer-layout">
         <article
           v-if="currentQuestion"
@@ -118,7 +98,9 @@
           </section>
 
           <div class="question-actions">
-            <el-button @click="reportVisible = true">反馈</el-button>
+            <el-button v-if="attempt?.status !== 1" type="primary" @click="goResult(attempt)">
+              查看结果
+            </el-button>
             <el-button
               v-if="showNextQuestionButton"
               type="primary"
@@ -130,6 +112,13 @@
           </div>
         </article>
       </section>
+
+      <div class="floating-actions">
+        <el-button :icon="ChatDotRound" @click="reportVisible = true">反馈</el-button>
+        <el-button type="primary" :icon="Grid" @click="answerCardVisible = true">
+          答题卡 {{ answeredCount }}/{{ questions.length }}
+        </el-button>
+      </div>
     </template>
 
     <el-drawer v-model="answerCardVisible" title="答题卡" size="min(420px, 92%)">
@@ -172,29 +161,22 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { ChatDotRound, Grid } from '@element-plus/icons-vue'
 import {
   getPracticeAttempt,
   submitPracticeAnswer
 } from '@/api/practice'
 import { createQuestionReport } from '@/api/learning'
 import { QUESTION_TYPES, REPORT_REASONS, labelOf } from '@/utils/dictionaries'
-import { formatDuration, parseAnswerArray, parseOptions, safeJsonParse } from '@/utils/helpers'
+import { parseAnswerArray, parseOptions, safeJsonParse } from '@/utils/helpers'
 
 const props = defineProps({
-  title: {
-    type: String,
-    default: '答题'
-  },
   resultRouteName: {
     type: String,
     default: 'PracticeResult'
-  },
-  emptySubtitle: {
-    type: String,
-    default: '选择一个可用配置开始作答。'
   }
 })
 
@@ -208,25 +190,16 @@ const answerResults = reactive({})
 const saveVersions = reactive({})
 const saving = ref(false)
 const pendingSaveCount = ref(0)
-const now = ref(Date.now())
 const answerCardVisible = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 const reportVisible = ref(false)
 const reportForm = reactive({ reason: 1, description: '' })
 
-let timer
-
-const pageTitle = computed(() => props.title)
 const questions = computed(() => attempt.value?.questions || [])
 const currentQuestion = computed(() => questions.value[currentIndex.value])
 const currentOptions = computed(() => parseOptions(currentQuestion.value?.optionsJson))
 const answeredCount = computed(() => Object.values(answers).filter((item) => item?.length).length)
-const remainingText = computed(() => {
-  if (!attempt.value?.deadlineTime) return ''
-  const remain = Math.max(0, Math.floor((new Date(attempt.value.deadlineTime).getTime() - now.value) / 1000))
-  return `剩余 ${formatDuration(remain)}`
-})
 
 const currentAnswer = computed(() => answers[questionAttemptId(currentQuestion.value)] || [])
 const currentAnswerResult = computed(() => answerResults[questionAttemptId(currentQuestion.value)])
@@ -324,6 +297,12 @@ const goNextQuestion = () => {
   return true
 }
 
+const goPrevQuestion = () => {
+  if (currentIndex.value <= 0) return false
+  currentIndex.value -= 1
+  return true
+}
+
 const handleTouchStart = (event) => {
   const touch = event.changedTouches?.[0]
   if (!touch) return
@@ -337,7 +316,11 @@ const handleTouchEnd = (event) => {
   if (!touch) return
   const deltaX = touch.clientX - touchStartX.value
   const deltaY = touch.clientY - touchStartY.value
-  if (deltaX > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+  const isHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5
+  if (!isHorizontalSwipe) return
+  if (deltaX < 0) {
+    goPrevQuestion()
+  } else {
     goNextQuestion()
   }
 }
@@ -449,16 +432,9 @@ const submitReport = async () => {
 }
 
 onMounted(async () => {
-  timer = window.setInterval(() => {
-    now.value = Date.now()
-  }, 1000)
   if (route.params.attemptId) {
     await loadAttempt(route.params.attemptId)
   }
-})
-
-onUnmounted(() => {
-  window.clearInterval(timer)
 })
 </script>
 
@@ -467,17 +443,36 @@ onUnmounted(() => {
   display: block;
 }
 
-.attempt-controls {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 10px;
+.attempt-page {
+  padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
 .answer-card {
   display: grid;
   align-content: start;
   gap: 14px;
+}
+
+.floating-actions {
+  position: fixed;
+  right: 24px;
+  bottom: calc(24px + env(safe-area-inset-bottom));
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.floating-actions .el-button {
+  min-height: 44px;
+  margin-left: 0;
+  border-radius: 999px;
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
+}
+
+.floating-actions .el-button--primary {
+  min-width: 132px;
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.28);
 }
 
 .answer-card__head {
@@ -616,58 +611,13 @@ onUnmounted(() => {
 
 .question-actions {
   margin-top: 18px;
-  justify-content: flex-end;
+  justify-content: flex-start;
 }
 
 @media (max-width: 760px) {
   .attempt-page {
     gap: 10px;
-  }
-
-  .attempt-page .page-header {
-    align-items: center;
-    gap: 8px;
-  }
-
-  .attempt-page .page-title {
-    font-size: 18px;
-    line-height: 1.2;
-  }
-
-  .attempt-page .page-subtitle {
-    max-width: 210px;
-    margin-top: 1px;
-    overflow: hidden;
-    font-size: 12px;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .attempt-page .toolbar {
-    gap: 6px;
-    justify-content: flex-end;
-  }
-
-  .attempt-page .toolbar :deep(.el-tag) {
-    height: 22px;
-    padding: 0 6px;
-    font-size: 12px;
-  }
-
-  .attempt-controls {
-    position: sticky;
-    top: 58px;
-    z-index: 12;
-    justify-content: stretch;
-    padding: 10px;
-  }
-
-  .attempt-controls .el-button {
-    flex: 1 1 0;
-    min-height: 34px;
-    margin-left: 0;
-    padding: 8px 10px;
+    padding-bottom: calc(70px + env(safe-area-inset-bottom));
   }
 
   .answer-layout {
@@ -696,6 +646,24 @@ onUnmounted(() => {
   .question-actions .el-button {
     flex: 1 1 0;
     margin-left: 0;
+    min-height: 34px;
+    padding: 8px 10px;
+  }
+
+  .floating-actions {
+    right: 14px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    gap: 8px;
+  }
+
+  .floating-actions .el-button {
+    min-width: 118px;
+    min-height: 40px;
+    padding: 8px 12px;
+  }
+
+  .floating-actions .el-button:not(.el-button--primary) {
+    min-width: 82px;
   }
 }
 </style>

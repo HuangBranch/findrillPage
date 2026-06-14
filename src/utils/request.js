@@ -1,8 +1,11 @@
 import axios from 'axios'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import router from '@/router'
+import { getStorage, removeStorage } from '@/utils/storage'
 
 let loginDialogVisible = false
+const AUTH_USER_KEY = 'auth:user'
+const AUTH_TOKEN_KEY = 'auth:token'
 
 const resolveApiBaseURL = () => {
   const configured = import.meta.env.VITE_API_BASE_URL || '/api'
@@ -35,6 +38,8 @@ const readCookie = (name) => {
     .join('=') || ''
 }
 
+const readAuthToken = () => getStorage(AUTH_TOKEN_KEY, '') || readCookie('token')
+
 const request = axios.create({
   baseURL: resolveApiBaseURL(),
   timeout: 20000,
@@ -42,7 +47,7 @@ const request = axios.create({
 })
 
 request.interceptors.request.use((config) => {
-  const token = readCookie('token')
+  const token = readAuthToken()
   if (token && !config.headers?.token) {
     config.headers = config.headers || {}
     config.headers.token = decodeURIComponent(token)
@@ -76,7 +81,8 @@ request.interceptors.response.use(
           type: 'warning'
         }).finally(() => {
           loginDialogVisible = false
-          localStorage.removeItem('auth:user')
+          removeStorage(AUTH_USER_KEY)
+          removeStorage(AUTH_TOKEN_KEY)
           router.push({ path: '/login', query: { redirect: router.currentRoute.value.fullPath } })
         })
       }

@@ -1,25 +1,20 @@
 <template>
   <div class="page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">学习中心</h1>
-        <p class="page-subtitle">选择课程后进入章节题库，开始自主练习。</p>
-      </div>
-    </div>
-
     <section class="surface">
       <el-skeleton :loading="loading" animated :rows="5">
         <el-empty v-if="!courseCards.length" description="暂无可用课程" />
-        <div v-else class="card-grid">
-          <el-card v-for="course in courseCards" :key="course.id" shadow="never">
+        <div v-else class="course-list">
+          <el-card v-for="course in courseCards" :key="course.id" class="course-card" shadow="never">
             <template #header>
               <div class="course-card__header">
-                <strong class="course-card__title" @click="router.push(`/courses/${course.id}/chapters`)">{{ course.name }}</strong>
+                <button class="course-card__title" type="button" @click="router.push(`/courses/${course.id}/chapters`)">
+                  {{ course.name }}
+                </button>
+                <el-button class="course-card__action" text type="primary" @click="router.push(`/courses/${course.id}/chapters`)">
+                  进入
+                </el-button>
               </div>
             </template>
-            <div class="course-card__body">
-              <p>{{ course.remarks || `课程 ID：${course.id}` }}</p>
-            </div>
           </el-card>
         </div>
       </el-skeleton>
@@ -64,7 +59,9 @@ onMounted(loadData)
 </script>
 
 <style scoped>
-.card-grid {
+.course-list {
+  display: grid;
+  gap: 12px;
   align-items: stretch;
 }
 
@@ -76,57 +73,55 @@ onMounted(loadData)
 }
 
 .course-card__title {
-  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
   color: var(--el-color-primary);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
 }
 
 .course-card__title:hover {
   text-decoration: underline;
 }
 
-.course-card__body {
-  display: grid;
-  gap: 10px;
-  color: #64748b;
+.course-card :deep(.el-card__body) {
+  display: none;
 }
 
 @media (max-width: 760px) {
   :deep(.el-card__header) {
-    padding: 10px 12px;
+    padding: 12px 14px;
   }
 
-  :deep(.el-card__body) {
-    padding: 8px 12px;
+  .course-card__header {
+    align-items: flex-start;
+    gap: 10px;
   }
 
-  :deep(.el-card__footer) {
-    padding: 10px 12px;
-  }
-
-  .course-card__header strong {
+  .course-card__title {
+    flex: 1 1 auto;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  .course-card__body {
-    gap: 6px;
+  .course-card__action {
+    flex: none;
+    padding: 0;
+    min-height: 0;
   }
+}
 
-  .course-card__body p {
-    display: none;
-  }
-
-  :deep(.el-card__footer .toolbar) {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-  }
-
-  :deep(.el-card__footer .el-button) {
-    min-height: 34px;
-    margin-left: 0;
-    padding: 8px 10px;
+@media (min-width: 761px) {
+  .course-list {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   }
 }
 </style>

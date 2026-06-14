@@ -1,9 +1,6 @@
 import {
   listWrongQuestions,
-  removeWrongQuestion,
-  listFavorites,
-  addFavorite,
-  removeFavorite
+  removeWrongQuestion
 } from '@/api/learning'
 
 export const getWrongQuestions = (params = {}) => listWrongQuestions(params)
@@ -11,18 +8,12 @@ export const removeWrong = (questionId) => removeWrongQuestion(questionId)
 
 export {
   listWrongQuestions,
-  removeWrongQuestion,
-  listFavorites,
-  addFavorite,
-  removeFavorite
+  removeWrongQuestion
 }
 
 export default {
   getWrongQuestions,
   removeWrong,
   listWrongQuestions,
-  removeWrongQuestion,
-  listFavorites,
-  addFavorite,
-  removeFavorite
+  removeWrongQuestion
 }

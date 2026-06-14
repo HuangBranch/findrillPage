@@ -1,49 +1,53 @@
 <template>
-  <div class="user-layout">
-    <header class="mobile-topbar">
-      <button class="brand" type="button" @click="router.push('/courses')">
-        <el-icon><Reading /></el-icon>
-        <span>Findrill</span>
-      </button>
-      <div class="top-actions">
-        <el-dropdown trigger="click">
-          <el-avatar :size="34" :src="authStore.userInfo?.avatar">
-            {{ (authStore.userInfo?.name || 'U').slice(0, 1) }}
-          </el-avatar>
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item @click="router.push('/profile')">个人中心</el-dropdown-item>
-              <el-dropdown-item divided @click="handleLogout">退出登录</el-dropdown-item>
-            </el-dropdown-menu>
-          </template>
-        </el-dropdown>
+  <div class="user-layout" :class="{ 'user-layout--no-bottom-nav': !showBottomNav }">
+    <header class="mobile-topbar mobile-topbar--titled">
+      <div v-if="showBackButton" class="topbar-left">
+        <button class="top-back" type="button" aria-label="上一页" @click="goBack">
+          <el-icon><ArrowLeft /></el-icon>
+        </button>
       </div>
+      <h1 class="topbar-title">{{ topbarTitle }}</h1>
     </header>
 
     <main class="user-main">
       <router-view />
     </main>
 
-    <BottomNav />
+    <BottomNav v-if="showBottomNav" />
   </div>
 </template>
 
 <script setup>
-import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
-import { Reading } from '@element-plus/icons-vue'
+import { computed, provide, ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { ArrowLeft } from '@element-plus/icons-vue'
 import BottomNav from '@/components/BottomNav.vue'
-import { useAuthStore } from '@/stores/auth'
-import { useMenuStore } from '@/stores/menu'
 
+const route = useRoute()
 const router = useRouter()
-const authStore = useAuthStore()
-const menuStore = useMenuStore()
+const customTopbarTitle = ref('')
 
-const handleLogout = async () => {
-  await authStore.logout()
-  menuStore.clearMenus()
-  ElMessage.success('已退出登录')
-  router.push('/login')
+const showBottomNav = computed(() => !route.meta?.hideBottomNav)
+const showBackButton = computed(() => true)
+const topbarTitle = computed(() => customTopbarTitle.value || route.meta?.title || 'Findrill')
+
+provide('setTopbarTitle', (value = '') => {
+  customTopbarTitle.value = value
+})
+
+watch(
+  () => route.fullPath,
+  () => {
+    customTopbarTitle.value = ''
+  }
+)
+
+const goBack = () => {
+  if (window.history.length > 1) {
+    router.back()
+    return
+  }
+
+  router.push('/courses')
 }
 </script>

@@ -8,8 +8,7 @@ export const QUESTION_TYPES = [
 
 export const PRACTICE_SOURCE_TYPES = [
   { label: '章节题库', value: 1, tag: 'success' },
-  { label: '错题练习', value: 2, tag: 'warning' },
-  { label: '收藏练习', value: 3, tag: 'primary' }
+  { label: '错题练习', value: 2, tag: 'warning' }
 ]
 
 export const PRACTICE_ORDER_TYPES = [

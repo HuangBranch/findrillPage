@@ -1,22 +1,14 @@
 <template>
   <div class="page">
-    <div class="page-header">
-      <div>
-        <h1 class="page-title">我的</h1>
-        <p class="page-subtitle">个人资料、自主练习和错题复习。</p>
-      </div>
-      <div class="toolbar">
-        <el-button @click="$router.push('/profile/edit')">编辑资料</el-button>
-        <el-button v-if="authStore.isAdmin" type="primary" @click="$router.push('/admin/dashboard')">进入后台</el-button>
-      </div>
-    </div>
-
     <section class="surface profile-head">
-      <el-avatar :size="72" :src="authStore.userInfo?.avatar">{{ authStore.userInfo?.name?.slice(0, 1) }}</el-avatar>
-      <div>
-        <h2>{{ authStore.userInfo?.name || '-' }}</h2>
-        <p>{{ authStore.userInfo?.userId }} · {{ authStore.userInfo?.roleName || '普通用户' }}</p>
+      <div class="profile-head__main">
+        <el-avatar :size="72" :src="authStore.userInfo?.avatar">{{ authStore.userInfo?.name?.slice(0, 1) }}</el-avatar>
+        <div>
+          <h2>{{ authStore.userInfo?.name || '-' }}</h2>
+          <p>{{ authStore.userInfo?.userId }} · {{ authStore.userInfo?.roleName || '普通用户' }}</p>
+        </div>
       </div>
+      <el-button class="profile-head__edit" @click="$router.push('/profile/edit')">编辑资料</el-button>
     </section>
 
     <div class="metric-grid">
@@ -24,51 +16,62 @@
         <div class="metric__value">{{ history.length }}</div>
         <div class="metric__label">练习次数</div>
       </div>
-      <div class="metric">
-        <div class="metric__value">{{ submittedCount }}</div>
-        <div class="metric__label">已提交</div>
-      </div>
-      <div class="metric">
-        <div class="metric__value">{{ avgScore }}</div>
-        <div class="metric__label">平均得分</div>
-      </div>
     </div>
 
     <section class="surface">
-      <div class="toolbar profile-links">
-        <el-button @click="$router.push('/profile/practice-records')">练习记录</el-button>
-        <el-button @click="$router.push('/wrong')">错题复习</el-button>
+      <div class="profile-links">
+        <el-button class="profile-action" @click="$router.push('/profile/practice-records')">练习记录</el-button>
+        <el-button class="profile-action" @click="$router.push('/wrong')">错题复习</el-button>
+        <el-button v-if="authStore.isAdmin" class="profile-action" @click="$router.push('/admin/dashboard')">进入后台</el-button>
+        <el-button class="profile-action profile-action--danger" type="danger" plain @click="handleLogout">退出登录</el-button>
       </div>
     </section>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { getPracticeHistory } from '@/api/practice'
 import { useAuthStore } from '@/stores/auth'
+import { useMenuStore } from '@/stores/menu'
 
+const router = useRouter()
 const authStore = useAuthStore()
+const menuStore = useMenuStore()
 const history = ref([])
-
-const submittedCount = computed(() => history.value.filter((item) => item.status === 2).length)
-const avgScore = computed(() => {
-  const scores = history.value.map((item) => Number(item.earnedScore)).filter((item) => !Number.isNaN(item))
-  if (!scores.length) return '-'
-  return Math.round(scores.reduce((sum, item) => sum + item, 0) / scores.length)
-})
 
 onMounted(async () => {
   await authStore.refreshUser()
   history.value = await getPracticeHistory()
 })
+
+const handleLogout = async () => {
+  await authStore.logout()
+  menuStore.clearMenus()
+  ElMessage.success('已退出登录')
+  router.push('/login')
+}
 </script>
 
 <style scoped>
 .profile-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+
+.profile-head__main {
   display: flex;
   align-items: center;
   gap: 16px;
+  min-width: 0;
+}
+
+.profile-head__main div {
+  min-width: 0;
 }
 
 .profile-head h2 {
@@ -81,6 +84,26 @@ onMounted(async () => {
 }
 
 .profile-links {
+  display: grid;
+  gap: 12px;
+}
+
+.profile-action {
+  width: 100%;
+  margin-left: 0;
   justify-content: center;
+}
+
+.profile-links :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.profile-action--danger {
+  color: #ef4444;
+}
+
+.profile-head__edit {
+  justify-self: end;
+  white-space: nowrap;
 }
 </style>
