@@ -1,0 +1,94 @@
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_base_url:
+        description: Android build API base URL
+        required: false
+        default: http://82.156.48.140:8850/api
+  push:
+    branches:
+      - main
+      - dev
+      - 'codex/**'
+    paths:
+      - '.github/workflows/android-apk.yml'
+      - 'android/**'
+      - 'src/**'
+      - 'public/**'
+      - 'scripts/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - 'vite.config.js'
+      - 'capacitor.config.json'
+      - 'index.html'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    env:
+      API_BASE_URL: ${{ github.event.inputs.api_base_url || vars.VITE_API_BASE_URL || 'http://82.156.48.140:8850/api' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Prepare Android env
+        run: |
+          cat > .env.android <<EOF
+          VITE_API_BASE_URL=${API_BASE_URL}
+          VITE_ROUTER_MODE=hash
+          EOF
+
+      - name: Sync Capacitor Android project
+        run: pnpm android:build
+
+      - name: Build debug APK
+        working-directory: android
+        run: sh gradlew assembleDebug
+
+      - name: Build unsigned release APK
+        working-directory: android
+        run: sh gradlew assembleRelease
+
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Upload unsigned release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-unsigned-apk
+          path: android/app/build/outputs/apk/release/app-release-unsigned.apk
+          if-no-files-found: error
