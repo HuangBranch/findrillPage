@@ -42,12 +42,12 @@ export const listQuestions = (params) => get('/admin/questions/list', params)
 export const getQuestionDetail = (id) => get(`/admin/questions/${id}`)
 export const createQuestion = (data) => post('/admin/questions', data)
 export const updateQuestion = (id, data) => put(`/admin/questions/${id}`, data)
-export const deleteQuestion = (id) => del(`/admin/questions/${id}`)
-export const submitQuestionAudit = (id, data = {}) => post(`/admin/questions/${id}/submit`, data)
-export const publishQuestion = (id, data = {}) => post(`/admin/questions/${id}/publish`, data)
+export const deleteQuestions = (data) => del('/admin/questions', { data })
+export const publishQuestions = (data) => post('/admin/questions/publish', data)
+export const unpublishQuestion = (id, data = {}) => put(`/admin/questions/${id}/unpublish`, data)
 export const disableQuestion = (id, data = {}) => put(`/admin/questions/${id}/disable`, data)
+export const enableQuestion = (id, data = {}) => put(`/admin/questions/${id}/enable`, data)
 export const listQuestionVersions = (id) => get(`/admin/questions/${id}/versions`)
-export const listQuestionAuditLogs = (id) => get(`/admin/questions/${id}/audit-logs`)
 
 export const getImportTemplate = () => get('/admin/question-imports/template')
 export const importQuestions = (data) => post('/admin/question-imports', data)
@@ -69,16 +69,12 @@ export const listImportBatches = (params) => get('/admin/question-imports/list',
 export const getImportBatch = (id) => get(`/admin/question-imports/${id}`)
 export const listImportErrors = (id) => get(`/admin/question-imports/${id}/errors`)
 
-export const listAuditQuestions = (params) => get('/admin/question-audits/list', params)
-export const approveQuestion = (id, data = {}) => post(`/admin/question-audits/${id}/approve`, data)
-export const rejectQuestion = (id, data = {}) => post(`/admin/question-audits/${id}/reject`, data)
-
 export const listQuestionReports = (params) => get('/admin/question-reports/list', params)
 export const handleQuestionReport = (id, data) => put(`/admin/question-reports/${id}/handle`, data)
 
 export const getOverviewStats = () => get('/admin/statistics/overview')
-export const getQuestionErrorStats = () => get('/admin/statistics/question-errors')
-export const getChapterAccuracyStats = () => get('/admin/statistics/chapter-mastery')
+export const getQuestionErrorStats = (params) => get('/admin/statistics/question-errors', params)
+export const getChapterAccuracyStats = (params) => get('/admin/statistics/chapter-mastery', params)
 
 export const getSystemInitStatus = () => get('/admin/system/init/status')
 export const initSystem = (data) => post('/admin/system/init', data)
@@ -129,11 +125,17 @@ export default {
   getQuestionDetail,
   createQuestion,
   updateQuestion,
-  deleteQuestion,
-  submitQuestionAudit,
-  publishQuestion,
+  deleteQuestions,
+  publishQuestions,
+  unpublishQuestion,
   disableQuestion,
+  enableQuestion,
+  listQuestionVersions,
+  listQuestionReports,
+  handleQuestionReport,
   getOverviewStats,
   getQuestionErrorStats,
-  getChapterAccuracyStats
+  getChapterAccuracyStats,
+  getSystemInitStatus,
+  initSystem
 }

@@ -4,6 +4,7 @@ import 'element-plus/dist/index.css'
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import ElementPlus from 'element-plus'
+import zhCn from 'element-plus/es/locale/lang/zh-cn'
 import * as ElementPlusIconsVue from '@element-plus/icons-vue'
 import App from './App.vue'
 import router from './router'
@@ -21,8 +22,10 @@ app.use(router)
 // 设置路由守卫
 setupRouterGuards(router)
 
-// 使用 Element Plus
-app.use(ElementPlus)
+// 使用 Element Plus 中文语言包，统一组件默认文案
+app.use(ElementPlus, {
+  locale: zhCn
+})
 
 // 加载所有图标
 for (const [key, component] of Object.entries(ElementPlusIconsVue)) {

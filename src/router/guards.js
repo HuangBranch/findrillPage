@@ -9,7 +9,7 @@ export const setupRouterGuards = (router) => {
     const authStore = useAuthStore()
     const menuStore = useMenuStore()
 
-    document.title = to.meta.title ? `${to.meta.title} - Findrill` : 'Findrill'
+    document.title = to.meta.title ? `${to.meta.title} - 在线题库` : '在线题库'
 
     if (to.path === '/login') {
       if (authStore.isLoggedIn) return to.query.redirect || '/courses'

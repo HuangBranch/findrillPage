@@ -13,7 +13,7 @@
 
     <div class="metric-grid">
       <div class="metric">
-        <div class="metric__value">{{ history.length }}</div>
+        <div class="metric__value">{{ historyCount }}</div>
         <div class="metric__label">练习次数</div>
       </div>
     </div>
@@ -33,18 +33,18 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { getPracticeHistory } from '@/api/practice'
+import { getPracticeHistoryCount } from '@/api/practice'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const menuStore = useMenuStore()
-const history = ref([])
+const historyCount = ref(0)
 
 onMounted(async () => {
   await authStore.refreshUser()
-  history.value = await getPracticeHistory()
+  historyCount.value = await getPracticeHistoryCount()
 })
 
 const handleLogout = async () => {

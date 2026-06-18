@@ -19,11 +19,13 @@
         <el-select v-model="query.type" clearable placeholder="题型" style="width: 150px">
           <el-option v-for="item in QUESTION_TYPES" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-input v-model="query.keyword" clearable placeholder="题干关键词" style="width: 220px" @keyup.enter="loadData" />
         <el-button @click="loadData">查询</el-button>
+        <el-button :disabled="!selectedRows.length" @click="batchPublishSelected">批量发布</el-button>
+        <el-button type="danger" plain :disabled="!selectedRows.length" @click="batchRemoveSelected">批量删除</el-button>
       </div>
 
-      <el-table v-loading="loading" :data="rows" style="width: 100%; margin-top: 14px">
+      <el-table v-loading="loading" :data="rows" style="width: 100%; margin-top: 14px" @selection-change="handleSelectionChange">
+        <el-table-column type="selection" width="48" />
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column label="题干" min-width="240">
           <template #default="{ row }">{{ stripHtml(row.stemHtml).slice(0, 80) }}</template>
@@ -35,17 +37,22 @@
           <template #default="{ row }"><el-tag :type="tagOf(DIFFICULTIES, row.difficulty)">{{ labelOf(DIFFICULTIES, row.difficulty) }}</el-tag></template>
         </el-table-column>
         <el-table-column label="状态" width="90">
-          <template #default="{ row }"><el-tag :type="tagOf(QUESTION_STATUS, row.status)">{{ labelOf(QUESTION_STATUS, row.status) }}</el-tag></template>
+          <template #default="{ row }">
+            <el-tag class="clickable-tag" :type="tagOf(QUESTION_STATUS, row.status)" @click="toggleStatus(row)">
+              {{ labelOf(QUESTION_STATUS, row.status) }}
+            </el-tag>
+          </template>
         </el-table-column>
-        <el-table-column label="审核" width="100">
-          <template #default="{ row }"><el-tag :type="tagOf(AUDIT_STATUS, row.auditStatus)">{{ labelOf(AUDIT_STATUS, row.auditStatus) }}</el-tag></template>
+        <el-table-column label="发布" width="90">
+          <template #default="{ row }">
+            <el-tag class="clickable-tag" :type="publishTagType(row)" @click="togglePublish(row)">
+              {{ publishText(row) }}
+            </el-tag>
+          </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-            <el-button link @click="publish(row)">发布</el-button>
-            <el-button link @click="submitAudit(row)">送审</el-button>
-            <el-button link @click="disable(row)">停用</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -147,17 +154,18 @@ import { Delete, Plus } from '@element-plus/icons-vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   createQuestion,
-  deleteQuestion,
+  deleteQuestions,
   disableQuestion,
+  enableQuestion,
   getQuestionDetail,
   listChapters,
   listCourses,
   listQuestions,
-  publishQuestion,
-  submitQuestionAudit,
+  publishQuestions,
+  unpublishQuestion,
   updateQuestion
 } from '@/api/admin'
-import { AUDIT_STATUS, DIFFICULTIES, QUESTION_STATUS, QUESTION_TYPES, labelOf, tagOf } from '@/utils/dictionaries'
+import { DIFFICULTIES, QUESTION_STATUS, QUESTION_TYPES, labelOf, tagOf } from '@/utils/dictionaries'
 import { getPageList, getPageTotal, stripHtml } from '@/utils/helpers'
 
 const loading = ref(false)
@@ -165,11 +173,18 @@ const rows = ref([])
 const total = ref(0)
 const courses = ref([])
 const chapters = ref([])
+const selectedRows = ref([])
 const formVisible = ref(false)
 const editingId = ref()
 const formRef = ref()
 
-const query = reactive({ page: 1, pageSize: 10, curriculumId: undefined, chapterId: undefined, type: undefined, keyword: '' })
+const query = reactive({
+  page: 1,
+  pageSize: 10,
+  curriculumId: undefined,
+  chapterId: undefined,
+  type: undefined
+})
 const form = reactive({
   curriculumId: undefined,
   chapterId: undefined,
@@ -267,9 +282,14 @@ const loadData = async () => {
     const data = await listQuestions(query)
     rows.value = getPageList(data)
     total.value = getPageTotal(data)
+    selectedRows.value = []
   } finally {
     loading.value = false
   }
+}
+
+const handleSelectionChange = (value) => {
+  selectedRows.value = value || []
 }
 
 const handleCourseFilter = () => {
@@ -347,15 +367,52 @@ const lifecycleReason = async (message) => {
   return { reason: value || '' }
 }
 
+const statusValue = (row) => Number(row?.status ?? 0)
+const isPublished = (row) => Boolean(row?.published)
+const publishText = (row) => (isPublished(row) ? '已发布' : '未发布')
+const publishTagType = (row) => (isPublished(row) ? 'success' : 'info')
+
 const publish = async (row) => {
-  await publishQuestion(row.id, await lifecycleReason('发布说明'))
-  ElMessage.success('已发布')
+  const result = await publishQuestions({
+    ids: [row.id],
+    ...(await lifecycleReason('发布说明'))
+  })
+  ElMessage.success(publishSummaryText(result))
   loadData()
 }
 
-const submitAudit = async (row) => {
-  await submitQuestionAudit(row.id, await lifecycleReason('送审说明'))
-  ElMessage.success('已提交审核')
+const unpublish = async (row) => {
+  await unpublishQuestion(row.id, await lifecycleReason('取消发布原因'))
+  ElMessage.success('已取消发布')
+  loadData()
+}
+
+const togglePublish = async (row) => {
+  if (isPublished(row)) {
+    await unpublish(row)
+    return
+  }
+  await publish(row)
+}
+
+const publishSummaryText = (result) => {
+  const totalCount = Number(result?.totalCount || 0)
+  const successCount = Number(result?.successCount || 0)
+  const skipCount = Number(result?.skipCount || 0)
+  return `已处理 ${totalCount} 题，成功发布 ${successCount} 题，跳过 ${skipCount} 题`
+}
+
+const batchPublishSelected = async () => {
+  const ids = selectedRows.value.map((row) => row.id).filter(Boolean)
+  if (!ids.length) {
+    ElMessage.warning('请先选择题目')
+    return
+  }
+  const result = await publishQuestions({
+    ids,
+    ...(await lifecycleReason('发布说明'))
+  })
+  ElMessage.success(publishSummaryText(result))
   loadData()
 }
 
@@ -365,10 +422,36 @@ const disable = async (row) => {
   loadData()
 }
 
+const enable = async (row) => {
+  await enableQuestion(row.id, await lifecycleReason('启用原因'))
+  ElMessage.success('已启用')
+  loadData()
+}
+
+const toggleStatus = async (row) => {
+  if (statusValue(row) === 1) {
+    await disable(row)
+    return
+  }
+  await enable(row)
+}
+
 const remove = async (row) => {
   await ElMessageBox.confirm(`确认删除题目 #${row.id}？`, '删除确认', { type: 'warning' })
-  await deleteQuestion(row.id)
-  ElMessage.success('已删除')
+  const deletedCount = await deleteQuestions({ ids: [row.id] })
+  ElMessage.success(`已删除 ${deletedCount} 题`)
+  loadData()
+}
+
+const batchRemoveSelected = async () => {
+  const ids = selectedRows.value.map((row) => row.id).filter(Boolean)
+  if (!ids.length) {
+    ElMessage.warning('请先选择题目')
+    return
+  }
+  await ElMessageBox.confirm(`确认批量删除已选中的 ${ids.length} 题？`, '删除确认', { type: 'warning' })
+  const deletedCount = await deleteQuestions({ ids })
+  ElMessage.success(`已删除 ${deletedCount} 题`)
   loadData()
 }
 
@@ -403,6 +486,10 @@ onMounted(async () => {
 .nested-row {
   display: flex;
   gap: 10px;
+}
+
+.clickable-tag {
+  cursor: pointer;
 }
 
 @media (max-width: 760px) {

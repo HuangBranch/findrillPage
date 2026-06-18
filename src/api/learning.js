@@ -10,7 +10,7 @@ export const createQuestionReport = (data) => request({ url: '/question-reports'
 export const listMyQuestionReports = (params = {}) =>
   request({ url: '/question-reports/mine', method: 'GET', params })
 
-export const getMyTrend = () => request({ url: '/statistics/me/trend', method: 'GET' })
+export const getMyTrend = (params = {}) => request({ url: '/statistics/me/trend', method: 'GET', params })
 
 export default {
   listWrongQuestions,

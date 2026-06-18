@@ -44,7 +44,10 @@
     </div>
 
     <section class="surface">
-      <h2>导入模板</h2>
+      <div class="section-head">
+        <h2>导入模板</h2>
+        <el-button text :icon="CopyDocument" @click="copyTemplate">复制 JSON 模板</el-button>
+      </div>
       <pre class="template-box">{{ template }}</pre>
     </section>
 
@@ -78,7 +81,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { UploadFilled } from '@element-plus/icons-vue'
+import { CopyDocument, UploadFilled } from '@element-plus/icons-vue'
 import {
   getImportTemplate,
   importQuestionExcel,
@@ -89,32 +92,6 @@ import {
   listImportErrors
 } from '@/api/admin'
 import { formatDateTime, getPageList } from '@/utils/helpers'
-
-const fieldComments = {
-  questions: '题目数组；JSON 导入时可直接提交数组，也可提交包含 questions 的对象',
-  curriculumId: '课程 ID；由上方课程下拉框统一指定，导入时自动写入',
-  chapterId: '章节 ID；由上方章节下拉框统一指定，导入时自动写入',
-  type: '题型：1 单选，2 多选，3 判断，4 填空，5 简答',
-  stemHtml: '题干内容，支持 HTML',
-  analysisHtml: '题目解析，支持 HTML，可为空',
-  difficulty: '难度：1 简单，2 中等，3 困难',
-  defaultScore: '默认分值，可填写小数',
-  gradingStrategy: '判分策略：1 自动判分，2 人工判分',
-  status: '题目状态：1 启用，0 停用',
-  sort: '排序值，数字越小越靠前',
-  options: '选项数组；单选、多选、判断题需要填写',
-  optionKey: '选项标识，例如 A、B、C、D',
-  optionType: '选项类型：1 文本/HTML',
-  contentHtml: '选项内容，支持 HTML',
-  answers: '答案数组',
-  answerGroup: '答案分组，通常填写 1',
-  blankIndex: '填空题空位序号；非填空题可为空',
-  answerValue: '答案值；选择题填写选项标识，例如 A',
-  isCaseSensitive: '填空答案是否区分大小写',
-  matchMode: '匹配模式：1 精确匹配',
-  normalizeRuleJson: '答案归一化规则 JSON，可为空',
-  scoreRatio: '该答案得分比例，可为空'
-}
 
 const file = ref(null)
 const uploadRef = ref()
@@ -211,6 +188,36 @@ const showErrors = async (row) => {
   errorVisible.value = true
 }
 
+const copyTemplate = async () => {
+  const text = template.value.trim()
+  if (!text) {
+    ElMessage.warning('当前没有可复制的模板内容')
+    return
+  }
+
+  try {
+    await navigator.clipboard.writeText(text)
+    ElMessage.success('JSON 模板已复制')
+  } catch {
+    const textarea = document.createElement('textarea')
+    textarea.value = text
+    textarea.setAttribute('readonly', 'readonly')
+    textarea.style.position = 'fixed'
+    textarea.style.opacity = '0'
+    document.body.appendChild(textarea)
+    textarea.select()
+
+    try {
+      document.execCommand('copy')
+      ElMessage.success('JSON 模板已复制')
+    } catch {
+      ElMessage.error('复制失败，请手动复制模板内容')
+    } finally {
+      document.body.removeChild(textarea)
+    }
+  }
+}
+
 const buildQuestionPayload = (data) => {
   const targetPayload = getTargetPayload()
   const questions = Array.isArray(data) ? data : data?.questions
@@ -227,21 +234,23 @@ const buildQuestionPayload = (data) => {
 }
 
 const formatTemplate = (value) => {
-  const json = JSON.stringify(value ?? {}, null, 2)
+  const notes = Array.isArray(value?.notes) ? value.notes : []
+  const json = JSON.stringify(value?.template ?? value ?? {}, null, 2)
+  const fieldMeta = value?.fieldMeta ?? {}
   const annotated = json
     .split('\n')
     .map((line) => {
       const match = line.match(/^(\s*)"([^"]+)":/)
-      const comment = fieldComments[match?.[2]]
-      return comment ? `${line} // ${comment}` : line
+      const meta = fieldMeta[match?.[2]]
+      if (!meta) {
+        return line
+      }
+      const parts = [meta.requirement, meta.comment].filter(Boolean)
+      return parts.length ? `${line} // ${parts.join('；')}` : line
     })
     .join('\n')
 
-  return [
-    '// 课程和章节通过上方下拉框选择，导入时会自动写入 curriculumId 与 chapterId。',
-    '// Excel 首行使用字段名；每个字段含义见右侧中文注释。',
-    annotated
-  ].join('\n')
+  return [...notes.map((note) => `// ${note}`), annotated].join('\n')
 }
 
 const loadOptions = async () => {
@@ -281,6 +290,18 @@ onMounted(async () => {
 h2 {
   margin: 0 0 14px;
   font-size: 18px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.section-head h2 {
+  margin: 0;
 }
 
 .template-box {

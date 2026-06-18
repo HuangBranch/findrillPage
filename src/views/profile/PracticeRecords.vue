@@ -59,7 +59,7 @@ const trendColumns = computed(() => Object.keys(trendRows.value[0] || {}))
 
 const loadData = async () => {
   if (tab.value === 'history') historyRows.value = await getPracticeHistory()
-  if (tab.value === 'trend') trendRows.value = await getMyTrend()
+  if (tab.value === 'trend') trendRows.value = await getMyTrend({ limit: 100 })
 }
 
 onMounted(loadData)

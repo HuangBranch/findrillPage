@@ -5,7 +5,7 @@
         <el-button text circle @click="drawerVisible = true">
           <el-icon><Menu /></el-icon>
         </el-button>
-        <strong>Findrill 管理后台</strong>
+        <strong>管理后台</strong>
       </div>
       <div class="admin-actions">
         <el-button text @click="router.push('/courses')">前台</el-button>

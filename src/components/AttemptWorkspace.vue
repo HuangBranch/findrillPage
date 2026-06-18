@@ -15,12 +15,16 @@
           @touchend.passive="handleTouchEnd"
         >
           <div class="question-meta">
-            <el-tag>{{ labelOf(QUESTION_TYPES, currentQuestion.type) }}</el-tag>
             <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
             <span>{{ currentQuestion.questionScore || 0 }} 分</span>
           </div>
 
-          <div class="html-content question-stem" v-html="currentQuestion.stemHtml"></div>
+          <div class="question-stem">
+            <div class="question-type-badge">
+              {{ labelOf(QUESTION_TYPES, currentQuestion.type) }}
+            </div>
+            <div class="html-content question-stem__content" v-html="currentQuestion.stemHtml"></div>
+          </div>
 
           <div class="answer-input">
             <el-radio-group
@@ -49,14 +53,13 @@
 
             <div v-else-if="currentQuestion.type === 4" class="blank-list">
               <el-input
-                v-for="(_, index) in blankAnswer"
+                v-for="(_, index) in blankInputModels"
                 :key="index"
                 v-model="blankAnswer[index]"
                 :disabled="currentQuestionLocked"
                 :placeholder="`第 ${index + 1} 空`"
                 @change="updateBlank"
               />
-              <el-button v-if="!currentQuestionLocked" @click="blankAnswer.push('')">增加空位</el-button>
             </div>
 
             <el-input
@@ -98,6 +101,15 @@
           </section>
 
           <div class="question-actions">
+            <el-button
+              v-if="showSubmitAnswerButton"
+              type="primary"
+              :loading="saving"
+              :disabled="!canSubmitCurrentAnswer"
+              @click="submitCurrentAnswer()"
+            >
+              提交本题
+            </el-button>
             <el-button v-if="attempt?.status !== 1" type="primary" @click="goResult(attempt)">
               查看结果
             </el-button>
@@ -199,13 +211,17 @@ const reportForm = reactive({ reason: 1, description: '' })
 const questions = computed(() => attempt.value?.questions || [])
 const currentQuestion = computed(() => questions.value[currentIndex.value])
 const currentOptions = computed(() => parseOptions(currentQuestion.value?.optionsJson))
-const answeredCount = computed(() => Object.values(answers).filter((item) => item?.length).length)
+const hasLocalAnswer = (value) => Array.isArray(value) && value.some((item) => String(item || '').trim())
+const answeredCount = computed(() => Object.values(answers).filter(hasLocalAnswer).length)
 
 const currentAnswer = computed(() => answers[questionAttemptId(currentQuestion.value)] || [])
 const currentAnswerResult = computed(() => answerResults[questionAttemptId(currentQuestion.value)])
 const hasSubmittedAnswer = (result) =>
   Boolean(result && (result.answeredTime || result.userAnswerJson !== undefined || result.isCorrect !== undefined))
 const currentQuestionLocked = computed(() => hasSubmittedAnswer(currentAnswerResult.value) || attempt.value?.status !== 1)
+const showSubmitAnswerButton = computed(() =>
+  [2, 4, 5].includes(currentQuestion.value?.type) && !currentQuestionLocked.value && attempt.value?.status === 1
+)
 const showNextQuestionButton = computed(() =>
   currentAnswerResult.value?.isCorrect === false && currentIndex.value < questions.value.length - 1
 )
@@ -213,6 +229,28 @@ const singleAnswer = ref('')
 const multiAnswer = ref([])
 const blankAnswer = ref([''])
 const textAnswer = ref('')
+const blankInputModels = computed(() => blankAnswer.value)
+const currentBlankCount = computed(() => {
+  const question = currentQuestion.value
+  if (question?.type !== 4) return 1
+  const blankCount = Number(question?.blankCount || 0)
+  return Math.max(blankCount, currentAnswer.value.length, 1)
+})
+const canSubmitCurrentAnswer = computed(() => {
+  const question = currentQuestion.value
+  if (!question) return false
+  if ([1, 3].includes(question.type)) {
+    return currentAnswer.value.length > 0
+  }
+  if (question.type === 2) {
+    return currentAnswer.value.length > 0
+  }
+  if (question.type === 4) {
+    return currentAnswer.value.length === currentBlankCount.value
+      && currentAnswer.value.every((item) => String(item || '').trim())
+  }
+  return currentAnswer.value.length > 0 && String(currentAnswer.value[0] || '').trim()
+})
 
 const getAttemptId = (data) => data?.id || data?.attemptId
 const questionAttemptId = (question) => question?.attemptQuestionId || question?.id
@@ -280,7 +318,7 @@ const answerCardClass = (question, index) => {
   const result = answerResults[id]
   return {
     active: index === currentIndex.value,
-    done: answers[id]?.length,
+    done: hasLocalAnswer(answers[id]),
     correct: result?.isCorrect === true,
     wrong: result?.isCorrect === false
   }
@@ -329,7 +367,7 @@ const hydrateInputs = () => {
   const value = currentAnswer.value
   singleAnswer.value = value[0] || ''
   multiAnswer.value = [...value]
-  blankAnswer.value = value.length ? [...value] : ['']
+  blankAnswer.value = Array.from({ length: currentBlankCount.value }, (_, index) => value[index] || '')
   textAnswer.value = value[0] || ''
 }
 
@@ -350,17 +388,14 @@ const updateSingle = () => {
 
 const updateMulti = () => {
   setCurrentAnswer(multiAnswer.value)
-  submitCurrentAnswer({ silent: true })
 }
 
 const updateBlank = () => {
   setCurrentAnswer(blankAnswer.value)
-  submitCurrentAnswer({ silent: true })
 }
 
 const updateText = () => {
   setCurrentAnswer(textAnswer.value ? [textAnswer.value] : [])
-  submitCurrentAnswer({ silent: true })
 }
 
 const loadAttempt = async (id) => {
@@ -531,11 +566,41 @@ onMounted(async () => {
 }
 
 .question-stem {
+  position: relative;
   margin: 16px 0;
-  padding: 16px;
+  padding: 18px 18px 16px;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+}
+
+.question-type-badge {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 24px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 14px rgba(37, 99, 235, 0.16);
+}
+
+.question-stem__content {
+  min-width: 0;
+  padding-left: 64px;
+}
+
+.question-stem__content :deep(p) {
+  margin: 0;
 }
 
 .answer-input :deep(.el-radio-group),
@@ -629,10 +694,21 @@ onMounted(async () => {
     font-size: 12px;
   }
 
-  .question-meta :deep(.el-tag) {
-    height: 22px;
-    padding: 0 6px;
-    font-size: 12px;
+  .question-stem {
+    padding: 16px 14px 14px;
+  }
+
+  .question-type-badge {
+    top: 10px;
+    left: 10px;
+    min-width: 44px;
+    min-height: 22px;
+    padding: 3px 7px;
+    font-size: 10px;
+  }
+
+  .question-stem__content {
+    padding-left: 56px;
   }
 
   .answer-detail-grid {

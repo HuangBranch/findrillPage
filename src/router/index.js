@@ -102,9 +102,8 @@ const routes = [
       { path: 'chapters', name: 'ChapterManage', component: () => import('@/views/admin/ChapterManage.vue'), meta: { title: '章节管理', requiresAuth: true, requiresAdmin: true } },
       { path: 'questions', name: 'QuestionManage', component: () => import('@/views/admin/QuestionManage.vue'), meta: { title: '题库管理', requiresAuth: true, requiresAdmin: true } },
       { path: 'imports', name: 'QuestionUpload', component: () => import('@/views/admin/QuestionUpload.vue'), meta: { title: '题目导入', requiresAuth: true, requiresAdmin: true } },
-      { path: 'traces', name: 'TraceManage', component: () => import('@/views/admin/TraceManage.vue'), meta: { title: '审核反馈', requiresAuth: true, requiresAdmin: true } },
+      { path: 'traces', name: 'TraceManage', component: () => import('@/views/admin/TraceManage.vue'), meta: { title: '题目反馈', requiresAuth: true, requiresAdmin: true } },
       { path: 'question-imports', redirect: '/admin/imports', meta: { requiresAuth: true, requiresAdmin: true } },
-      { path: 'question-audits', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } },
       { path: 'question-reports', redirect: '/admin/traces', meta: { requiresAuth: true, requiresAdmin: true } }
     ]
   },

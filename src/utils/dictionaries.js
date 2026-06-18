@@ -27,13 +27,6 @@ export const QUESTION_STATUS = [
   { label: '启用', value: 1, tag: 'success' }
 ]
 
-export const AUDIT_STATUS = [
-  { label: '草稿', value: 1, tag: 'info' },
-  { label: '待审核', value: 2, tag: 'warning' },
-  { label: '已发布', value: 3, tag: 'success' },
-  { label: '已驳回', value: 4, tag: 'danger' }
-]
-
 export const ATTEMPT_STATUS = [
   { label: '进行中', value: 1, tag: 'warning' },
   { label: '已提交', value: 2, tag: 'success' }

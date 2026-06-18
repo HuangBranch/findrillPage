@@ -1,0 +1,396 @@
+{
+  "questions": [
+    {
+      "type": 1,
+      "stemHtml": "<p>Java 中用于定义类继承关系的关键字是？</p>",
+      "analysisHtml": "<p><code>extends</code> 用于类继承，<code>implements</code> 用于实现接口。</p>",
+      "difficulty": 1,
+      "defaultScore": 2,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 0,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "extends",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "implements",
+          "sort": 1
+        },
+        {
+          "optionKey": "C",
+          "optionType": 1,
+          "contentHtml": "import",
+          "sort": 2
+        },
+        {
+          "optionKey": "D",
+          "optionType": 1,
+          "contentHtml": "package",
+          "sort": 3
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "A",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 1,
+      "stemHtml": "<p>HTTP 协议中，通常用于获取资源的请求方法是？</p>",
+      "analysisHtml": "<p>获取资源通常使用 GET，请求创建资源常用 POST。</p>",
+      "difficulty": 1,
+      "defaultScore": 2,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 1,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "POST",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "GET",
+          "sort": 1
+        },
+        {
+          "optionKey": "C",
+          "optionType": 1,
+          "contentHtml": "PUT",
+          "sort": 2
+        },
+        {
+          "optionKey": "D",
+          "optionType": 1,
+          "contentHtml": "DELETE",
+          "sort": 3
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "B",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 2,
+      "stemHtml": "<p>以下哪些属于 Spring Boot 的常见特性？</p>",
+      "analysisHtml": "<p>自动配置、起步依赖和内嵌服务器都是 Spring Boot 的核心特性。</p>",
+      "difficulty": 2,
+      "defaultScore": 3,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 2,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "自动配置",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "起步依赖",
+          "sort": 1
+        },
+        {
+          "optionKey": "C",
+          "optionType": 1,
+          "contentHtml": "内嵌 Tomcat",
+          "sort": 2
+        },
+        {
+          "optionKey": "D",
+          "optionType": 1,
+          "contentHtml": "只能使用 XML 配置",
+          "sort": 3
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "A",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.34,
+          "sort": 0
+        },
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "B",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.33,
+          "sort": 1
+        },
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "C",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.33,
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "type": 2,
+      "stemHtml": "<p>下列哪些属于关系型数据库？</p>",
+      "analysisHtml": "<p>MySQL、PostgreSQL、Oracle 都是典型关系型数据库。</p>",
+      "difficulty": 1,
+      "defaultScore": 3,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 3,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "MySQL",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "Redis",
+          "sort": 1
+        },
+        {
+          "optionKey": "C",
+          "optionType": 1,
+          "contentHtml": "PostgreSQL",
+          "sort": 2
+        },
+        {
+          "optionKey": "D",
+          "optionType": 1,
+          "contentHtml": "Oracle",
+          "sort": 3
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "A",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.34,
+          "sort": 0
+        },
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "C",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.33,
+          "sort": 1
+        },
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "D",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 0.33,
+          "sort": 2
+        }
+      ]
+    },
+    {
+      "type": 3,
+      "stemHtml": "<p>Java 中，<code>String</code> 是不可变对象。</p>",
+      "analysisHtml": "<p><code>String</code> 对象创建后内容不可修改，修改会生成新对象。</p>",
+      "difficulty": 1,
+      "defaultScore": 1,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 4,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "正确",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "错误",
+          "sort": 1
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "A",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 3,
+      "stemHtml": "<p>MySQL 的 <code>DELETE</code> 语句会修改表结构。</p>",
+      "analysisHtml": "<p><code>DELETE</code> 删除的是数据，不是表结构；修改表结构通常使用 <code>ALTER TABLE</code>。</p>",
+      "difficulty": 1,
+      "defaultScore": 1,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 5,
+      "options": [
+        {
+          "optionKey": "A",
+          "optionType": 1,
+          "contentHtml": "正确",
+          "sort": 0
+        },
+        {
+          "optionKey": "B",
+          "optionType": 1,
+          "contentHtml": "错误",
+          "sort": 1
+        }
+      ],
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "B",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 4,
+      "stemHtml": "<p>HTTP 默认端口是 ______。</p>",
+      "analysisHtml": "<p>HTTP 默认端口是 80，HTTPS 默认端口是 443。</p>",
+      "difficulty": 1,
+      "defaultScore": 2,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 6,
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": 1,
+          "answerValue": "80",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 4,
+      "stemHtml": "<p>在 Java 中，声明常量通常使用关键字 ______。</p>",
+      "analysisHtml": "<p>Java 中常量通常使用 <code>final</code> 修饰。</p>",
+      "difficulty": 1,
+      "defaultScore": 2,
+      "gradingStrategy": 1,
+      "status": 1,
+      "sort": 7,
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": 1,
+          "answerValue": "final",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 5,
+      "stemHtml": "<p>请简要说明什么是 RESTful API。</p>",
+      "analysisHtml": "<p>本题考查对 RESTful 风格接口的理解，可从资源、HTTP 方法、无状态等角度作答。</p>",
+      "difficulty": 2,
+      "defaultScore": 5,
+      "gradingStrategy": 2,
+      "status": 1,
+      "sort": 8,
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "RESTful API 是一种面向资源的接口设计风格，通常使用 URL 表示资源，使用 GET、POST、PUT、DELETE 等 HTTP 方法对资源进行操作，并强调无状态通信。",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    },
+    {
+      "type": 5,
+      "stemHtml": "<p>请简要说明为什么数据库查询时需要建立索引。</p>",
+      "analysisHtml": "<p>本题主要考查索引的作用及其对查询性能的影响，也可提及索引并非越多越好。</p>",
+      "difficulty": 2,
+      "defaultScore": 5,
+      "gradingStrategy": 2,
+      "status": 1,
+      "sort": 9,
+      "answers": [
+        {
+          "answerGroup": 1,
+          "blankIndex": null,
+          "answerValue": "建立索引可以减少数据库扫描的数据量，提高查询效率，尤其适用于高频检索字段。但索引会占用存储空间，并增加插入、更新、删除时的维护成本。",
+          "isCaseSensitive": false,
+          "matchMode": 1,
+          "normalizeRuleJson": null,
+          "scoreRatio": 1,
+          "sort": 0
+        }
+      ]
+    }
+  ]
+}

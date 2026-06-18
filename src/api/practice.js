@@ -7,6 +7,7 @@ import request from '@/utils/request'
  * @property {number|string} [questionId]
  * @property {number} type
  * @property {number} [questionScore]
+ * @property {number} [blankCount]
  * @property {string} stemHtml
  * @property {string|Array} [optionsJson]
  */
@@ -42,7 +43,9 @@ export const submitPracticeAnswer = (attemptId, data) =>
 export const getPracticeResult = (attemptId) =>
   request({ url: `/practice/${attemptId}/result`, method: 'GET' })
 
-export const getPracticeHistory = () => request({ url: '/practice/history', method: 'GET' })
+export const getPracticeHistory = (params = {}) => request({ url: '/practice/history', method: 'GET', params })
+
+export const getPracticeHistoryCount = () => request({ url: '/practice/history/count', method: 'GET' })
 
 export const getPracticeList = getPracticeHistory
 
@@ -52,5 +55,6 @@ export default {
   submitPracticeAnswer,
   getPracticeResult,
   getPracticeHistory,
+  getPracticeHistoryCount,
   getPracticeList
 }

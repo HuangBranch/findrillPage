@@ -25,9 +25,15 @@ export const parseOptions = (optionsJson) => {
 
 export const parseAnswerArray = (value) => {
   const parsed = safeJsonParse(value, [])
-  if (Array.isArray(parsed)) return parsed.map((item) => String(item))
+  const normalizeItem = (item) => {
+    if (item && typeof item === 'object') {
+      return item.answerValue ?? item.value ?? item.optionKey ?? item.content ?? ''
+    }
+    return item === null || item === undefined ? '' : String(item)
+  }
+  if (Array.isArray(parsed)) return parsed.map(normalizeItem).filter((item) => item !== '')
   if (parsed === null || parsed === undefined || parsed === '') return []
-  return [String(parsed)]
+  return [normalizeItem(parsed)].filter((item) => item !== '')
 }
 
 export const stripHtml = (html = '') => {
