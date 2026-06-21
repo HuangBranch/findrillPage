@@ -55,7 +55,18 @@
       <h2>导入批次</h2>
       <el-table :data="rows" style="width: 100%">
         <el-table-column prop="id" label="批次" width="90" />
-        <el-table-column prop="fileUrl" label="文件" min-width="160" show-overflow-tooltip />
+        <el-table-column label="课程" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">{{ displayText(row.curriculumName) }}</template>
+        </el-table-column>
+        <el-table-column label="章节" min-width="140" show-overflow-tooltip>
+          <template #default="{ row }">{{ displayText(row.chapterName) }}</template>
+        </el-table-column>
+        <el-table-column label="导入人" width="130" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatImportUser(row) }}</template>
+        </el-table-column>
+        <el-table-column label="来源文件" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ formatImportSource(row) }}</template>
+        </el-table-column>
         <el-table-column prop="totalCount" label="总数" width="90" />
         <el-table-column prop="successCount" label="成功" width="90" />
         <el-table-column prop="failCount" label="失败" width="90" />
@@ -111,6 +122,12 @@ const target = reactive({
 
 const targetChapters = computed(() => chapters.value.filter((item) => item.curriculumId === target.curriculumId))
 const targetReady = computed(() => Boolean(target.curriculumId && target.chapterId))
+
+const displayText = (value) => value || '-'
+
+const formatImportSource = (row) => row?.fileUrl || 'JSON 导入'
+
+const formatImportUser = (row) => row?.createUserName || (row?.createBy ? `用户#${row.createBy}` : '-')
 
 const handleFileChange = (uploadFile) => {
   file.value = uploadFile.raw

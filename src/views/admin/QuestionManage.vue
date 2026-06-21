@@ -13,13 +13,13 @@
         <el-select v-model="query.curriculumId" clearable filterable placeholder="课程" style="width: 180px" @change="handleCourseFilter">
           <el-option v-for="course in courses" :key="course.id" :label="course.name" :value="course.id" />
         </el-select>
-        <el-select v-model="query.chapterId" clearable filterable placeholder="章节" style="width: 180px">
+        <el-select v-model="query.chapterId" clearable filterable placeholder="章节" style="width: 180px" @change="handleFilterChange">
           <el-option v-for="chapter in filteredChapters" :key="chapter.id" :label="chapter.name" :value="chapter.id" />
         </el-select>
-        <el-select v-model="query.type" clearable placeholder="题型" style="width: 150px">
+        <el-select v-model="query.type" clearable placeholder="题型" style="width: 150px" @change="handleFilterChange">
           <el-option v-for="item in QUESTION_TYPES" :key="item.value" :label="item.label" :value="item.value" />
         </el-select>
-        <el-button @click="loadData">查询</el-button>
+        <el-button :disabled="!hasPublishFilter" @click="batchPublishByFilter">按筛选条件发布</el-button>
         <el-button :disabled="!selectedRows.length" @click="batchPublishSelected">批量发布</el-button>
         <el-button type="danger" plain :disabled="!selectedRows.length" @click="batchRemoveSelected">批量删除</el-button>
       </div>
@@ -151,7 +151,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
 import { Delete, Plus } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElLoading, ElMessage, ElMessageBox } from 'element-plus'
 import {
   createQuestion,
   deleteQuestions,
@@ -161,6 +161,7 @@ import {
   listChapters,
   listCourses,
   listQuestions,
+  publishQuestionsByCondition,
   publishQuestions,
   unpublishQuestion,
   updateQuestion
@@ -209,6 +210,7 @@ const rules = {
 const needsOptions = computed(() => [1, 2, 3].includes(form.type))
 const filteredChapters = computed(() => chapters.value.filter((item) => !query.curriculumId || item.curriculumId === query.curriculumId))
 const formChapters = computed(() => chapters.value.filter((item) => !form.curriculumId || item.curriculumId === form.curriculumId))
+const hasPublishFilter = computed(() => Boolean(query.curriculumId || query.chapterId || query.type))
 const enabledForForm = computed({
   get: () => form.status === 1,
   set: (value) => {
@@ -294,6 +296,11 @@ const handleSelectionChange = (value) => {
 
 const handleCourseFilter = () => {
   query.chapterId = undefined
+  loadData()
+}
+
+const handleFilterChange = () => {
+  query.page = 1
   loadData()
 }
 
@@ -400,6 +407,30 @@ const publishSummaryText = (result) => {
   const successCount = Number(result?.successCount || 0)
   const skipCount = Number(result?.skipCount || 0)
   return `已处理 ${totalCount} 题，成功发布 ${successCount} 题，跳过 ${skipCount} 题`
+}
+
+const batchPublishByFilter = async () => {
+  if (!hasPublishFilter.value) {
+    ElMessage.warning('请至少选择一个筛选条件')
+    return
+  }
+  const loadingInstance = ElLoading.service({
+    lock: true,
+    text: '正在按筛选条件批量发布题目...',
+    background: 'rgba(255, 255, 255, 0.75)'
+  })
+  try {
+    const result = await publishQuestionsByCondition({
+      curriculumId: query.curriculumId,
+      chapterId: query.chapterId,
+      type: query.type,
+      ...(await lifecycleReason('发布说明'))
+    })
+    ElMessage.success(publishSummaryText(result))
+    loadData()
+  } finally {
+    loadingInstance.close()
+  }
 }
 
 const batchPublishSelected = async () => {
