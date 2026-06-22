@@ -8,120 +8,123 @@
 
     <template v-else>
       <section class="surface answer-layout">
-        <article
-          v-if="currentQuestion"
-          class="question-panel"
-          @touchstart.passive="handleTouchStart"
-          @touchmove.passive="handleTouchMove"
-          @touchcancel="resetTouchState"
-          @touchend.passive="handleTouchEnd"
-        >
-          <div class="question-meta">
-            <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
-            <span>{{ labelOf(QUESTION_TYPES, currentQuestion.type) }}</span>
-          </div>
-
-          <div class="question-stem">
-            <div class="question-type-badge">
-              {{ labelOf(QUESTION_TYPES, currentQuestion.type) }}
+        <Transition :name="questionTransitionName" mode="out-in">
+          <article
+            v-if="currentQuestion"
+            :key="questionTransitionKey"
+            class="question-panel"
+            @touchstart.passive="handleTouchStart"
+            @touchmove.passive="handleTouchMove"
+            @touchcancel="resetTouchState"
+            @touchend.passive="handleTouchEnd"
+          >
+            <div class="question-meta">
+              <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
+              <span>{{ labelOf(QUESTION_TYPES, currentQuestion.type) }}</span>
             </div>
-            <div class="html-content question-stem__content" v-html="currentQuestion.stemHtml"></div>
-          </div>
 
-          <div class="answer-input">
-            <el-radio-group
-              v-if="[1, 3].includes(currentQuestion.type)"
-              v-model="singleAnswer"
-              :disabled="currentQuestionLocked"
-              @change="updateSingle"
-            >
-              <el-radio v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
-                <span class="option-key">{{ option.optionKey }}</span>
-                <span class="html-content" v-html="option.contentHtml"></span>
-              </el-radio>
-            </el-radio-group>
+            <div class="question-stem">
+              <div class="question-type-badge">
+                {{ labelOf(QUESTION_TYPES, currentQuestion.type) }}
+              </div>
+              <div class="html-content question-stem__content" v-html="currentQuestion.stemHtml"></div>
+            </div>
 
-            <el-checkbox-group
-              v-else-if="currentQuestion.type === 2"
-              v-model="multiAnswer"
-              :disabled="currentQuestionLocked"
-              @change="updateMulti"
-            >
-              <el-checkbox v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
-                <span class="option-key">{{ option.optionKey }}</span>
-                <span class="html-content" v-html="option.contentHtml"></span>
-              </el-checkbox>
-            </el-checkbox-group>
-
-            <div v-else-if="currentQuestion.type === 4" class="blank-list">
-              <el-input
-                v-for="(_, index) in blankInputModels"
-                :key="index"
-                v-model="blankAnswer[index]"
+            <div class="answer-input">
+              <el-radio-group
+                v-if="[1, 3].includes(currentQuestion.type)"
+                v-model="singleAnswer"
                 :disabled="currentQuestionLocked"
-                :placeholder="`第 ${index + 1} 空`"
-                @change="updateBlank"
+                @change="updateSingle"
+              >
+                <el-radio v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
+                  <span class="option-key">{{ option.optionKey }}</span>
+                  <span class="html-content" v-html="option.contentHtml"></span>
+                </el-radio>
+              </el-radio-group>
+
+              <el-checkbox-group
+                v-else-if="currentQuestion.type === 2"
+                v-model="multiAnswer"
+                :disabled="currentQuestionLocked"
+                @change="updateMulti"
+              >
+                <el-checkbox v-for="option in currentOptions" :key="option.optionKey" :value="option.optionKey" border>
+                  <span class="option-key">{{ option.optionKey }}</span>
+                  <span class="html-content" v-html="option.contentHtml"></span>
+                </el-checkbox>
+              </el-checkbox-group>
+
+              <div v-else-if="currentQuestion.type === 4" class="blank-list">
+                <el-input
+                  v-for="(_, index) in blankInputModels"
+                  :key="index"
+                  v-model="blankAnswer[index]"
+                  :disabled="currentQuestionLocked"
+                  :placeholder="`第 ${index + 1} 空`"
+                  @change="updateBlank"
+                />
+              </div>
+
+              <el-input
+                v-else
+                v-model="textAnswer"
+                type="textarea"
+                :rows="6"
+                :disabled="currentQuestionLocked"
+                placeholder="请输入答案"
+                @change="updateText"
               />
             </div>
 
-            <el-input
-              v-else
-              v-model="textAnswer"
-              type="textarea"
-              :rows="6"
-              :disabled="currentQuestionLocked"
-              placeholder="请输入答案"
-              @change="updateText"
-            />
-          </div>
-
-          <section v-if="hasSubmittedAnswer(currentAnswerResult)" class="practice-answer-result">
-            <div class="practice-answer-result__head">
-              <el-tag :type="answerResultType(currentAnswerResult)" effect="dark">
-                {{ answerResultText(currentAnswerResult) }}
-              </el-tag>
-            </div>
-
-            <div class="answer-detail-grid">
-              <div>
-                <strong>用户答案</strong>
-                <p>{{ displayUserAnswer(currentAnswerResult) }}</p>
+            <section v-if="hasSubmittedAnswer(currentAnswerResult)" class="practice-answer-result">
+              <div class="practice-answer-result__head">
+                <el-tag :type="answerResultType(currentAnswerResult)" effect="dark">
+                  {{ answerResultText(currentAnswerResult) }}
+                </el-tag>
               </div>
-              <div>
-                <strong>正确答案</strong>
-                <p>{{ displayCorrectAnswer(currentAnswerResult) }}</p>
+
+              <div class="answer-detail-grid">
+                <div>
+                  <strong>用户答案</strong>
+                  <p>{{ displayUserAnswer(currentAnswerResult) }}</p>
+                </div>
+                <div>
+                  <strong>正确答案</strong>
+                  <p>{{ displayCorrectAnswer(currentAnswerResult) }}</p>
+                </div>
               </div>
-            </div>
 
-            <div v-if="currentAnswerResult.analysisHtml" class="analysis-block">
-              <strong>解析</strong>
-              <div class="html-content" v-html="currentAnswerResult.analysisHtml"></div>
-            </div>
-          </section>
+              <div v-if="currentAnswerResult.analysisHtml" class="analysis-block">
+                <strong>解析</strong>
+                <div class="html-content" v-html="currentAnswerResult.analysisHtml"></div>
+              </div>
+            </section>
 
-          <div class="question-actions">
-            <el-button
-              v-if="showSubmitAnswerButton"
-              type="primary"
-              :loading="saving"
-              :disabled="!canSubmitCurrentAnswer"
-              @click="submitCurrentAnswer()"
-            >
-              提交本题
-            </el-button>
-            <el-button v-if="attempt?.status !== 1" type="primary" @click="goResult(attempt)">
-              查看结果
-            </el-button>
-            <el-button
-              v-if="showNextQuestionButton"
-              type="primary"
-              :loading="saving"
-              @click="goNextQuestion"
-            >
-              下一题
-            </el-button>
-          </div>
-        </article>
+            <div class="question-actions">
+              <el-button
+                v-if="showSubmitAnswerButton"
+                type="primary"
+                :loading="saving"
+                :disabled="!canSubmitCurrentAnswer"
+                @click="submitCurrentAnswer()"
+              >
+                提交本题
+              </el-button>
+              <el-button v-if="attempt?.status !== 1" type="primary" @click="goResult(attempt)">
+                查看结果
+              </el-button>
+              <el-button
+                v-if="showNextQuestionButton"
+                type="primary"
+                :loading="saving"
+                @click="goNextQuestion"
+              >
+                下一题
+              </el-button>
+            </div>
+          </article>
+        </Transition>
       </section>
 
       <div class="floating-actions">
@@ -204,6 +207,7 @@ const pendingSaveCount = ref(0)
 const answerCardVisible = ref(false)
 const reportVisible = ref(false)
 const reportForm = reactive({ reason: 1, description: '' })
+const navigationDirection = ref('next')
 const touchState = reactive({
   startX: 0,
   startY: 0,
@@ -216,6 +220,10 @@ const touchState = reactive({
 
 const questions = computed(() => attempt.value?.questions || [])
 const currentQuestion = computed(() => questions.value[currentIndex.value])
+const questionTransitionKey = computed(() => questionAttemptId(currentQuestion.value) ?? currentIndex.value)
+const questionTransitionName = computed(() =>
+  navigationDirection.value === 'prev' ? 'question-slide-prev' : 'question-slide-next'
+)
 const currentOptions = computed(() => parseOptions(currentQuestion.value?.optionsJson))
 const hasLocalAnswer = (value) => Array.isArray(value) && value.some((item) => String(item || '').trim())
 const answeredCount = computed(() => Object.values(answers).filter(hasLocalAnswer).length)
@@ -329,21 +337,24 @@ const answerCardClass = (question, index) => {
   }
 }
 
-const selectQuestion = (index) => {
+const setQuestionIndex = (index, direction = 'next') => {
+  if (index < 0 || index >= questions.value.length || index === currentIndex.value) return false
+  navigationDirection.value = direction
   currentIndex.value = index
+  return true
+}
+
+const selectQuestion = (index) => {
+  setQuestionIndex(index, index > currentIndex.value ? 'next' : 'prev')
   answerCardVisible.value = false
 }
 
 const goNextQuestion = () => {
-  if (currentIndex.value >= questions.value.length - 1) return false
-  currentIndex.value += 1
-  return true
+  return setQuestionIndex(currentIndex.value + 1, 'next')
 }
 
 const goPrevQuestion = () => {
-  if (currentIndex.value <= 0) return false
-  currentIndex.value -= 1
-  return true
+  return setQuestionIndex(currentIndex.value - 1, 'prev')
 }
 
 const resetTouchState = () => {
@@ -366,7 +377,7 @@ const shouldIgnoreSwipeTarget = (target) => {
 }
 
 const handleTouchStart = (event) => {
-  if (window.innerWidth > 760 || answerCardVisible.value || reportVisible.value || saving.value) {
+  if (window.innerWidth > 760 || answerCardVisible.value || reportVisible.value) {
     resetTouchState()
     return
   }
@@ -534,6 +545,7 @@ onMounted(async () => {
 <style scoped>
 .answer-layout {
   display: block;
+  overflow: hidden;
 }
 
 .attempt-page {
@@ -614,6 +626,28 @@ onMounted(async () => {
 .question-panel {
   min-width: 0;
   touch-action: pan-y;
+  will-change: transform, opacity;
+}
+
+.question-slide-next-enter-active,
+.question-slide-next-leave-active,
+.question-slide-prev-enter-active,
+.question-slide-prev-leave-active {
+  transition:
+    transform 0.22s ease,
+    opacity 0.22s ease;
+}
+
+.question-slide-next-enter-from,
+.question-slide-prev-leave-to {
+  opacity: 0;
+  transform: translateX(28px);
+}
+
+.question-slide-next-leave-to,
+.question-slide-prev-enter-from {
+  opacity: 0;
+  transform: translateX(-28px);
 }
 
 .question-meta,
