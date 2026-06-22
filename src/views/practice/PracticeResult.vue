@@ -12,14 +12,14 @@
     </div>
 
     <el-skeleton :loading="loading" animated :rows="6">
-      <div v-if="attempt" class="page">
-        <div class="metric-grid">
-          <div class="metric">
-            <div class="metric__value">{{ attempt.earnedScore ?? '-' }}</div>
-            <div class="metric__label">得分 / {{ attempt.totalScore || 0 }}</div>
-          </div>
-          <div class="metric">
-            <div class="metric__value">{{ attempt.rightCount || 0 }}</div>
+        <div v-if="attempt" class="page">
+          <div class="metric-grid">
+            <div class="metric">
+            <div class="metric__value">{{ attempt.totalQuestion || 0 }}</div>
+            <div class="metric__label">题目总数</div>
+            </div>
+            <div class="metric">
+              <div class="metric__value">{{ attempt.rightCount || 0 }}</div>
             <div class="metric__label">正确</div>
           </div>
           <div class="metric">
@@ -62,12 +62,11 @@
               </template>
               <div class="html-content question-stem" v-html="question.stemHtml"></div>
               <p class="answer-line">你的答案：{{ displayAnswer(question) }}</p>
-              <p class="answer-line">得分：{{ question.answer?.earnedScore ?? '-' }} / {{ question.questionScore || 0 }}</p>
               <p class="answer-line">正确答案：{{ displayCorrectAnswer(question) }}</p>
               <div
-                v-if="question.answer?.analysisHtml"
+                v-if="question.analysisHtml"
                 class="html-content analysis"
-                v-html="question.answer.analysisHtml"
+                v-html="question.analysisHtml"
               ></div>
             </el-collapse-item>
           </el-collapse>
@@ -99,7 +98,7 @@ const displayAnswerValues = (value, fallback) => {
 const displayAnswer = (question) => displayAnswerValues(question.answer?.userAnswerJson, '未作答')
 
 const displayCorrectAnswer = (question) => {
-  const values = parseAnswerArray(question.answer?.answersJson)
+  const values = parseAnswerArray(question.answersJson)
   return values.length ? values.join('，') : '-'
 }
 

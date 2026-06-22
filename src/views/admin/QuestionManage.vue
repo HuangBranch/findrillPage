@@ -97,14 +97,11 @@
           <el-input v-model="form.analysisHtml" type="textarea" :rows="3" placeholder="支持 HTML" />
         </el-form-item>
 
-        <div class="form-grid four">
+        <div class="form-grid three">
           <el-form-item label="难度">
             <el-select v-model="form.difficulty" style="width: 100%">
               <el-option v-for="item in DIFFICULTIES" :key="item.value" :label="item.label" :value="item.value" />
             </el-select>
-          </el-form-item>
-          <el-form-item label="分值">
-            <el-input-number v-model="form.defaultScore" :min="0.5" :step="0.5" style="width: 100%" />
           </el-form-item>
           <el-form-item label="排序">
             <el-input-number v-model="form.sort" :min="0" style="width: 100%" />
@@ -193,8 +190,6 @@ const form = reactive({
   stemHtml: '',
   analysisHtml: '',
   difficulty: 1,
-  defaultScore: 1,
-  gradingStrategy: 1,
   status: 1,
   sort: 0,
   options: [],
@@ -225,7 +220,6 @@ const normalizeAnswer = (answer, index) => ({
   isCaseSensitive: Boolean(answer.isCaseSensitive),
   matchMode: answer.matchMode ?? 1,
   normalizeRuleJson: answer.normalizeRuleJson || null,
-  scoreRatio: answer.scoreRatio ?? null,
   sort: answer.sort ?? index
 })
 
@@ -239,7 +233,6 @@ const addAnswer = () => {
 }
 
 const resetByType = () => {
-  form.gradingStrategy = form.type === 5 ? 2 : 1
   if (form.type === 3) {
     form.options = [
       { optionKey: 'A', optionType: 1, contentHtml: '正确', sort: 0 },
@@ -268,8 +261,6 @@ const resetForm = () => {
     stemHtml: '',
     analysisHtml: '',
     difficulty: 1,
-    defaultScore: 1,
-    gradingStrategy: 1,
     status: 1,
     sort: 0,
     options: [],
@@ -320,8 +311,6 @@ const openEdit = async (row) => {
     stemHtml: detail.stemHtml,
     analysisHtml: detail.analysisHtml,
     difficulty: detail.difficulty || 1,
-    defaultScore: Number(detail.defaultScore || 1),
-    gradingStrategy: detail.gradingStrategy || 1,
     status: detail.status ?? 1,
     sort: detail.sort || 0,
     options: (detail.options || []).map((item, index) => ({ ...item, sort: item.sort ?? index })),
@@ -337,8 +326,6 @@ const payload = () => ({
   stemHtml: form.stemHtml,
   analysisHtml: form.analysisHtml,
   difficulty: form.difficulty,
-  defaultScore: form.defaultScore,
-  gradingStrategy: form.gradingStrategy,
   status: form.status,
   sort: form.sort,
   options: needsOptions.value ? form.options : [],

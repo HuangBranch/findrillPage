@@ -6,10 +6,11 @@ import request from '@/utils/request'
  * @property {number|string} [attemptQuestionId]
  * @property {number|string} [questionId]
  * @property {number} type
- * @property {number} [questionScore]
+ * @property {string|Array} [answersJson]
  * @property {number} [blankCount]
  * @property {string} stemHtml
  * @property {string|Array} [optionsJson]
+ * @property {string} [analysisHtml]
  */
 
 /**
@@ -21,7 +22,6 @@ import request from '@/utils/request'
  * @property {string} [analysisHtml]
  * @property {number} [judgeStatus]
  * @property {boolean} [isCorrect]
- * @property {number} [earnedScore]
  */
 
 export const startPractice = (data) => request({ url: '/practice/start', method: 'POST', data })

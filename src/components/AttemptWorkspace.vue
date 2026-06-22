@@ -12,11 +12,13 @@
           v-if="currentQuestion"
           class="question-panel"
           @touchstart.passive="handleTouchStart"
+          @touchmove.passive="handleTouchMove"
+          @touchcancel="resetTouchState"
           @touchend.passive="handleTouchEnd"
         >
           <div class="question-meta">
             <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
-            <span>{{ currentQuestion.questionScore || 0 }} 分</span>
+            <span>{{ labelOf(QUESTION_TYPES, currentQuestion.type) }}</span>
           </div>
 
           <div class="question-stem">
@@ -78,9 +80,6 @@
               <el-tag :type="answerResultType(currentAnswerResult)" effect="dark">
                 {{ answerResultText(currentAnswerResult) }}
               </el-tag>
-              <span v-if="currentAnswerResult.earnedScore !== null && currentAnswerResult.earnedScore !== undefined">
-                得分 {{ currentAnswerResult.earnedScore }}
-              </span>
             </div>
 
             <div class="answer-detail-grid">
@@ -203,10 +202,17 @@ const saveVersions = reactive({})
 const saving = ref(false)
 const pendingSaveCount = ref(0)
 const answerCardVisible = ref(false)
-const touchStartX = ref(0)
-const touchStartY = ref(0)
 const reportVisible = ref(false)
 const reportForm = reactive({ reason: 1, description: '' })
+const touchState = reactive({
+  startX: 0,
+  startY: 0,
+  lastX: 0,
+  lastY: 0,
+  directionLocked: '',
+  tracking: false,
+  ignore: false
+})
 
 const questions = computed(() => attempt.value?.questions || [])
 const currentQuestion = computed(() => questions.value[currentIndex.value])
@@ -277,8 +283,7 @@ const normalizeAnswerResult = (result, question) => {
     autoJudgeDetailJson: result?.autoJudgeDetailJson,
     answeredTime: result?.answeredTime,
     judgeStatus: result?.judgeStatus,
-    isCorrect: result?.isCorrect,
-    earnedScore: result?.earnedScore
+    isCorrect: result?.isCorrect
   }
 }
 
@@ -341,26 +346,79 @@ const goPrevQuestion = () => {
   return true
 }
 
+const resetTouchState = () => {
+  touchState.startX = 0
+  touchState.startY = 0
+  touchState.lastX = 0
+  touchState.lastY = 0
+  touchState.directionLocked = ''
+  touchState.tracking = false
+  touchState.ignore = false
+}
+
+const shouldIgnoreSwipeTarget = (target) => {
+  if (!(target instanceof Element)) return false
+  return Boolean(
+    target.closest(
+      'input, textarea, select, button, a, .answer-input, .question-actions, .floating-actions, .el-drawer, .el-dialog'
+    )
+  )
+}
+
 const handleTouchStart = (event) => {
+  if (window.innerWidth > 760 || answerCardVisible.value || reportVisible.value || saving.value) {
+    resetTouchState()
+    return
+  }
   const touch = event.changedTouches?.[0]
   if (!touch) return
-  touchStartX.value = touch.clientX
-  touchStartY.value = touch.clientY
+  touchState.startX = touch.clientX
+  touchState.startY = touch.clientY
+  touchState.lastX = touch.clientX
+  touchState.lastY = touch.clientY
+  touchState.directionLocked = ''
+  touchState.tracking = true
+  touchState.ignore = shouldIgnoreSwipeTarget(event.target)
+}
+
+const handleTouchMove = (event) => {
+  if (!touchState.tracking || touchState.ignore) return
+  const touch = event.changedTouches?.[0]
+  if (!touch) return
+  touchState.lastX = touch.clientX
+  touchState.lastY = touch.clientY
+  if (touchState.directionLocked) return
+  const deltaX = Math.abs(touch.clientX - touchState.startX)
+  const deltaY = Math.abs(touch.clientY - touchState.startY)
+  if (deltaX < 12 && deltaY < 12) return
+  touchState.directionLocked = deltaX > deltaY * 1.2 ? 'horizontal' : 'vertical'
 }
 
 const handleTouchEnd = (event) => {
-  if (window.innerWidth > 760 || answerCardVisible.value) return
-  const touch = event.changedTouches?.[0]
-  if (!touch) return
-  const deltaX = touch.clientX - touchStartX.value
-  const deltaY = touch.clientY - touchStartY.value
-  const isHorizontalSwipe = Math.abs(deltaX) > 70 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5
-  if (!isHorizontalSwipe) return
-  if (deltaX < 0) {
-    goPrevQuestion()
-  } else {
-    goNextQuestion()
+  if (!touchState.tracking || touchState.ignore) {
+    resetTouchState()
+    return
   }
+  const touch = event.changedTouches?.[0]
+  const endX = touch?.clientX ?? touchState.lastX
+  const endY = touch?.clientY ?? touchState.lastY
+  const deltaX = endX - touchState.startX
+  const deltaY = endY - touchState.startY
+  const absDeltaX = Math.abs(deltaX)
+  const absDeltaY = Math.abs(deltaY)
+  const isHorizontalSwipe = touchState.directionLocked === 'horizontal'
+    && absDeltaX >= 72
+    && absDeltaX > absDeltaY * 1.2
+
+  if (isHorizontalSwipe) {
+    if (deltaX < 0) {
+      goNextQuestion()
+    } else {
+      goPrevQuestion()
+    }
+  }
+
+  resetTouchState()
 }
 
 const hydrateInputs = () => {
@@ -555,6 +613,7 @@ onMounted(async () => {
 
 .question-panel {
   min-width: 0;
+  touch-action: pan-y;
 }
 
 .question-meta,

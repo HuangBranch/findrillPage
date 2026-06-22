@@ -70,7 +70,6 @@ const fieldNameMap = {
   publishedQuestionCount: '已发布题目数',
   attemptCount: '作答次数',
   reportPendingCount: '待处理反馈数',
-  averageEarnedScore: '平均得分',
   todayNewUsers: '今日新增用户',
   todayPracticeCount: '今日练习次数',
   // 题目错误率
@@ -106,8 +105,6 @@ const fieldTokenMap = {
   report: '反馈',
   pending: '待处理',
   average: '平均',
-  earned: '得分',
-  score: '分',
   user: '用户',
   curriculum: '课程',
   question: '题目',
@@ -157,11 +154,7 @@ const chapterAccuracyColumnOrder = [
   { prop: 'answerCount', width: 120 },
   { prop: 'rightCount', width: 120 },
   { prop: 'wrongCount', width: 120 },
-  { prop: 'accuracyRate', width: 120 },
-  { prop: 'averageScore', width: 120 },
-  { prop: 'completionRate', width: 120 },
-  { prop: 'totalQuestions', width: 120 },
-  { prop: 'completedQuestions', width: 130 }
+  { prop: 'accuracyRate', width: 120 }
 ]
 
 const courseMap = computed(() => new Map(courses.value.map((item) => [String(item.id), item])))

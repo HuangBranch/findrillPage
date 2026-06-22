@@ -13,8 +13,8 @@
         <el-tab-pane label="练习历史" name="history">
           <el-table :data="historyRows" style="width: 100%">
             <el-table-column prop="name" label="名称" min-width="180" />
-            <el-table-column label="得分" width="120">
-              <template #default="{ row }">{{ row.earnedScore ?? '-' }} / {{ row.totalScore || 0 }}</template>
+            <el-table-column label="题量" width="100">
+              <template #default="{ row }">{{ row.totalQuestion || 0 }}</template>
             </el-table-column>
             <el-table-column label="正确/错误" width="120">
               <template #default="{ row }">{{ row.rightCount || 0 }} / {{ row.wrongCount || 0 }}</template>
