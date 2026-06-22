@@ -1,5 +1,11 @@
 <template>
-  <div class="page attempt-page">
+  <div
+    class="page attempt-page"
+    @touchstart.passive="handleTouchStart"
+    @touchmove.passive="handleTouchMove"
+    @touchcancel="resetTouchState"
+    @touchend.passive="handleTouchEnd"
+  >
     <section v-if="!attempt" class="surface">
       <el-skeleton :loading="true" animated :rows="4">
         <el-empty description="正在加载练习" />
@@ -13,10 +19,6 @@
             v-if="currentQuestion"
             :key="questionTransitionKey"
             class="question-panel"
-            @touchstart.passive="handleTouchStart"
-            @touchmove.passive="handleTouchMove"
-            @touchcancel="resetTouchState"
-            @touchend.passive="handleTouchEnd"
           >
             <div class="question-meta">
               <span>第 {{ currentIndex + 1 }} / {{ questions.length }} 题</span>
@@ -548,6 +550,7 @@ onMounted(async () => {
 }
 
 .attempt-page {
+  min-height: calc(100vh - 76px - env(safe-area-inset-bottom));
   padding-bottom: calc(76px + env(safe-area-inset-bottom));
 }
 
@@ -774,6 +777,7 @@ onMounted(async () => {
 @media (max-width: 760px) {
   .attempt-page {
     gap: 10px;
+    min-height: calc(100vh - 70px - env(safe-area-inset-bottom));
     padding-bottom: calc(70px + env(safe-area-inset-bottom));
   }
 
