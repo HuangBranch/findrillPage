@@ -369,11 +369,10 @@ const resetTouchState = () => {
 
 const shouldIgnoreSwipeTarget = (target) => {
   if (!(target instanceof Element)) return false
-  return Boolean(
-    target.closest(
-      'input, textarea, select, button, a, .answer-input, .question-actions, .floating-actions, .el-drawer, .el-dialog'
-    )
-  )
+  if (target.closest('.floating-actions, .el-drawer, .el-dialog')) {
+    return true
+  }
+  return false
 }
 
 const handleTouchStart = (event) => {
