@@ -7,8 +7,8 @@
       </div>
 
       <el-form ref="loginFormRef" :model="loginForm" :rules="loginRules" label-position="top" @submit.prevent>
-        <el-form-item label="账号" prop="user">
-          <el-input v-model.trim="loginForm.user" size="large" autocomplete="username" placeholder="请输入用户编码" />
+        <el-form-item label="账号" prop="account">
+          <el-input v-model.trim="loginForm.account" size="large" autocomplete="username" placeholder="请输入登录账号" />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input
@@ -42,12 +42,12 @@ const authStore = useAuthStore()
 const loginFormRef = ref()
 
 const loginForm = reactive({
-  user: '',
+  account: '',
   password: ''
 })
 
 const loginRules = {
-  user: [{ required: true, message: '请输入账号', trigger: 'blur' }],
+  account: [{ required: true, message: '请输入账号', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
 

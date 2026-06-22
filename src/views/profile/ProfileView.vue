@@ -2,10 +2,10 @@
   <div class="page">
     <section class="surface profile-head">
       <div class="profile-head__main">
-        <el-avatar :size="72" :src="authStore.userInfo?.avatar">{{ authStore.userInfo?.name?.slice(0, 1) }}</el-avatar>
+        <el-avatar :size="72" :src="profileAvatar">{{ profileName.slice(0, 1) }}</el-avatar>
         <div>
-          <h2>{{ authStore.userInfo?.name || '-' }}</h2>
-          <p>{{ authStore.userInfo?.userId }} · {{ authStore.userInfo?.roleName || '普通用户' }}</p>
+          <h2>{{ profileName }}</h2>
+          <p>{{ profileAccount }} · {{ profileRoleName }}</p>
         </div>
       </div>
       <el-button class="profile-head__edit" @click="$router.push('/profile/edit')">编辑资料</el-button>
@@ -30,7 +30,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { getPracticeHistoryCount } from '@/api/practice'
@@ -41,9 +41,12 @@ const router = useRouter()
 const authStore = useAuthStore()
 const menuStore = useMenuStore()
 const historyCount = ref(0)
+const profileName = computed(() => authStore.userInfo?.name || '-')
+const profileAccount = computed(() => authStore.userInfo?.account || authStore.userInfo?.userId || '-')
+const profileRoleName = computed(() => authStore.userInfo?.roleName || '普通用户')
+const profileAvatar = computed(() => authStore.userInfo?.avatar || '')
 
 onMounted(async () => {
-  await authStore.refreshUser()
   historyCount.value = await getPracticeHistoryCount()
 })
 

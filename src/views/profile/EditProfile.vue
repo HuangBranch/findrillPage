@@ -3,7 +3,7 @@
     <div class="page-header">
       <div>
         <h1 class="page-title">编辑资料</h1>
-        <p class="page-subtitle">修改昵称、真实姓名和登录密码。</p>
+        <p class="page-subtitle">修改昵称和登录密码。</p>
       </div>
       <el-button @click="$router.push('/profile')">返回</el-button>
     </div>
@@ -14,9 +14,6 @@
         <el-form :model="profileForm" label-position="top">
           <el-form-item label="昵称">
             <el-input v-model.trim="profileForm.name" />
-          </el-form-item>
-          <el-form-item label="真实姓名">
-            <el-input v-model.trim="profileForm.realName" />
           </el-form-item>
           <el-button type="primary" :loading="savingProfile" @click="saveProfile">保存资料</el-button>
         </el-form>
@@ -49,8 +46,7 @@ const savingPassword = ref(false)
 const passwordFormRef = ref()
 
 const profileForm = reactive({
-  name: authStore.userInfo?.name || '',
-  realName: authStore.userInfo?.realName || ''
+  name: authStore.userInfo?.name || ''
 })
 
 const passwordForm = reactive({
